@@ -24,7 +24,7 @@
   [& body]
   `(let [prelude# (io/read-prelude)
          bot-name# (str my-bot-name "-" (:player-id prelude#))]
-     (with-open [logger# (clj.io/writer (str "logs/" bot-name# ".log"))]
+     (with-open [logger# (clj.io/writer (str bot-name# ".log"))]
        (binding [utils/*logger* logger#
                  *bot-name* bot-name#
                  *player-id* (:player-id prelude#)
