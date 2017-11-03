@@ -73,6 +73,32 @@
     (e/dock-move ship planet)
     (navigation/navigate-to-dock ship planet)))
 
+(defn nearest-enemy-docked-ship
+  "TODO"
+  [ship docked-enemies]
+  (:nearest-ship
+   (reduce (fn [{:keys [min-distance nearest-ship]} enemy]
+             (let [
+                   ; planet (second planet-tuple)
+                   distance-to-enemy (math/distance-between ship enemy)]
+               (if (< distance-to-enemy min-distance)
+                 {:min-distance distance-to-enemy :nearest-ship enemy}
+                 {:min-distance min-distance :nearest-ship nearest-ship})))
+           {:min-distance infinity}
+           docked-enemies)))
+
+(defn get-docked-enemy-ships
+  "Returns all of the docked enemy ships."
+  []
+  (let [enemy-ships (remove #(= *player-id* (:owner-id %)) (vals *ships*))]
+    (remove #(= :undocked (-> % :docking :status)) enemy-ships)))
+    ; (filter #(-> % :docking :planet) enemy-ships)))
+
+(defn move-ship-to-attack
+  "Moves the ship to attack the enemy ship."
+  [ship enemy-ship]
+  (navigation/navigate-to ship enemy-ship))
+
 (defn move-to-nearest-unowned-planet
   "Moves the ship to the nearest unowned planet."
   [ship]
@@ -80,10 +106,16 @@
     (move-ship-to-planet ship planet)))
 
 (defn move-to-nearest-enemy-planet
-  "Moves the ship to the nearest unowned planet."
+  "Moves the ship to the nearest enemy planet."
   [ship]
   (when-let [planet (nearest-enemy-planet ship)]
     (move-ship-to-planet ship planet)))
+
+(defn move-to-nearest-enemy-ship
+  "Moves the ship to the nearest docked enemy ship."
+  [ship docked-enemies]
+  (when-let [enemy-ship (nearest-enemy-docked-ship ship docked-enemies)]
+    (move-ship-to-attack ship enemy-ship)))
 
 (defn nearest-open-dock-spot
   "Returns the planet owned by me with the nearest open dock spot."
@@ -116,7 +148,7 @@
 
 (defn compute-move
   "Returns the move for the given ship"
-  [ship unowned? dock-spots?]
+  [ship unowned? dock-spots? docked-enemies]
   (if (not= :undocked (-> ship :docking :status))
     nil
     (if unowned?
@@ -125,13 +157,13 @@
         (if dock-spots?
           (if-let [planet (nearest-open-dock-spot ship)]
             (move-ship-to-planet ship planet)
-            (move-to-nearest-enemy-planet ship))
-          (move-to-nearest-enemy-planet ship)))
+            (move-to-nearest-enemy-ship ship docked-enemies))
+          (move-to-nearest-enemy-ship ship docked-enemies)))
       (if dock-spots?
         (if-let [planet (nearest-open-dock-spot ship)]
           (move-ship-to-planet ship planet)
-          (move-to-nearest-enemy-planet ship))
-        (move-to-nearest-enemy-planet ship)))))
+          (move-to-nearest-enemy-ship ship docked-enemies))
+        (move-to-nearest-enemy-ship ship docked-enemies)))))
 
 (defn -main
   [& args]
@@ -141,7 +173,8 @@
      (with-updated-map
       (let [unowned? (any-unowned-planets?)
             dock-spots? (any-dock-spots-available?)
+            docked-enemies (get-docked-enemy-ships)
             _ (log "=========== Turn" turn "=========== Unowned" unowned? "===== Dock spots" dock-spots?)
-            moves (keep #(compute-move % unowned? dock-spots?)
+            moves (keep #(compute-move % unowned? dock-spots? docked-enemies)
                         (vals (get *owner-ships* *player-id*)))]
         (io/send-moves moves))))))

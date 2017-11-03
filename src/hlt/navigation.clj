@@ -27,6 +27,16 @@
    :angular-step (/ Math/PI 180.0)
    :max-thrust e/max-ship-speed})
 
+(defn any-obstacles?
+  "Returns true if there are any obstacles (that we want to avoid) between us and our target."
+  [a b]
+  (let [filter-fn #(and (distinct? a b %)
+                        (math/segment-circle-intersects? a b % default-fudge-factor))]
+    (concat (filter filter-fn (vals *planets*))
+            (filter filter-fn (filter #(= *player-id* (:owner-id %))
+                                      (vals *ships*))))))
+
+
 (defn navigate-to
   "Returns a thrust move that moves the ship to the provided goal. The
   goal is treated as a point, i.e. the thrust move attempts to move
@@ -42,8 +52,10 @@
    (if (<= max-corrections 0)
      nil
      (let [distance (math/distance-between ship goal)
+           ;; Just try to get most of the way there if it is really far away
+           ;; distance (if (> distance 50) (* 0.85 distance) distance)
            angle (math/orient-towards ship goal)]
-       (if (and avoid-obstacles (seq (entities-between ship goal)))
+       (if (and avoid-obstacles (first (any-obstacles? ship goal)))
          (let [new-target-dx (* (Math/cos (+ angle angular-step)) distance)
                new-target-dy (* (Math/sin (+ angle angular-step)) distance)
                new-goal (math/->Position (+ new-target-dx (get-x ship))
