@@ -25,7 +25,7 @@
   {:max-corrections max-navigation-corrections
    :avoid-obstacles true
    :angular-step (/ Math/PI 180.0)
-   :max-thrust (quot e/max-ship-speed 2)})
+   :max-thrust e/max-ship-speed})
 
 (defn navigate-to
   "Returns a thrust move that moves the ship to the provided goal. The
