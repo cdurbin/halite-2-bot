@@ -1,1 +1,6 @@
+target/
 archive/
+.nrepl*
+*.hlt
+*.log
+jars/

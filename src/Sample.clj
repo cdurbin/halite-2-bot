@@ -1,4 +1,4 @@
-(ns MyBot
+(ns Sample
   (:require [clojure.java.io :as clj.io]
             [hlt.networking :as io]
             [hlt.game-map :refer [*player-id* *map-size* *bot-name*
@@ -17,13 +17,13 @@
                *planets* (:planets m#)]
        ~@body)))
 
-;; Here we set the bot name to Doohickey.
-(def my-bot-name "Doohickey")
+(def my-bot-name "Sample")
+
 (defmacro initialize-game
   [& body]
   `(let [prelude# (io/read-prelude)
          bot-name# (str my-bot-name "-" (:player-id prelude#))]
-     (with-open [logger# (clj.io/writer (str bot-name# ".log"))]
+     (with-open [logger# (clj.io/writer (str "logs/" bot-name# ".log"))]
        (binding [utils/*logger* logger#
                  *bot-name* bot-name#
                  *player-id* (:player-id prelude#)
