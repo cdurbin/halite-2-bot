@@ -97,7 +97,7 @@
 (defn move-ship-to-attack
   "Moves the ship to attack the enemy ship."
   [ship enemy-ship]
-  (navigation/navigate-to ship enemy-ship))
+  (navigation/navigate-to-attack-docked-ship ship enemy-ship))
 
 (defn move-to-nearest-unowned-planet
   "Moves the ship to the nearest unowned planet."
@@ -148,22 +148,24 @@
 
 (defn compute-move
   "Returns the move for the given ship"
-  [ship unowned? dock-spots? docked-enemies]
-  (if (not= :undocked (-> ship :docking :status))
-    nil
-    (if unowned?
-      (if-let [planet (nearest-unowned-planet ship)]
-        (move-ship-to-planet ship planet)
+  [ship unowned? dock-spots? docked-enemies start-ms]
+  (let [times-up? (> (- (System/currentTimeMillis) start-ms) 1700)]
+    (if (or times-up?
+            (not= :undocked (-> ship :docking :status)))
+      nil
+      (if unowned?
+        (if-let [planet (nearest-unowned-planet ship)]
+          (move-ship-to-planet ship planet)
+          (if dock-spots?
+            (if-let [planet (nearest-open-dock-spot ship)]
+              (move-ship-to-planet ship planet)
+              (move-to-nearest-enemy-ship ship docked-enemies))
+            (move-to-nearest-enemy-ship ship docked-enemies)))
         (if dock-spots?
           (if-let [planet (nearest-open-dock-spot ship)]
             (move-ship-to-planet ship planet)
             (move-to-nearest-enemy-ship ship docked-enemies))
-          (move-to-nearest-enemy-ship ship docked-enemies)))
-      (if dock-spots?
-        (if-let [planet (nearest-open-dock-spot ship)]
-          (move-ship-to-planet ship planet)
-          (move-to-nearest-enemy-ship ship docked-enemies))
-        (move-to-nearest-enemy-ship ship docked-enemies)))))
+          (move-to-nearest-enemy-ship ship docked-enemies))))))
 
 (defn -main
   [& args]
@@ -175,6 +177,7 @@
             dock-spots? (any-dock-spots-available?)
             docked-enemies (get-docked-enemy-ships)
             _ (log "=========== Turn" turn "=========== Unowned" unowned? "===== Dock spots" dock-spots?)
-            moves (keep #(compute-move % unowned? dock-spots? docked-enemies)
+            start-ms (System/currentTimeMillis)
+            moves (keep #(compute-move % unowned? dock-spots? docked-enemies start-ms)
                         (vals (get *owner-ships* *player-id*)))]
         (io/send-moves moves))))))
