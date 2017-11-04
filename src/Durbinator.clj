@@ -78,9 +78,7 @@
   [ship docked-enemies]
   (:nearest-ship
    (reduce (fn [{:keys [min-distance nearest-ship]} enemy]
-             (let [
-                   ; planet (second planet-tuple)
-                   distance-to-enemy (math/distance-between ship enemy)]
+             (let [distance-to-enemy (math/distance-between ship enemy)]
                (if (< distance-to-enemy min-distance)
                  {:min-distance distance-to-enemy :nearest-ship enemy}
                  {:min-distance min-distance :nearest-ship nearest-ship})))
@@ -92,7 +90,6 @@
   []
   (let [enemy-ships (remove #(= *player-id* (:owner-id %)) (vals *ships*))]
     (remove #(= :undocked (-> % :docking :status)) enemy-ships)))
-    ; (filter #(-> % :docking :planet) enemy-ships)))
 
 (defn move-ship-to-attack
   "Moves the ship to attack the enemy ship."
@@ -234,7 +231,7 @@
             _ (log "==== Turn" turn "==== Unowned" unowned? "==== Dock spots" dock-spots?
                    "==== Num planets" num-planets)
             start-ms (System/currentTimeMillis)
-            compute-move-fn (if (< num-planets 3) compute-move-orig compute-move)
+            ; compute-move-fn (if (< num-planets 3) compute-move-orig compute-move)
             compute-move-fn compute-move-closest-planet
             moves (keep #(compute-move-fn % unowned? dock-spots? docked-enemies start-ms)
                         (vals (get *owner-ships* *player-id*)))]

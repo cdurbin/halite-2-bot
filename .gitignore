@@ -5,3 +5,4 @@ archive/
 *.hlt
 *.log
 jars/
+.lein-repl-history

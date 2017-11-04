@@ -1,4 +1,4 @@
-(ns Sample
+(ns hlt.sample
   (:require [clojure.java.io :as clj.io]
             [hlt.networking :as io]
             [hlt.game-map :refer [*player-id* *map-size* *bot-name*

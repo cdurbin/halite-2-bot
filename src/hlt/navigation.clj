@@ -61,7 +61,7 @@
                                              (+ new-target-dy (get-y ship)))]
                (recur ship new-goal (update opts :max-corrections dec)))
 
-             (let [thrust (int (min distance max-thrust))]
+             (let [thrust (int (min (- distance 1.5) max-thrust))]
                (e/thrust-move ship thrust angle)))))))))
 
 (defn navigate-to
