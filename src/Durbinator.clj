@@ -285,7 +285,8 @@
    (io/send-done-initialized)
    (doseq [turn (iterate inc 1)]
      (with-updated-map
-      (let [unowned? (any-unowned-planets?)
+      (let [start-ms (System/currentTimeMillis)
+            unowned? (any-unowned-planets?)
             num-planets (get-num-planets-owned)
             dock-spots? (any-dock-spots-available?)
             docked-enemies (get-docked-enemy-ships)
@@ -294,7 +295,6 @@
             _ (log "==== Turn" turn "==== Unowned" unowned? "==== Dock spots" dock-spots?
                    "==== Num planets" num-planets "==== Safe planets" safe-planets
                    "=== Pesky " pesky-fighters)
-            start-ms (System/currentTimeMillis)
             ; compute-move-fn (if (< num-planets 3) compute-move-orig compute-move)
             compute-move-fn compute-move-closest-planet
             moves (keep #(compute-move-fn % unowned? dock-spots? docked-enemies safe-planets
