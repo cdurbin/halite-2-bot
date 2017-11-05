@@ -1,9 +1,9 @@
 (ns custom.durbinator
   (:require
+   [custom.navigation :as navigation]
    [hlt.entity :as e]
    [hlt.game-map :refer [*player-id* *map-size* *bot-name* *owner-ships* *ships* *planets*]]
    [hlt.math :as math]
-   [hlt.navigation :as navigation]
    [hlt.utils :as utils :refer [log]])
   (:import (java.io PrintWriter)))
 
@@ -39,7 +39,7 @@
 (defn move-ship-to-attack
   "Moves the ship to attack the enemy ship."
   [ship enemy-ship]
-  (navigation/navigate-to-attack-docked-ship ship enemy-ship))
+  (navigation/navigate-to-attack-ship ship enemy-ship))
 
 (defn move-to-nearest-enemy-ship
   "Moves the ship to the nearest docked enemy ship."

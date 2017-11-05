@@ -11,8 +11,8 @@
 
 (def max-navigation-corrections 90)
 (def docking-distance 3.0)
-
 (def default-fudge-factor (+ e/ship-radius 0.2))
+
 (defn entities-between
   "Returns all the entities that intersects the line segment from a to b."
   [a b]
@@ -21,49 +21,11 @@
     (concat (filter filter-fn (vals *planets*))
             (filter filter-fn (vals *ships*)))))
 
-(def ^:private default-navigation-opts
+(def default-navigation-opts
   {:max-corrections max-navigation-corrections
    :avoid-obstacles true
    :angular-step (/ Math/PI 180.0)
    :max-thrust e/max-ship-speed})
-
-(defn any-obstacles?
-  "Returns true if there are any obstacles (that we want to avoid) between us and our target."
-  [a b]
-  (entities-between a b))
-  ; (let [filter-fn #(and (distinct? a b %)
-  ;                       (math/segment-circle-intersects? a b % default-fudge-factor))]
-  ;   (concat (filter filter-fn (vals *planets*))
-  ;           (filter filter-fn (filter #(= *player-id* (:owner-id %))
-  ;                                     (vals *ships*))))))
-
-(defn navigate-to-attack-docked-ship
-  "Returns a thrust move that moves the ship to the provided goal. The
-  goal is treated as a point, i.e. the thrust move attempts to move
-  the ship to the center of the goal. Use navigate-to-dock to compute
-  a thrust move that does not collide with entities, or use
-  closest-point yourself to find a suitable point. This function
-  returns nil if it cannot find a suitable path."
-  ([ship goal]
-   (navigate-to-attack-docked-ship ship goal default-navigation-opts))
-  ([ship goal {:keys [max-corrections avoid-obstacles
-                      angular-step max-thrust]
-               :as opts}]
-   (if (<= max-corrections 0)
-     nil
-     (let [distance (math/distance-between ship goal)]
-       (if (< distance 5)
-         nil
-         (let [angle (math/orient-towards ship goal)]
-           (if (and avoid-obstacles (first (any-obstacles? ship goal)))
-             (let [new-target-dx (* (Math/cos (+ angle angular-step)) distance)
-                   new-target-dy (* (Math/sin (+ angle angular-step)) distance)
-                   new-goal (math/->Position (+ new-target-dx (get-x ship))
-                                             (+ new-target-dy (get-y ship)))]
-               (recur ship new-goal (update opts :max-corrections dec)))
-
-             (let [thrust (int (min (- distance 1.5) max-thrust))]
-               (e/thrust-move ship thrust angle)))))))))
 
 (defn navigate-to
   "Returns a thrust move that moves the ship to the provided goal. The
@@ -83,7 +45,7 @@
            ;; Just try to get most of the way there if it is really far away
            ;; distance (if (> distance 50) (* 0.85 distance) distance)
            angle (math/orient-towards ship goal)]
-       (if (and avoid-obstacles (first (any-obstacles? ship goal)))
+       (if (and avoid-obstacles (first (entities-between ship goal)))
          (let [new-target-dx (* (Math/cos (+ angle angular-step)) distance)
                new-target-dy (* (Math/sin (+ angle angular-step)) distance)
                new-goal (math/->Position (+ new-target-dx (get-x ship))
@@ -104,7 +66,6 @@
    (let [docking-point (math/closest-point ship planet docking-distance)]
      (navigate-to ship docking-point
                   (merge default-navigation-opts opts)))))
-
 
 (defn entities-by-distance
   "Returns a list of all entities sorted by distance to x. If x itself
