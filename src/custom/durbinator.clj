@@ -1,5 +1,6 @@
 (ns custom.durbinator
   (:require
+   [custom.math :as custom-math]
    [custom.navigation :as navigation]
    [hlt.entity :as e]
    [hlt.game-map :refer [*player-id* *map-size* *bot-name* *owner-ships* *ships* *planets*]]
@@ -84,7 +85,7 @@
                          (have-most-ships-surrounding-planet? planet)))]
     (filter filter-fn (vals *planets*))))
 
-(defn compute-move-closest-planet
+(defn compute-move-closest-planet*
   "Picks the move for the ship based on proximity to planets and fighters near planets."
   [{:keys [docked-enemies safe-planets pesky-fighters start-ms]} ship]
   (let [times-up? (> (- (System/currentTimeMillis) start-ms) 1700)]
@@ -113,6 +114,34 @@
                     (= *player-id* (:owner-id nearest-planet)))
               (move-to-nearest-enemy-ship ship pesky-fighters)
               (move-to-nearest-enemy-ship ship (concat pesky-fighters docked-enemies)))))))))
+
+(defn calculate-end-positions
+  "Returns a ship in its end position based on thrust for this turn."
+  [{:keys [ship thrust angle] :as move}]
+  (log "Calc end position" move)
+  (let [x (get-in ship [:pos :x])
+        y (get-in ship [:pos :y])
+        positions (map math/map->Position
+                       (custom-math/all-positions-start-to-end x y thrust angle))]
+    (log "Positions are:" positions)
+    (map #(assoc ship :pos %) positions)))
+
+(defn change-ship-positions
+  "Changes a ships position in the main ships."
+  [{:keys [ship type] :as move}]
+  (when (= :thrust type)
+    (log "Ships before:" *ships*)
+    (let [imaginary-ships (calculate-end-positions move)]
+      (doseq [i-ship imaginary-ships]
+        (set! *ships* (assoc *ships* (java.util.UUID/randomUUID) i-ship))))
+    (log "Ships after:" *ships*)))
+
+(defn compute-move-closest-planet
+  "Picks the move for the ship based on proximity to planets and fighters near planets."
+  [{:keys [docked-enemies safe-planets pesky-fighters start-ms] :as custom-map-info} ship]
+  (when-let [move (compute-move-closest-planet* custom-map-info ship)]
+    (change-ship-positions move)
+    move))
 
 (defn get-custom-map-info
   "Returns additional map info that is useful to calculate at the beginning of each turn."
