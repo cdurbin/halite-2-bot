@@ -68,12 +68,14 @@
   [planet]
   (let [close-distance 20
         filter-fn (fn [ship]
-                    (and (< (math/distance-between ship planet) close-distance)
+                    (and (< (math/distance-between ship planet) (+ close-distance (:radius planet)))
                          (= :undocked (-> ship :docking :status))))
         nearby-fighters (filter filter-fn (vals *ships*))
         fighters-by-owner (group-by :owner-id nearby-fighters)
-        max-count (apply max 0 (map count (vals fighters-by-owner)))]
-    (= max-count (count (get fighters-by-owner *player-id* [])))))
+        my-count (count (get fighters-by-owner *player-id*))
+        max-other-count (apply max 0 (map count (vals (dissoc fighters-by-owner *player-id*))))]
+    (or (zero? max-other-count)
+        (> my-count (inc max-other-count)))))
 
 (defn get-safe-planets
   "Returns a list of planets that are safe to dock at."
