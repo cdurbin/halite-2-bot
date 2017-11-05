@@ -14,3 +14,14 @@ Before submitting a bot, make sure you adhere to our guidelines, or the upload o
 * Website: You can use the [play page](https://halite.io/play-programming-challenge) in the Halite website to submit your bot.
 * Halite Client: If you a command line experience, you can use the [Halite Client tool](https://halite.io/learn-programming-challenge/halite-cli-and-tools/halite-client-tools) to upload your bot.
 
+## TODO
+
+  * [ ] Stop crashing two ships at the beginning
+  * [ ] Defend planets under siege
+  * [ ] Don't dock at planets unless I have more fighters near the planet than the enemy
+  * [ ] Consider where my ships are going if they have already issued a move when calculating obstacles to avoid
+  * [ ] Antagonize other players
+  * [ ] Chase down 2 on 1 against enemies
+  * [ ] Figure out which metrics I should capture and log them
+  * [ ] Potentially spread out docking sites around a planet
+  * [ ] Don't send more ships than needed for docking or attacking a planet

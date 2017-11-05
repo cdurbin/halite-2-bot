@@ -30,11 +30,12 @@
 (defn any-obstacles?
   "Returns true if there are any obstacles (that we want to avoid) between us and our target."
   [a b]
-  (let [filter-fn #(and (distinct? a b %)
-                        (math/segment-circle-intersects? a b % default-fudge-factor))]
-    (concat (filter filter-fn (vals *planets*))
-            (filter filter-fn (filter #(= *player-id* (:owner-id %))
-                                      (vals *ships*))))))
+  (entities-between a b))
+  ; (let [filter-fn #(and (distinct? a b %)
+  ;                       (math/segment-circle-intersects? a b % default-fudge-factor))]
+  ;   (concat (filter filter-fn (vals *planets*))
+  ;           (filter filter-fn (filter #(= *player-id* (:owner-id %))
+  ;                                     (vals *ships*))))))
 
 (defn navigate-to-attack-docked-ship
   "Returns a thrust move that moves the ship to the provided goal. The

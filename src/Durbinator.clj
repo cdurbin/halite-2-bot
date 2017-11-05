@@ -143,9 +143,66 @@
                   (e/any-remaining-docking-spots? %))
             (vals *planets*)))))
 
+(comment
+ (vals {})
+ (apply max 0 (map count {})))
+
+; (defn get-pesky-fighters
+;   "Fighters near my planets or neutral planets."
+;   []
+;   (let [mine-or-neutral-planets (filter #(or (nil? (:owner-id %))
+;                                              (= *player-id* (:owner-id %))))
+;         close-distance 25
+;         filter-fn (fn [ship]
+;                     (and (< (math/distance-between ship planet) close-distance)
+;                          (= :undocked (-> ship :docking :status))))]
+;     (mapcat #(filter filter-fn (vals *ships*)) mine-or-neutral-planets)))
+
+(defn get-pesky-fighters
+  "Fighters near my planets or neutral planets."
+  []
+  (let [mine-or-neutral-planets (filter #(or (nil? (:owner-id %))
+                                             (= *player-id* (:owner-id %)))
+                                        (vals *planets*))
+        close-distance 25]
+        ; filter-fn (fn [ship]
+        ;             (and (< (math/distance-between ship planet) close-distance)
+        ;                  (= :undocked (-> ship :docking :status))))]
+    (set
+      (for [planet mine-or-neutral-planets
+            ship (vals *ships*)
+            :when (and (< (math/distance-between ship planet) close-distance)
+                       (= :undocked (-> ship :docking :status))
+                       (not= *player-id* (:owner-id ship)))]
+        ship))))
+
+(defn have-most-ships-surrounding-planet?
+  "Have the most fighters (non docking) surrounding the planet."
+  [planet]
+  (let [close-distance 20
+        filter-fn (fn [ship]
+                    (and (< (math/distance-between ship planet) close-distance)
+                         (= :undocked (-> ship :docking :status))))
+        nearby-fighters (filter filter-fn (vals *ships*))
+        fighters-by-owner (group-by :owner-id nearby-fighters)
+        ; _ (log "FBO:" fighters-by-owner)
+        max-count (apply max 0 (map count (vals fighters-by-owner)))]
+        ; _ (log "Count can't be called on:" (get fighters-by-owner *player-id* 0))]
+    (= max-count (count (get fighters-by-owner *player-id* [])))))
+
+(defn safe-docking-planets
+  "Returns a list of planets that are safe to dock at."
+  []
+  (let [filter-fn (fn [planet]
+                    (and (or (nil? (:owner-id planet))
+                             (and (= *player-id* (:owner-id planet))
+                                  (e/any-remaining-docking-spots? planet)))
+                         (have-most-ships-surrounding-planet? planet)))]
+    (filter filter-fn (vals *planets*))))
+
 (defn compute-move-closest-planet
   "New one"
-  [ship unowned? dock-spots? docked-enemies start-ms]
+  [ship unowned? dock-spots? docked-enemies safe-planets pesky-fighters start-ms]
   (let [times-up? (> (- (System/currentTimeMillis) start-ms) 1700)]
     (if (or times-up?
             (not= :undocked (-> ship :docking :status)))
@@ -166,10 +223,14 @@
                        {:min-distance infinity}
                        planets))]
           (if (and nearest-planet
-                   (or (nil? (:owner-id nearest-planet))
-                       (= *player-id* (:owner-id nearest-planet))))
+                   (some #{(:id nearest-planet)} safe-planets))
+                  ;  (or (nil? (:owner-id nearest-planet))
+                      ;  (= *player-id* (:owner-id nearest-planet)))
             (move-ship-to-planet ship nearest-planet)
-            (move-to-nearest-enemy-ship ship docked-enemies)))))))
+            (if (or (nil? (:owner-id nearest-planet))
+                    (= *player-id* (:owner-id nearest-planet)))
+              (move-to-nearest-enemy-ship ship pesky-fighters)
+              (move-to-nearest-enemy-ship ship (concat pesky-fighters docked-enemies)))))))))
 
 (defn compute-move
   "Returns the move for the given ship"
@@ -228,11 +289,15 @@
             num-planets (get-num-planets-owned)
             dock-spots? (any-dock-spots-available?)
             docked-enemies (get-docked-enemy-ships)
+            safe-planets (map :id (safe-docking-planets))
+            pesky-fighters (get-pesky-fighters)
             _ (log "==== Turn" turn "==== Unowned" unowned? "==== Dock spots" dock-spots?
-                   "==== Num planets" num-planets)
+                   "==== Num planets" num-planets "==== Safe planets" safe-planets
+                   "=== Pesky " pesky-fighters)
             start-ms (System/currentTimeMillis)
             ; compute-move-fn (if (< num-planets 3) compute-move-orig compute-move)
             compute-move-fn compute-move-closest-planet
-            moves (keep #(compute-move-fn % unowned? dock-spots? docked-enemies start-ms)
+            moves (keep #(compute-move-fn % unowned? dock-spots? docked-enemies safe-planets
+                                          pesky-fighters start-ms)
                         (vals (get *owner-ships* *player-id*)))]
         (io/send-moves moves))))))
