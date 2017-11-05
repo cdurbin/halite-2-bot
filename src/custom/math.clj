@@ -15,25 +15,14 @@
     {:x (+ x x-magnitude)
      :y (+ y y-magnitude)}))
 
-(defn integers-up-to
-  "Returns a collection of integers between 1 and n."
-  [n]
-  (let [i (atom 1)
-        ints (atom [])]
-    (while (<= @i n)
-      (swap! ints conj @i)
-      (swap! i inc))
-    @ints))
-
 (defn all-positions-start-to-end
-  "Returns multiple positions from starting spot to ending spot."
+  "Returns multiple positions (one for each integer) from starting spot to ending spot."
   [x y thrust angle]
-  (for [n (integers-up-to thrust)]
+  (for [n (range 1 (+ 0.2 thrust) 2)]
     (final-position x y n angle)))
 
-
 (comment
- (integers-up-to 7)
+ (range 1 (+ 0.2 7) 2)
  (all-positions-start-to-end 10 3 7 15)
  (final-position 10 3 7 15)
  (final-position 10 3 7 0)

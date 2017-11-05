@@ -118,23 +118,19 @@
 (defn calculate-end-positions
   "Returns a ship in its end position based on thrust for this turn."
   [{:keys [ship thrust angle] :as move}]
-  (log "Calc end position" move)
   (let [x (get-in ship [:pos :x])
         y (get-in ship [:pos :y])
         positions (map math/map->Position
                        (custom-math/all-positions-start-to-end x y thrust angle))]
-    (log "Positions are:" positions)
     (map #(assoc ship :pos %) positions)))
 
 (defn change-ship-positions
   "Changes a ships position in the main ships."
   [{:keys [ship type] :as move}]
   (when (= :thrust type)
-    (log "Ships before:" *ships*)
     (let [imaginary-ships (calculate-end-positions move)]
       (doseq [i-ship imaginary-ships]
-        (set! *ships* (assoc *ships* (java.util.UUID/randomUUID) i-ship))))
-    (log "Ships after:" *ships*)))
+        (set! *ships* (assoc *ships* (java.util.UUID/randomUUID) i-ship))))))
 
 (defn compute-move-closest-planet
   "Picks the move for the ship based on proximity to planets and fighters near planets."
