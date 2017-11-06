@@ -16,12 +16,16 @@ Before submitting a bot, make sure you adhere to our guidelines, or the upload o
 
 ## TODO
 
-  * [ ] Stop crashing two ships at the beginning
-  * [ ] Defend planets under siege
-  * [ ] Don't dock at planets unless I have more fighters near the planet than the enemy
-  * [ ] Consider where my ships are going if they have already issued a move when calculating obstacles to avoid
+  * [x] Stop crashing two ships at the beginning
+  * [x] Defend planets under siege
+  * [x] Don't dock at planets unless I have more fighters near the planet than the enemy
+  * [x] Consider where my ships are going if they have already issued a move when calculating obstacles to avoid
   * [ ] Antagonize other players
   * [ ] Chase down 2 on 1 against enemies
   * [ ] Figure out which metrics I should capture and log them
   * [ ] Potentially spread out docking sites around a planet
   * [ ] Don't send more ships than needed for docking or attacking a planet
+  * [ ] Look further out to determine if I should dock (undocked enemies within 7 (speed) * 6 (turns to dock) = 42 from radius of planet)
+  * [ ] Prevent loss at beginning of game (don't dock if the enemy is too close)
+  * [ ] Bigger planets might be better earlier
+  * [ ] In four player maps the outside is better

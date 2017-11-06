@@ -4,7 +4,9 @@
             [hlt.game-map :refer [*player-id* *map-size* *bot-name*
                                   *owner-ships* *ships* *planets*]]
             [hlt.utils :as utils :refer [log]]
-            [custom.durbinator :as durbinator])
+            [custom.durbinator :as durbinator]
+            [custom.game-map :refer [*safe-planets* *docked-enemies* *pesky-fighters*]])
+
   (:import (java.io PrintWriter))
   (:gen-class))
 
@@ -13,7 +15,10 @@
   `(let [m# (io/read-map)]
      (binding [*owner-ships* (:owner-ships m#)
                *ships* (:ships m#)
-               *planets* (:planets m#)]
+               *planets* (:planets m#)
+               *safe-planets* nil
+               *docked-enemies* nil
+               *pesky-fighters* nil]
        ~@body)))
 
 (defmacro initialize-game
@@ -36,6 +41,7 @@
 ;; for a ship
 (def compute-move-fn durbinator/compute-move-closest-planet)
 (def custom-map-info-fn durbinator/get-custom-map-info)
+(def ships-in-order-fn durbinator/sort-ships-by-distance)
 
 (defn -main
   [& args]
@@ -46,7 +52,7 @@
       (do
         (log "==== Turn" turn)
         (let [custom-map-info (custom-map-info-fn)
-              moves (keep #(compute-move-fn custom-map-info %)
-                          (vals (get *owner-ships* *player-id*)))]
+              ships-in-order (ships-in-order-fn (vals (get *owner-ships* *player-id*)))
+              moves (keep #(compute-move-fn custom-map-info %) ships-in-order)]
           ; (log "Moves:" moves)
           (io/send-moves moves)))))))
