@@ -14,6 +14,13 @@
 
 (def infinity 99999999)
 
+(defn coin-flip-navigation-options
+  "Randomly returns navigation options from one of two choices."
+  []
+  ; (if (= 0 (rand-int 2))
+  navigation/default-navigation-opts)
+    ; navigation/reverse-nagivation-opts])
+
 (defn move-ship-to-planet!
   "Moves the ship to the given planet. Side effect to update the planet to reduce the number of
   available docking spots by one."
@@ -24,7 +31,7 @@
       (set! *safe-planets* (assoc *safe-planets* (:id planet) upd-planet))))
   (if (e/within-docking-range? ship planet)
     (e/dock-move ship planet)
-    (navigation/navigate-to-dock ship planet)))
+    (navigation/navigate-to-dock ship planet (coin-flip-navigation-options))))
 
 (defn nearest-enemy-ship
   "Returns the closest enemy ship from the passed in enemy ships."
@@ -47,7 +54,7 @@
 (defn move-ship-to-attack
   "Moves the ship to attack the enemy ship."
   [ship enemy-ship]
-  (navigation/navigate-to-attack-ship ship enemy-ship))
+  (navigation/navigate-to-attack-ship ship enemy-ship (coin-flip-navigation-options)))
 
 (defn move-to-nearest-enemy-ship
   "Moves the ship to the nearest docked enemy ship."
