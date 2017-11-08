@@ -39,7 +39,7 @@
 
 (defn closest-point
   "Returns the closest safe point from `point` towards `goal`. The
-  closest safe point is on the radius of `goal` plus an optioanl
+  closest safe point is on the radius of `goal` plus an optional
   distance, which can be used to avoid collisions."
   ([point goal] (closest-point point goal 0.0))
   ([point goal safe-distance]
