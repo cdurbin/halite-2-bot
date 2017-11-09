@@ -148,11 +148,11 @@
 
 (defn compute-move-closest-planet
   "Picks the move for the ship based on proximity to planets and fighters near planets."
-  [{:keys [start-ms] :as custom-map-info} ship]
-  (log "Computing move for " ship)
-  (when-let [move (compute-move-closest-planet* custom-map-info ship)]
-    (change-ship-positions move)
-    move))
+  [{:keys [start-ms moving-ships] :as custom-map-info} ship]
+  (when-not (some #{(:id ship)} moving-ships)
+    (when-let [move (compute-move-closest-planet* custom-map-info ship)]
+      (change-ship-positions move)
+      move)))
 
 (defn get-custom-map-info
   "Returns additional map info that is useful to calculate at the beginning of each turn."
@@ -172,6 +172,43 @@
                 min-distance)))
           infinity
           points-of-interest))
+
+(def unprotected-distance
+  "How far away we look for unprotected ships."
+  50)
+
+(defn unprotected-enemy-ships
+  "Returns a map of unprotected enemy ships with my ship as the key and the enemy ship as the value.
+  TODO - this will only find a single dock point most of the time because the same ship of mine
+  is probably the closest to several spots. Remove my ship each time it is selected. Will require
+  several passes."
+  []
+  (let [potential-ships (filter #(= :undocked (-> % :docking :status)) (vals *ships*))
+        all-permutations
+         (for [enemy-ship *docked-enemies*
+               :let [closest-ship (nearest-enemy-ship enemy-ship
+                                                     (remove #(= (:id enemy-ship) (:id %))
+                                                             potential-ships))]
+               :when (= *player-id* (:owner-id closest-ship))
+               :let [distance (math/distance-between enemy-ship closest-ship)]
+               :when (< distance unprotected-distance)]
+           {:ship closest-ship
+            :enemy-ship enemy-ship
+            :distance distance})
+        sorted-order (sort (utils/compare-by :distance utils/desc) all-permutations)]
+    ;; This makes sure that if the same ship is the closest to multiple it picks the closest one.
+    (into {}
+      (for [triple-map sorted-order]
+        [(:ship triple-map) (:enemy-ship triple-map)]))))
+
+(defn attack-unprotected-enemy-ships
+  "Returns moves to attack the unprotected enemy ships"
+  []
+  (let [ship-attacks (unprotected-enemy-ships)]
+    (for [[ship enemy-ship] ship-attacks
+          :let [move (navigation/navigate-to-attack-ship ship enemy-ship)]
+          :when move]
+      move)))
 
 (defn sort-ships-by-distance
   "Returns ships from closest to point of interest to farthest. A point of interest is a planet,
