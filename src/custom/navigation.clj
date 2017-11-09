@@ -5,7 +5,8 @@
    [hlt.math :as math :refer [get-x get-y]]))
 
 ; (def navigate-to-dock hlt-navigation/navigate-to-dock)
-(def default-navigation-opts hlt-navigation/default-navigation-opts)
+(def default-navigation-opts
+  (assoc hlt-navigation/default-navigation-opts :max-corrections 180))
 
 (def reverse-nagivation-opts
   (assoc default-navigation-opts :angular-step (/ Math/PI -180.0)))
@@ -26,7 +27,7 @@
          first-angle (math/orient-towards ship goal)]
      (loop [goal goal
             iteration 0]
-       (if (<= max-corrections 0)
+       (if (<= max-corrections iteration)
          nil
          (let [distance (math/distance-between ship goal)]
            (if (< distance 5)
