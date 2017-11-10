@@ -25,7 +25,7 @@
   [& body]
   `(let [prelude# (io/read-prelude)
          bot-name# (str durbinator/my-bot-name "-" (:player-id prelude#))]
-     (with-open [logger# (clj.io/writer (str bot-name# ".log"))]
+     (with-open [logger# (clj.io/writer (str bot-name# ".log") :append true)]
        (binding [utils/*logger* logger#
                  *bot-name* bot-name#
                  *player-id* (:player-id prelude#)
@@ -52,7 +52,15 @@
       (do
         (log "==== Turn" turn)
         (let [custom-map-info (custom-map-info-fn)
+              defend-moves (durbinator/defend-vulnerable-ships)
+              moving-ships (map #(get-in % [:ship :id]) defend-moves)
+              initial-moves (durbinator/attack-unprotected-enemy-ships moving-ships)
+              moving-ships (map #(get-in % [:ship :id]) (concat initial-moves defend-moves))
+              ; _ (log "==== Moving ships" (pr-str moving-ships))
               ships-in-order (ships-in-order-fn (vals (get *owner-ships* *player-id*)))
-              moves (keep #(compute-move-fn custom-map-info %) ships-in-order)]
+              moves (keep #(compute-move-fn (assoc custom-map-info :moving-ships moving-ships) %)
+                          ships-in-order)]
+          ; (log "=== Defend moves:" defend-moves)
+          ; (log "Initial moves:" initial-moves)
           ; (log "Moves:" moves)
-          (io/send-moves moves)))))))
+          (io/send-moves (concat defend-moves initial-moves moves))))))))

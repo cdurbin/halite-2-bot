@@ -42,8 +42,6 @@
    (if (<= max-corrections 0)
      nil
      (let [distance (math/distance-between ship goal)
-           ;; Just try to get most of the way there if it is really far away
-           ;; distance (if (> distance 50) (* 0.85 distance) distance)
            angle (math/orient-towards ship goal)]
        (if (and avoid-obstacles (first (entities-between ship goal)))
          (let [new-target-dx (* (Math/cos (+ angle angular-step)) distance)
