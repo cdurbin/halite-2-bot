@@ -52,12 +52,15 @@
       (do
         (log "==== Turn" turn)
         (let [custom-map-info (custom-map-info-fn)
-              initial-moves (durbinator/attack-unprotected-enemy-ships)
-              moving-ships (map #(get-in % [:ship :id]) initial-moves)
+              defend-moves (durbinator/defend-vulnerable-ships)
+              moving-ships (map #(get-in % [:ship :id]) defend-moves)
+              initial-moves (durbinator/attack-unprotected-enemy-ships moving-ships)
+              moving-ships (map #(get-in % [:ship :id]) (concat initial-moves defend-moves))
               ; _ (log "==== Moving ships" (pr-str moving-ships))
               ships-in-order (ships-in-order-fn (vals (get *owner-ships* *player-id*)))
               moves (keep #(compute-move-fn (assoc custom-map-info :moving-ships moving-ships) %)
                           ships-in-order)]
+          ; (log "=== Defend moves:" defend-moves)
           ; (log "Initial moves:" initial-moves)
           ; (log "Moves:" moves)
-          (io/send-moves (concat initial-moves moves))))))))
+          (io/send-moves (concat defend-moves initial-moves moves))))))))

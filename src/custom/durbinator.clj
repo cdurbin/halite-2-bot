@@ -182,8 +182,11 @@
   TODO - this will only find a single dock point most of the time because the same ship of mine
   is probably the closest to several spots. Remove my ship each time it is selected. Will require
   several passes."
-  []
-  (let [potential-ships (filter #(= :undocked (-> % :docking :status)) (vals *ships*))
+  [moving-ships]
+  ; (log "Moving ships are" moving-ships)
+  (let [potential-ships (filter #(and (= :undocked (-> % :docking :status))
+                                      (not (some (set [(:id %)]) moving-ships)))
+                                (vals *ships*))
         all-permutations
          (for [enemy-ship *docked-enemies*
                :let [closest-ship (nearest-enemy-ship enemy-ship
@@ -203,10 +206,51 @@
 
 (defn attack-unprotected-enemy-ships
   "Returns moves to attack the unprotected enemy ships"
-  []
-  (let [ship-attacks (unprotected-enemy-ships)]
+  [moving-ships]
+  (let [ship-attacks (unprotected-enemy-ships moving-ships)]
     (for [[ship enemy-ship] ship-attacks
           :let [move (navigation/navigate-to-attack-ship ship enemy-ship)]
+          :when move]
+      move)))
+
+(defn get-vulnerable-ships
+  "Returns a list of vulnerable ships."
+  []
+  (let [my-docked-ships (remove #(= :undocked (-> % :docking :status))
+                                (vals (get *owner-ships* *player-id*)))
+        vulnerable-distance 22
+        all-permutations
+         (for [ship my-docked-ships
+               enemy-ship *pesky-fighters*
+               :let [
+                     ;_ (log "Enemy ship" enemy-ship "Ship" ship)
+                     enemy-distance (math/distance-between enemy-ship ship)]
+               :when (< enemy-distance vulnerable-distance)
+               :let [my-closest-ship (nearest-enemy-ship ship
+                                                         (filter #(= :undocked (-> % :docking :status))
+                                                                 (vals (get *owner-ships* *player-id*))))]
+               :when my-closest-ship
+               :let [defend-distance (math/distance-between ship my-closest-ship)
+                     attack-distance (math/distance-between my-closest-ship enemy-ship)]
+               :when (and (> attack-distance vulnerable-distance)
+                          (< defend-distance attack-distance))]
+
+           {:ship my-closest-ship
+            :vulnerable-ship ship
+            :distance enemy-distance})
+        sorted-order (sort (utils/compare-by :distance utils/desc) all-permutations)]
+    ;; This makes sure that if the same ship is the closest to multiple it picks the closest one.
+    (into {}
+      (for [triple-map sorted-order]
+        [(:ship triple-map) (:vulnerable-ship triple-map)]))))
+
+(defn defend-vulnerable-ships
+  "Returns moves to defend vulnerable ships."
+  []
+  (let [vulnerable-ships (get-vulnerable-ships)]
+    ; (log "Vulnerable ships " vulnerable-ships)
+    (for [[defender ship] vulnerable-ships
+          :let [move (navigation/navigate-to-attack-ship defender ship)]
           :when move]
       move)))
 

@@ -4,7 +4,6 @@
    [hlt.navigation :as hlt-navigation]
    [hlt.math :as math :refer [get-x get-y]]))
 
-; (def navigate-to-dock hlt-navigation/navigate-to-dock)
 (def default-navigation-opts
   (assoc hlt-navigation/default-navigation-opts :max-corrections 180))
 
@@ -84,9 +83,3 @@
    (let [docking-point (math/closest-point ship planet hlt-navigation/docking-distance)]
      (navigate-to ship docking-point
                   (merge default-navigation-opts opts)))))
-
-
-(comment
- (if (rand-int 2)
-   true
-   false))
