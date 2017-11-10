@@ -80,10 +80,10 @@
 (defn have-most-ships-surrounding-planet?
   "Have the most fighters (non docking) surrounding the planet."
   [planet]
-  (let [close-distance 100
+  (let [close-distance 20
         filter-fn (fn [ship]
-                    (and (< (math/distance-between ship planet) (+ close-distance (:radius planet)))))
-                        ;  (= :undocked (-> ship :docking :status))))
+                    (and (< (math/distance-between ship planet) (+ close-distance (:radius planet)))
+                         (= :undocked (-> ship :docking :status))))
         nearby-fighters (filter filter-fn (vals *ships*))
         fighters-by-owner (group-by :owner-id nearby-fighters)
         my-count (count (get fighters-by-owner *player-id*))
