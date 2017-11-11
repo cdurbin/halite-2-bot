@@ -19,7 +19,7 @@
   closest-point yourself to find a suitable point. This function
   returns nil if it cannot find a suitable path."
   ([ship goal]
-   (navigate-to-attack-ship ship goal hlt-navigation/default-navigation-opts))
+   (navigate-to-attack-ship ship goal default-navigation-opts))
   ([ship goal {:keys [max-corrections avoid-obstacles
                       angular-step max-thrust]
                :as opts}]
@@ -52,7 +52,7 @@
   closest-point yourself to find a suitable point. This function
   returns nil if it cannot find a suitable path."
   ([ship goal]
-   (navigate-to-attack-ship ship goal hlt-navigation/default-navigation-opts))
+   (navigate-to-attack-ship ship goal default-navigation-opts))
   ([ship goal {:keys [max-corrections avoid-obstacles
                       angular-step max-thrust]
                :as opts}]
@@ -85,7 +85,7 @@
   closest-point yourself to find a suitable point. This function
   returns nil if it cannot find a suitable path."
   ([ship goal]
-   (navigate-to ship goal hlt-navigation/default-navigation-opts))
+   (navigate-to ship goal default-navigation-opts))
   ([ship goal {:keys [max-corrections avoid-obstacles
                       angular-step max-thrust]
                :as opts}]

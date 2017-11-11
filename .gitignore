@@ -6,3 +6,4 @@ archive/
 *.log
 jars/
 .lein-repl-history
+halite*

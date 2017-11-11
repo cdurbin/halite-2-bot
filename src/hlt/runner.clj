@@ -5,7 +5,8 @@
                                   *owner-ships* *ships* *planets*]]
             [hlt.utils :as utils :refer [log]]
             [custom.durbinator :as durbinator]
-            [custom.game-map :refer [*safe-planets* *docked-enemies* *pesky-fighters*]])
+            [custom.game-map :refer [*safe-planets* *docked-enemies* *pesky-fighters*]]
+            [custom.utils :refer [defn-timed]])
 
   (:import (java.io PrintWriter))
   (:gen-class))
@@ -43,6 +44,11 @@
 (def custom-map-info-fn durbinator/get-custom-map-info)
 (def ships-in-order-fn durbinator/sort-ships-by-distance)
 
+(defn-timed all-moves
+  [ships-in-order custom-map-info]
+  (keep #(compute-move-fn custom-map-info %)
+        ships-in-order))
+
 (defn -main
   [& args]
   (initialize-game
@@ -58,8 +64,9 @@
               moving-ships (map #(get-in % [:ship :id]) (concat initial-moves defend-moves))
               ; _ (log "==== Moving ships" (pr-str moving-ships))
               ships-in-order (ships-in-order-fn (vals (get *owner-ships* *player-id*)))
-              moves (keep #(compute-move-fn (assoc custom-map-info :moving-ships moving-ships) %)
-                          ships-in-order)]
+              ; moves (keep #(compute-move-fn (assoc custom-map-info :moving-ships moving-ships) %)
+              ;             ships-in-order)
+              moves (all-moves ships-in-order (assoc custom-map-info :moving-ships moving-ships))]
           ; (log "=== Defend moves:" defend-moves)
           ; (log "Initial moves:" initial-moves)
           ; (log "Moves:" moves)
