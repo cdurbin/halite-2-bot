@@ -11,3 +11,7 @@
 (def ^:dynamic *docked-enemies*
   "A list of enemy ships that are currently docked (or in the processing of docking or undocking)"
   nil)
+
+(def ^:dynamic *num-ships*
+  "Number of ships I own."
+  0)

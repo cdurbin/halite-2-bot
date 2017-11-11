@@ -5,7 +5,7 @@
                                   *owner-ships* *ships* *planets*]]
             [hlt.utils :as utils :refer [log]]
             [custom.durbinator :as durbinator]
-            [custom.game-map :refer [*safe-planets* *docked-enemies* *pesky-fighters*]]
+            [custom.game-map :refer [*safe-planets* *docked-enemies* *pesky-fighters* *num-ships*]]
             [custom.utils :refer [defn-timed]])
 
   (:import (java.io PrintWriter))
@@ -19,7 +19,8 @@
                *planets* (:planets m#)
                *safe-planets* nil
                *docked-enemies* nil
-               *pesky-fighters* nil]
+               *pesky-fighters* nil
+               *num-ships* 0]
        ~@body)))
 
 (defmacro initialize-game
@@ -46,8 +47,9 @@
 
 (defn-timed all-moves
   [ships-in-order custom-map-info]
-  (keep #(compute-move-fn custom-map-info %)
-        ships-in-order))
+  (doall
+   (keep #(compute-move-fn custom-map-info %)
+         ships-in-order)))
 
 (defn -main
   [& args]
