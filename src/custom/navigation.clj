@@ -11,6 +11,10 @@
 (def reverse-nagivation-opts
   (assoc default-navigation-opts :angular-step (/ Math/PI -180.0)))
 
+(def max-distance-visibility
+  "How far to look for no obstacles."
+  20)
+
 (defn navigate-to-attack-ship
   "Returns a thrust move that moves the ship to the provided goal. The
   goal is treated as a point, i.e. the thrust move attempts to move
@@ -24,7 +28,10 @@
                       angular-step max-thrust]
                :as opts}]
    (let [distance (math/distance-between ship goal)
-         first-angle (math/orient-towards ship goal)]
+         first-angle (math/orient-towards ship goal)
+         goal (if (> distance max-distance-visibility)
+                (custom-math/get-point ship max-distance-visibility first-angle)
+                goal)]
      (loop [goal goal
             iteration 0]
        (if (<= max-corrections iteration)
@@ -58,6 +65,9 @@
                :as opts}]
    (let [distance (math/distance-between ship goal)
          first-angle (math/orient-towards ship goal)]
+         goal (if (> distance max-distance-visibility)
+                (custom-math/get-point ship max-distance-visibility first-angle)
+                goal)
      (loop [goal goal
             iteration 0]
        (if (<= max-corrections iteration)
@@ -90,7 +100,10 @@
                       angular-step max-thrust]
                :as opts}]
    (let [distance (math/distance-between ship goal)
-         first-angle (math/orient-towards ship goal)]
+         first-angle (math/orient-towards ship goal)
+         goal (if (> distance max-distance-visibility)
+                (custom-math/get-point ship max-distance-visibility first-angle)
+                goal)]
      (loop [goal goal
             iteration 0]
        (if (<= max-corrections iteration)
