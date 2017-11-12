@@ -8,6 +8,27 @@
   [deg]
   (Math/toRadians deg))
 
+(comment
+ (hlt-math/rad->deg (/ Math/PI 3))
+ (hlt-math/rad->deg (/ Math/PI -3))
+ (hlt-math/rad->deg 0)
+
+ (between (hlt-math/rad->deg (+ Math/PI 5)) (hlt-math/rad->deg (/ Math/PI -3))
+          (hlt-math/rad->deg (+ Math/PI 5))))
+
+(defn between
+  "Returns whether the given angle is between two angles"
+  [plus-angle minus-point-angle compare-angle]
+  (let [upd-plus-angle (if (> minus-point-angle plus-angle)
+                         (+ 360 plus-angle)
+                         plus-angle)
+        upd-compare-angle (if (>= upd-plus-angle 360)
+                            (+ 360 compare-angle)
+                            compare-angle)]
+    (<= minus-point-angle upd-compare-angle upd-plus-angle)))
+
+
+
 (defn final-position
   "Returns the final position based on an angle and magnitude."
   [x y thrust angle]

@@ -3,17 +3,40 @@
    [custom.math :as custom-math]
    [hlt.entity :as e]
    [hlt.navigation :as hlt-navigation]
+   [hlt.game-map :refer [*planets* *ships*]]
    [hlt.math :as math :refer [get-x get-y]]))
 
 (def default-navigation-opts
-  (assoc hlt-navigation/default-navigation-opts :max-corrections 180))
+  (assoc hlt-navigation/default-navigation-opts :max-corrections 220))
+  ; (assoc hlt-navigation/default-navigation-opts :max-corrections 180))
 
 (def reverse-nagivation-opts
   (assoc default-navigation-opts :angular-step (/ Math/PI -180.0)))
 
-(def max-distance-visibility
-  "How far to look for no obstacles."
-  20)
+; (def max-distance-visibility
+;   "How far to look for no obstacles."
+;   20)
+
+(defn figure-out-potential-obstacles
+  "TODO: Note planets I should look further out, but ships this is fine."
+  [ship goal all-ships]
+  (filter #(< (math/distance-between ship %) (+ e/max-ship-speed 0.5)) all-ships))
+
+  ; (let [to-goal-angle (math/orient-towards ship goal)
+  ;       minus-90-angle (math/rad->deg (- to-goal-angle (/ Math/PI 2)))
+  ;       plus-90-angle (math/rad->deg (+ to-goal-angle (/ Math/PI 2)))]
+  ;   (filter #(and (< (math/distance-between ship %) e/max-ship-speed)
+  ;                 (custom-math/between plus-90-angle minus-90-angle
+  ;                                      (math/rad->deg (math/orient-towards ship %))))
+  ;           all-ships)))
+
+(defn new-entities-between
+  "More efficient entities-between"
+  [a b obstacles]
+  (let [filter-fn #(and (distinct? a b %)
+                        (math/segment-circle-intersects? a b % hlt-navigation/default-fudge-factor))]
+    (concat (filter filter-fn (vals *planets*))
+            (filter filter-fn obstacles))))
 
 (defn navigate-to-attack-ship
   "Returns a thrust move that moves the ship to the provided goal. The
@@ -29,27 +52,28 @@
                :as opts}]
    (let [distance (math/distance-between ship goal)
          first-angle (math/orient-towards ship goal)
-         goal (if (> distance max-distance-visibility)
-                (custom-math/get-point ship max-distance-visibility first-angle)
-                goal)]
-     (loop [goal goal
-            iteration 0]
-       (if (<= max-corrections iteration)
-         nil
-         (let [distance (math/distance-between ship goal)]
-           (if (< distance 5)
-             (e/thrust-move ship 0 first-angle)
-             (let [angular-step (* -1 angular-step)
-                   angle (math/orient-towards ship goal)]
-               (if (and avoid-obstacles (first (hlt-navigation/entities-between ship goal)))
-                 (let [new-target-dx (* (Math/cos (+ first-angle (* 0.5 iteration angular-step))) distance)
-                       new-target-dy (* (Math/sin (+ first-angle (* 0.5 iteration angular-step))) distance)
-                       new-goal (math/->Position (+ new-target-dx (get-x ship))
-                                                 (+ new-target-dy (get-y ship)))]
-                   (recur new-goal (inc iteration)))
-                ;  (let [thrust (int (min (- distance 1.5) max-thrust))])
-                 (let [thrust (int (min (max 0 (- distance 4.1)) max-thrust))]
-                   (e/thrust-move ship thrust angle)))))))))))
+        ;  goal (if (> distance max-distance-visibility)
+        ;         (custom-math/get-point ship max-distance-visibility first-angle)
+        ;         goal)
+         obstacles (figure-out-potential-obstacles ship goal (vals *ships*))]
+     (if (< distance 5)
+       (e/thrust-move ship 0 first-angle)
+       (loop [goal goal
+              iteration 0]
+         (if (<= max-corrections iteration)
+           (e/thrust-move ship 0 first-angle)
+          ;  (let [distance (math/distance-between ship goal)]
+           (let [angular-step (* -1 angular-step)
+                 angle (math/orient-towards ship goal)]
+             (if (and avoid-obstacles (first (new-entities-between ship goal obstacles)))
+               (let [new-target-dx (* (Math/cos (+ first-angle (* 0.5 iteration angular-step))) distance)
+                     new-target-dy (* (Math/sin (+ first-angle (* 0.5 iteration angular-step))) distance)
+                     new-goal (math/->Position (+ new-target-dx (get-x ship))
+                                               (+ new-target-dy (get-y ship)))]
+                 (recur new-goal (inc iteration)))
+              ;  (let [thrust (int (min (- distance 1.5) max-thrust))])
+               (let [thrust (int (min (max 0 (- distance 4.1)) max-thrust))]
+                 (e/thrust-move ship thrust angle))))))))))
 
 (defn navigate-to-attack-docked-ship
   "Returns a thrust move that moves the ship to the provided goal. The
@@ -64,28 +88,28 @@
                       angular-step max-thrust]
                :as opts}]
    (let [distance (math/distance-between ship goal)
-         first-angle (math/orient-towards ship goal)]
-         goal (if (> distance max-distance-visibility)
-                (custom-math/get-point ship max-distance-visibility first-angle)
-                goal)
-     (loop [goal goal
-            iteration 0]
-       (if (<= max-corrections iteration)
-         nil
-         (let [distance (math/distance-between ship goal)]
-           (if (< distance 5)
-             (e/thrust-move ship 0 first-angle)
-             (let [angular-step (* -1 angular-step)
-                   angle (math/orient-towards ship goal)]
-               (if (and avoid-obstacles (first (hlt-navigation/entities-between ship goal)))
-                 (let [new-target-dx (* (Math/cos (+ first-angle (* 0.5 iteration angular-step))) distance)
-                       new-target-dy (* (Math/sin (+ first-angle (* 0.5 iteration angular-step))) distance)
-                       new-goal (math/->Position (+ new-target-dx (get-x ship))
-                                                 (+ new-target-dy (get-y ship)))]
-                   (recur new-goal (inc iteration)))
-                 (let [thrust (int (min (- distance 1.5) max-thrust))]
-                ;  (let [thrust (int (min (max 0 (- distance 7.1)) max-thrust))]
-                   (e/thrust-move ship thrust angle)))))))))))
+         first-angle (math/orient-towards ship goal)
+        ;  goal (if (> distance max-distance-visibility)
+        ;         (custom-math/get-point ship max-distance-visibility first-angle)
+        ;         goal)
+         obstacles (figure-out-potential-obstacles ship goal (vals *ships*))]
+     (if (< distance 5)
+       (e/thrust-move ship 0 first-angle)
+       (loop [goal goal
+              iteration 0]
+         (if (<= max-corrections iteration)
+           (e/thrust-move ship 0 first-angle)
+           (let [angular-step (* -1 angular-step)
+                 angle (math/orient-towards ship goal)]
+             (if (and avoid-obstacles (first (new-entities-between ship goal obstacles)))
+               (let [new-target-dx (* (Math/cos (+ first-angle (* 0.5 iteration angular-step))) distance)
+                     new-target-dy (* (Math/sin (+ first-angle (* 0.5 iteration angular-step))) distance)
+                     new-goal (math/->Position (+ new-target-dx (get-x ship))
+                                               (+ new-target-dy (get-y ship)))]
+                 (recur new-goal (inc iteration)))
+               (let [thrust (int (min (- distance 1.5) max-thrust))]
+              ;  (let [thrust (int (min (max 0 (- distance 7.1)) max-thrust))]
+                 (e/thrust-move ship thrust angle))))))))))
 
 (defn navigate-to
   "Returns a thrust move that moves the ship to the provided goal. The
@@ -101,17 +125,18 @@
                :as opts}]
    (let [distance (math/distance-between ship goal)
          first-angle (math/orient-towards ship goal)
-         goal (if (> distance max-distance-visibility)
-                (custom-math/get-point ship max-distance-visibility first-angle)
-                goal)]
+        ;  goal (if (> distance max-distance-visibility)
+        ;         (custom-math/get-point ship max-distance-visibility first-angle)
+        ;         goal)
+         obstacles (figure-out-potential-obstacles ship goal (vals *ships*))]
      (loop [goal goal
             iteration 0]
        (if (<= max-corrections iteration)
-         nil
+         (e/thrust-move ship 0 first-angle)
          (let [angular-step (* -1 angular-step)
                distance (math/distance-between ship goal)
                angle (math/orient-towards ship goal)]
-           (if (and avoid-obstacles (first (hlt-navigation/entities-between ship goal)))
+           (if (and avoid-obstacles (first (new-entities-between ship goal obstacles)))
              (let [new-target-dx (* (Math/cos (+ first-angle (* 0.5 iteration angular-step))) distance)
                    new-target-dy (* (Math/sin (+ first-angle (* 0.5 iteration angular-step))) distance)
                    new-goal (math/->Position (+ new-target-dx (get-x ship))
@@ -126,23 +151,23 @@
    (navigate-to-retreat ship goal default-navigation-opts))
   ([ship goal {:keys [max-corrections avoid-obstacles
                       angular-step max-thrust]}]
-   (let [orig-distance (math/distance-between ship goal)
+   (let [distance (math/distance-between ship goal)
          first-angle (custom-math/orient-away ship goal)
-         goal (custom-math/get-point ship max-thrust first-angle)]
+         goal (custom-math/get-point ship max-thrust first-angle)
+         obstacles (figure-out-potential-obstacles ship goal (vals *ships*))]
      (loop [goal goal
             iteration 0]
        (if (<= max-corrections iteration)
-         nil
+         (e/thrust-move ship 0 first-angle)
          (let [angular-step (* -1 angular-step)
-               distance (math/distance-between ship goal)
                angle (math/orient-towards ship goal)]
-           (if (and avoid-obstacles (first (hlt-navigation/entities-between ship goal)))
+           (if (and avoid-obstacles (first (new-entities-between ship goal obstacles)))
              (let [new-target-dx (* (Math/cos (+ first-angle (* 0.5 iteration angular-step))) distance)
                    new-target-dy (* (Math/sin (+ first-angle (* 0.5 iteration angular-step))) distance)
                    new-goal (math/->Position (+ new-target-dx (get-x ship))
                                              (+ new-target-dy (get-y ship)))]
                (recur new-goal (inc iteration)))
-             (let [thrust (if (> orig-distance 10)
+             (let [thrust (if (> distance 10)
                             (int (/ max-thrust 4))
                             max-thrust)]
                (e/thrust-move ship thrust angle)))))))))

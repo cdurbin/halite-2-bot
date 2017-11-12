@@ -31,3 +31,13 @@ Before submitting a bot, make sure you adhere to our guidelines, or the upload o
   * [ ] In four player maps the outside is better
   * [ ] I'm sending too many to the same planet
   * [ ] Change closeby-docked to include my ships - add together my docked plus their docked
+
+# 11/12
+
+  * [ ] Navigation entities-between should first filter out to only look for things within a box
+    - [ ] The direction I am looking up to max-thrust + ship radius away. Field of vision is 90 degrees in both directions + 0.5 ship radius buffer.
+  * [ ] Navigation looks at changing speeds (potentially look at how fast I could go before hitting object and compare to choosing a different angle (how far away from my goal am I?))
+  * [ ] Pick a default location to move to if I run out of time and submit that move (oh but I could run into things.. maybe not)
+  * [ ] Stop running into the edges of the map (if y > max-y or < min-y , x... etc)
+  * [ ] Docking - keep track of docking during a turn so I keep at least one fighter nearby instead of letting all dock at once.
+  * [ ] 
