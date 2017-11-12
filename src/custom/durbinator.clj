@@ -14,12 +14,12 @@
 
 (def infinity 99999999)
 
-(defn coin-flip-navigation-options
-  "Randomly returns navigation options from one of two choices."
-  []
-  ; (if (= 0 (rand-int 2))
-  navigation/default-navigation-opts)
-    ; navigation/reverse-nagivation-opts])
+; (defn coin-flip-navigation-options
+;   "Randomly returns navigation options from one of two choices."
+;   []
+;   ; (if (= 0 (rand-int 2))
+;   navigation/default-navigation-opts)
+;     ; navigation/reverse-nagivation-opts])
 
 (defn move-ship-to-planet!
   "Moves the ship to the given planet. Side effect to update the planet to reduce the number of
@@ -32,7 +32,7 @@
       (set! *safe-planets* (assoc *safe-planets* (:id planet) upd-planet))))
   (if (e/within-docking-range? ship planet)
     (e/dock-move ship planet)
-    (navigation/navigate-to-dock ship planet (coin-flip-navigation-options))))
+    (navigation/navigate-to-dock ship planet)))
 
 (defn nearest-enemy-ship
   "Returns the closest enemy ship from the passed in enemy ships."
@@ -56,8 +56,8 @@
   "Moves the ship to attack the enemy ship."
   [ship enemy-ship]
   (if (= :undocked (-> enemy-ship :docking :status))
-    (navigation/navigate-to-attack-ship ship enemy-ship (coin-flip-navigation-options))
-    (navigation/navigate-to-attack-docked-ship ship enemy-ship (coin-flip-navigation-options))))
+    (navigation/navigate-to-attack-ship ship enemy-ship)
+    (navigation/navigate-to-attack-docked-ship ship enemy-ship)))
 
 (def retreat-if-this-close 35)
 
@@ -257,7 +257,8 @@
      (for [[ship enemy-ship] ship-attacks
            :let [move (navigation/navigate-to-attack-ship ship enemy-ship)]
            :when move]
-       move))))
+       (do (change-ship-positions move)
+           move)))))
 
 (defn get-vulnerable-ships
   "Returns a list of vulnerable ships."
@@ -294,7 +295,8 @@
      (for [[defender ship] vulnerable-ships
            :let [move (navigation/navigate-to-dock defender ship)]
            :when move]
-       move))))
+       (do (change-ship-positions move)
+           move)))))
 
 (defn-timed sort-ships-by-distance
   "Returns ships from closest to point of interest to farthest. A point of interest is a planet,

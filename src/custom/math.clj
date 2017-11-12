@@ -41,7 +41,7 @@
 (defn all-positions-start-to-end
   "Returns multiple positions (one for each integer) from starting spot to ending spot."
   [x y thrust angle]
-  (for [n (range 1 (+ 0.2 thrust) 2)]
+  (for [n (range 1 (+ 0.2 thrust) 1)]
     (final-position x y n angle)))
 
 (defn orient-away

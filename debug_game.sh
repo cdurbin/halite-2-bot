@@ -8,5 +8,9 @@ lein uberjar
 #./halite -t -s 2906390360 -d "240 160" "java -jar target/MyBot.jar" "java -jar jars/V14.jar"
 #./halite -t -s 2744142981 -d "240 160" "java -jar target/MyBot.jar" "java -jar jars/V15.jar"
 #./halite -t -s 3835859866 -d "240 160" "java -jar target/MyBot.jar" "java -jar jars/V15.jar"
-./halite -t -s 1613985642 -d "240 160" "java -jar target/MyBot.jar" "java -jar jars/V18.jar"
+#./halite -t -s 1613985642 -d "240 160" "java -jar target/MyBot.jar" "java -jar jars/V18.jar"
+## Ships crashing turn 170
+#./halite -t -s 1686906791 -d "240 160" "java -jar target/MyBot.jar" "java -jar jars/V19.jar"
+## Ships crashing in turn 148 - angles make no sense to me, shouldn't be able to crash.
+./halite -t -s 1686906791 -d "240 160" "java -jar target/MyBot.jar" "java -jar jars/V19.jar"
 mv *.hlt hlts/
