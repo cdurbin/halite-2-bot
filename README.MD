@@ -29,3 +29,5 @@ Before submitting a bot, make sure you adhere to our guidelines, or the upload o
   * [ ] Prevent loss at beginning of game (don't dock if the enemy is too close)
   * [ ] Bigger planets might be better earlier
   * [ ] In four player maps the outside is better
+  * [ ] I'm sending too many to the same planet
+  * [ ] Change closeby-docked to include my ships - add together my docked plus their docked

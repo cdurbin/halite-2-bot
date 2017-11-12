@@ -26,6 +26,7 @@
   available docking spots by one."
   [ship planet]
   (let [upd-planet (update-in planet [:docking :ships] conj ship)]
+    (set! *planets* (assoc *planets* (:id planet) upd-planet))
     (if-not (e/any-remaining-docking-spots? upd-planet)
       (set! *safe-planets* (dissoc *safe-planets* (:id planet)))
       (set! *safe-planets* (assoc *safe-planets* (:id planet) upd-planet))))
@@ -58,10 +59,18 @@
     (navigation/navigate-to-attack-ship ship enemy-ship (coin-flip-navigation-options))
     (navigation/navigate-to-attack-docked-ship ship enemy-ship (coin-flip-navigation-options))))
 
+(def retreat-if-this-close 35)
+
 (defn move-ship-to-retreat
   "Moves the ship to retreat from the enemy ship."
   [ship enemy-ship]
-  (navigation/navigate-to-retreat ship enemy-ship))
+  (let [my-other-ships (remove #(= (:id ship) (:id %))
+                               (vals (get *owner-ships* *player-id*)))
+        closest-friendly-ship (nearest-enemy-ship ship my-other-ships)]
+    (if (and closest-friendly-ship
+             (< (math/distance-between closest-friendly-ship ship) retreat-if-this-close))
+      (navigation/navigate-to-dock ship closest-friendly-ship)
+      (navigation/navigate-to-retreat ship enemy-ship))))
 
 (def tag-team-range 8)
 (def retreat-range 24)
@@ -71,10 +80,10 @@
   [ship enemy-ship owner-id range docked?]
   (> 2
     (count
-     (filter #(and (or (< (math/distance-between ship %) range)
-                       (< (math/distance-between enemy-ship %) range))
-                   (or (not docked?)
-                       (= :undocked (-> % :docking :status))))
+     (filter #(and (or (not docked?)
+                       (= :undocked (-> % :docking :status)))
+                   (or (< (math/distance-between ship %) range)
+                       (< (math/distance-between enemy-ship %) range)))
              (vals (get *owner-ships* owner-id))))))
 
 (def ignore-retreating-ship-count
@@ -103,9 +112,9 @@
     (set
       (for [planet mine-or-neutral-planets
             ship (vals *ships*)
-            :when (and (< (math/distance-between ship planet) close-distance)
+            :when (and (not= *player-id* (:owner-id ship))
                        (= :undocked (-> ship :docking :status))
-                       (not= *player-id* (:owner-id ship)))]
+                       (< (math/distance-between ship planet) close-distance))]
         ship))))
 
 (defn-timed have-most-ships-surrounding-planet?
@@ -113,14 +122,15 @@
   [planet]
   (let [close-distance 39
         filter-fn (fn [ship]
-                    (and (< (math/distance-between ship planet) (+ close-distance (:radius planet)))
-                         (= :undocked (-> ship :docking :status))))
+                    (and (= :undocked (-> ship :docking :status))
+                         (< (math/distance-between ship planet) (+ close-distance (:radius planet)))))
         docked-filter-fn (fn [ship]
                            (and (not= *player-id* (:owner-id ship))
-                                (< (math/distance-between ship planet) (+ close-distance (:radius planet)))
-                                (not= :undocked (-> ship :docking :status))))
-        closeby-docked (filter docked-filter-fn (vals *ships*))
-        nearby-fighters (filter filter-fn (vals *ships*))
+                                (not= :undocked (-> ship :docking :status))
+                                (< (math/distance-between ship planet) (+ close-distance (:radius planet)))))
+        ships (vals *ships*)
+        closeby-docked (filter docked-filter-fn ships)
+        nearby-fighters (filter filter-fn ships)
         fighters-by-owner (group-by :owner-id nearby-fighters)
         my-count (count (get fighters-by-owner *player-id*))
         max-other-count (apply max 0 (map count (vals (dissoc fighters-by-owner *player-id*))))]
