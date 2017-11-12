@@ -31,7 +31,9 @@
       (set! *safe-planets* (dissoc *safe-planets* (:id planet)))
       (set! *safe-planets* (assoc *safe-planets* (:id planet) upd-planet))))
   (if (e/within-docking-range? ship planet)
-    (e/dock-move ship planet)
+    (do
+      (set! *ships* (assoc-in *ships* [(:id ship) :docking :status] :custom-docking))
+      (e/dock-move ship planet))
     (navigation/navigate-to-dock ship planet)))
 
 (defn nearest-enemy-ship
@@ -132,10 +134,11 @@
         closeby-docked (filter docked-filter-fn ships)
         nearby-fighters (filter filter-fn ships)
         fighters-by-owner (group-by :owner-id nearby-fighters)
-        my-count (count (get fighters-by-owner *player-id*))
+        my-count (dec (count (get fighters-by-owner *player-id*)))
         max-other-count (apply max 0 (map count (vals (dissoc fighters-by-owner *player-id*))))]
     (or
-        (> my-count (+ 3 max-other-count))
+        (>= my-count (max 1 (* 2 max-other-count)))
+        (>= my-count (+ 2 max-other-count))
         (and (zero? max-other-count) (zero? (count closeby-docked))))))
 
 (defn get-safe-planets
@@ -151,7 +154,7 @@
 (defn compute-move-closest-planet*
   "Picks the move for the ship based on proximity to planets and fighters near planets."
   [{:keys [start-ms]} ship]
-  (let [times-up? (> (- (System/currentTimeMillis) start-ms) 1350)]
+  (let [times-up? (> (- (System/currentTimeMillis) start-ms) 1550)]
     (if (or times-up?
             (not= :undocked (-> ship :docking :status)))
       nil

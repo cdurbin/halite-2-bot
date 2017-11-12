@@ -16,7 +16,7 @@
 (defn figure-out-potential-obstacles
   "TODO: Note planets I should look further out, but ships this is fine."
   [ship goal all-ships]
-  (filter #(< (math/distance-between ship %) (+ e/max-ship-speed 0.5)) all-ships))
+  (filter #(< (math/distance-between ship %) (+ e/max-ship-speed 1.1)) all-ships))
 
 (defn new-entities-between
   "More efficient entities-between"
