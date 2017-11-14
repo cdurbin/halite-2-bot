@@ -8,14 +8,6 @@
   [deg]
   (Math/toRadians deg))
 
-(comment
- (hlt-math/rad->deg (/ Math/PI 3))
- (hlt-math/rad->deg (/ Math/PI -3))
- (hlt-math/rad->deg 0)
-
- (between (hlt-math/rad->deg (+ Math/PI 5)) (hlt-math/rad->deg (/ Math/PI -3))
-          (hlt-math/rad->deg (+ Math/PI 5))))
-
 (defn between
   "Returns whether the given angle is between two angles"
   [plus-angle minus-point-angle compare-angle]
@@ -26,8 +18,6 @@
                             (+ 360 compare-angle)
                             compare-angle)]
     (<= minus-point-angle upd-compare-angle upd-plus-angle)))
-
-
 
 (defn final-position
   "Returns the final position based on an angle and magnitude."

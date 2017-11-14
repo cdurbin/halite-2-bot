@@ -68,8 +68,14 @@
               ships-in-order (ships-in-order-fn (vals (get *owner-ships* *player-id*)))
               ; moves (keep #(compute-move-fn (assoc custom-map-info :moving-ships moving-ships) %)
               ;             ships-in-order)
-              moves (all-moves ships-in-order (assoc custom-map-info :moving-ships moving-ships))]
+              moves (all-moves ships-in-order (assoc custom-map-info :moving-ships moving-ships))
+              friendly-moves (filter #(= :friendly (:subtype %)) moves)
+              moves (remove #(= :friendly (:subtype %)) moves)
+              moves (remove #(= 0 (:thrust %)) moves)
+              friendly-moves (durbinator/recalculate-friendly-moves friendly-moves)]
           ; (log "=== Defend moves:" defend-moves)
           ; (log "Initial moves:" initial-moves)
           ; (log "Moves:" moves)
-          (io/send-moves (concat defend-moves initial-moves moves))))))))
+          ; (log "Friendly" friendly-moves)
+          ; (io/send-moves (concat defend-moves initial-moves moves))))))))
+          (io/send-moves (concat defend-moves initial-moves moves friendly-moves))))))))

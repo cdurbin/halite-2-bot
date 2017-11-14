@@ -8,7 +8,9 @@
    [hlt.math :as math :refer [get-x get-y]]))
 
 (def default-navigation-opts
-  (assoc hlt-navigation/default-navigation-opts :max-corrections 220 :buffer 0))
+  (assoc hlt-navigation/default-navigation-opts
+        ;  :angular-step (/ Math/PI 360.0)
+         :max-corrections 220 :buffer 0))
 
 (def reverse-nagivation-opts
   (assoc default-navigation-opts :angular-step (/ Math/PI -180.0)))
@@ -16,13 +18,14 @@
 (defn figure-out-potential-obstacles
   "TODO: Note planets I should look further out, but ships this is fine."
   [ship goal all-ships]
-  (filter #(< (math/distance-between ship %) (+ e/max-ship-speed 1.1)) all-ships))
+  (filter #(< (math/distance-between ship %) (+ e/max-ship-speed 2.2)) all-ships))
 
 (defn new-entities-between
   "More efficient entities-between"
   [a b obstacles]
   (let [filter-fn #(and (distinct? a b %)
-                        (math/segment-circle-intersects? a b % hlt-navigation/default-fudge-factor))]
+                        (math/segment-circle-intersects? a b % 0.6))]
+                        ; (math/segment-circle-intersects? a b % hlt-navigation/default-fudge-factor))]
     (concat (filter filter-fn (vals *planets*))
             (filter filter-fn obstacles))))
 
@@ -71,7 +74,8 @@
 (defn navigate-to-attack-docked-ship
   "Navigate to with a buffer to not crash into ship."
   [ship goal]
-  (navigate-to ship goal (merge default-navigation-opts {:buffer 1.5 :subtype :docked-attack})))
+  (navigate-to ship goal (merge default-navigation-opts {:buffer 1.1 :subtype :docked-attack})))
+  ; (navigate-to ship goal (merge default-navigation-opts {:buffer 0.0 :subtype :docked-attack})))
 
 (defn navigate-to-retreat
   "Attempt to retreat"
@@ -82,7 +86,19 @@
         thrust (if (> distance 10)
                  (int (/ e/max-ship-speed 2))
                  e/max-ship-speed)]
-    (navigate-to ship goal (merge default-navigation-opts {:buffer 0 :max-thrust thrust :subtype :retreat}))))
+    ; (navigate-to ship goal (merge default-navigation-opts {:buffer 1.1 :max-thrust thrust
+     (navigate-to ship goal (merge default-navigation-opts {:buffer 0.0 :max-thrust thrust
+                                                            :subtype :retreat}))))
+
+(defn navigate-to-friendly-ship
+  "Returns a thrust move which will navigate this ship to the requested
+  planet for docking. The ship will attempt to get to
+  `docking-distance` units above the planet's surface. Returns nil if
+  it cannot find a suitable path."
+  [ship friendly-ship]
+  ; (let [docking-point (math/closest-point ship friendly-ship 3)]
+  (navigate-to ship friendly-ship (merge default-navigation-opts {:buffer 1.1
+                                                                  :subtype :friendly})))
 
 (defn navigate-to-dock
   "Returns a thrust move which will navigate this ship to the requested
