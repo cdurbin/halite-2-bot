@@ -15,3 +15,7 @@
 (def ^:dynamic *num-ships*
   "Number of ships I own."
   0)
+
+(def ^:dynamic *num-players*
+  "Number of players left with ships."
+  0)

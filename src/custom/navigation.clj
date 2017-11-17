@@ -171,3 +171,27 @@
           (when (<= iteration 7)
             (recur (mod (+ 45 angle) 360)
                    (inc iteration))))))))
+
+(def infinity 99999999)
+
+(defn closest-position
+  "Returns closest position from the current position to a collection of positions."
+  [ship positions]
+  (:nearest-pos
+   (reduce (fn [{:keys [min-distance nearest-pos]} position]
+             (let [distance-to-position (math/distance-between ship position)]
+               (if (< distance-to-position min-distance)
+                 {:min-distance distance-to-position :nearest-pos position}
+                 {:min-distance min-distance :nearest-pos nearest-pos})))
+           {:min-distance infinity}
+           positions)))
+
+(defn navigate-to-nearest-corner
+  "Navigate to the nearest corner for this stupid strategy everyone is doing."
+  [position]
+  (let [[max-x max-y] *map-size*
+        ne (math/->Position (dec max-x) 0.1)
+        nw (math/->Position 0.1 0.1)
+        se (math/->Position (dec max-x) (dec max-y))
+        sw (math/->Position 0.1 (dec max-y))]
+    (navigate-to position (closest-position position [ne nw se sw]))))

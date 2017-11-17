@@ -17,6 +17,8 @@ lein uberjar
 #./halite -t -s 1674064583 -d "240 160" "java -jar target/MyBot.jar" "java -jar jars/V20.jar"
 #./halite -t -s 2155479063 -d "240 160" "java -jar target/MyBot.jar" "java -jar jars/V20.jar"
 #./halite -t -s 1404160205 -d "240 160" "java -jar target/MyBot.jar" "java -jar jars/V21.jar"
-./halite -t -s 3322122737 -d "240 160" "java -jar target/MyBot.jar" "java -jar jars/V21.jar"
+#./halite -t -s 3322122737 -d "240 160" "java -jar target/MyBot.jar" "java -jar jars/V21.jar"
+#./halite -t -s 875037268 -d "240 160" "java -jar target/MyBot.jar" "java -jar jars/V22.jar"
+./halite -t -s 3678893107 -d "240 160" "java -jar target/MyBot.jar" "java -jar jars/V21.jar" "java -jar jars/V22.jar" "java -jar jars/V20.jar"
 
 mv *.hlt hlts/
