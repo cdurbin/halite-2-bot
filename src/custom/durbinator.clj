@@ -15,13 +15,6 @@
 
 (def infinity 99999999)
 
-; (defn coin-flip-navigation-options
-;   "Randomly returns navigation options from one of two choices."
-;   []
-;   ; (if (= 0 (rand-int 2))
-;   navigation/default-navigation-opts)
-;     ; navigation/reverse-nagivation-opts])
-
 (defn move-ship-to-planet!
   "Moves the ship to the given planet. Side effect to update the planet to reduce the number of
   available docking spots by one."
@@ -63,31 +56,30 @@
 
 (defn closest-useful-planet-distance
   "Returns the distance to the closest useful planet"
-  [position]
-  (let [eligible-planets (filter (fn [planet]
-                                   (and (not (nil? (:owner-id planet)))
-                                        (not= *player-id* (:owner-id planet))))
-                                 (vals *planets*))
-        nearest-planet (nearest-enemy-planet position eligible-planets)]
-    (if nearest-planet
-      (math/distance-between position nearest-planet)
-      0)))
+  [position planets]
+  (if-let [nearest-planet (nearest-enemy-planet position planets)]
+    (math/distance-between position nearest-planet)
+    0))
 
 (defn nearest-enemy-not-decoy
   "Returns the closest enemy ship from the passed in enemy ships."
   [ship enemy-ships]
-  (:nearest-ship
-   (reduce (fn [{:keys [min-distance nearest-ship]} enemy]
-             (let [distance-to-enemy (math/distance-between ship enemy)]
-               (if (< distance-to-enemy min-distance)
-                 (let [before-distance (closest-useful-planet-distance ship)
-                       after-distance (closest-useful-planet-distance enemy)]
-                   (if (or (<= after-distance before-distance) (< after-distance 7))
-                     {:min-distance distance-to-enemy :nearest-ship enemy}
-                     {:min-distance min-distance :nearest-ship nearest-ship}))
-                 {:min-distance min-distance :nearest-ship nearest-ship})))
-           {:min-distance infinity}
-           enemy-ships)))
+  (let [planets (filter (fn [planet]
+                          (and (not (nil? (:owner-id planet)))
+                               (not= *player-id* (:owner-id planet))))
+                        (vals *planets*))]
+    (:nearest-ship
+     (reduce (fn [{:keys [min-distance nearest-ship]} enemy]
+               (let [distance-to-enemy (math/distance-between ship enemy)]
+                 (if (< distance-to-enemy min-distance)
+                   (let [before-distance (closest-useful-planet-distance ship planets)
+                         after-distance (closest-useful-planet-distance enemy planets)]
+                     (if (or (<= after-distance before-distance) (< after-distance 7))
+                       {:min-distance distance-to-enemy :nearest-ship enemy}
+                       {:min-distance min-distance :nearest-ship nearest-ship}))
+                   {:min-distance min-distance :nearest-ship nearest-ship})))
+             {:min-distance infinity}
+             enemy-ships))))
 
 (defn get-docked-enemy-ships
   "Returns all of the docked enemy ships."
@@ -156,29 +148,14 @@
   "Optimization to not worry about running away when I have this many ships."
   65)
 
-(defn-timed move-to-nearest-enemy-ship-orig
-  "Moves the ship to the nearest enemy ship."
-  [ship enemy-ships]
-  (when-let [enemy-ship (nearest-enemy-ship ship enemy-ships)]
-    (if (or (> *num-ships* ignore-retreating-ship-count)
-            ; (not= :undocked (-> enemy-ship :docking :status))
-            (> (math/distance-between ship enemy-ship) retreat-range)
-            (navigation/unreachable? enemy-ship enemy-ships)
-            (not (alone? ship enemy-ship *player-id* tag-team-range false)))
-            ; (alone? ship enemy-ship (:owner-id enemy-ship) (* 5 tag-team-range) true))
-      (move-ship-to-attack ship enemy-ship)
-      (move-ship-to-retreat ship enemy-ship))))
-
 (defn-timed move-to-nearest-enemy-ship
   "Moves the ship to the nearest enemy ship."
   [ship enemy-ships]
   (when-let [enemy-ship (nearest-enemy-not-decoy ship enemy-ships)]
     (if (or (> *num-ships* ignore-retreating-ship-count)
-            ; (not= :undocked (-> enemy-ship :docking :status))
             (> (math/distance-between ship enemy-ship) retreat-range)
             (navigation/unreachable? enemy-ship enemy-ships)
             (not (alone? ship enemy-ship *player-id* tag-team-range false)))
-            ; (alone? ship enemy-ship (:owner-id enemy-ship) (* 5 tag-team-range) true))
       (move-ship-to-attack ship enemy-ship)
       (move-ship-to-retreat ship enemy-ship))))
 
@@ -211,13 +188,11 @@
         ships (vals *ships*)
         closeby-docked (filter docked-filter-fn ships)
         nearby-fighters (filter filter-fn ships)
-        ; closest-fighter (nearest-enemy-ship planet nearby-fighters)
         fighters-by-owner (group-by :owner-id nearby-fighters)
         my-count (dec (count (get fighters-by-owner *player-id*)))
         max-other-count (apply max 0 (map count (vals (dissoc fighters-by-owner *player-id*))))]
     (or
-        (and (>= my-count (max 1 (* 2 max-other-count))))
-            ;  (= *player-id* (:owner-id closest-fighter)))
+        (>= my-count (max 1 (* 2 max-other-count)))
         (>= my-count (+ 2 max-other-count))
         (and (zero? max-other-count) (zero? (count closeby-docked))))))
 
@@ -266,25 +241,13 @@
   [{:keys [ship thrust angle] :as move}]
   (let [x (get-in ship [:pos :x])
         y (get-in ship [:pos :y])
-        ; positions [(math/map->Position (custom-math/final-position x y thrust angle))]
         positions (map math/map->Position
                        (custom-math/all-positions-start-to-end x y thrust angle))]
     (map #(assoc ship :pos %) positions)))
 
-; (defn change-ship-positions!
-;   "Changes a ships position in the main ships."
-;   [{:keys [ship type subtype] :as move}]
-;   (when (and (= :thrust type) (not= :friendly subtype))
-;     (when-let [imaginary-ships (seq (calculate-end-positions move))]
-;       (doseq [i-ship (butlast imaginary-ships)]
-;         (set! *ships* (assoc *ships* (java.util.UUID/randomUUID) i-ship)))
-;       (set! *ships* (assoc *ships* (:id ship) (last imaginary-ships))))))
-
 (defn change-ship-positions!
   "Changes a ships position in the main ships."
   [{:keys [ship type subtype] :as move}]
-  ;  (change-ship-positions! move true)
-  ; ([{:keys [ship type subtype] :as move} ignore-friendly?]
   (when (and (= :thrust type)
             (not= :friendly subtype))
     (let [imaginary-ships (calculate-end-positions move)]
@@ -324,40 +287,12 @@
   "How far away we look for unprotected ships."
   55)
 
-; (defn unprotected-enemy-ships
-;   "Returns a map of unprotected enemy ships with my ship as the key and the enemy ship as the value.
-;   TODO - this will only find a single dock point most of the time because the same ship of mine
-;   is probably the closest to several spots. Remove my ship each time it is selected. Will require
-;   several passes."
-;   [moving-ships]
-;   ; (log "Moving ships are" moving-ships)
-;   (let [potential-ships (filter #(and (= :undocked (-> % :docking :status))
-;                                       (not (some (set [(:id %)]) moving-ships)))
-;                                 (vals *ships*))
-;         all-permutations
-;          (for [enemy-ship *docked-enemies*
-;                :let [closest-ship (nearest-enemy-ship enemy-ship
-;                                                      (remove #(= (:id enemy-ship) (:id %))
-;                                                              potential-ships))]
-;                :when (= *player-id* (:owner-id closest-ship))
-;                :let [distance (math/distance-between enemy-ship closest-ship)]
-;                :when (< distance unprotected-distance)]
-;            {:ship closest-ship
-;             :enemy-ship enemy-ship
-;             :distance distance})
-;         sorted-order (sort (utils/compare-by :distance utils/desc) all-permutations)]
-;     ;; This makes sure that if the same ship is the closest to multiple it picks the closest one.
-;     (into {}
-;       (for [triple-map sorted-order]
-;         [(:ship triple-map) (:enemy-ship triple-map)]))))
-
 (defn unprotected-enemy-ships
   "Returns a map of unprotected enemy ships with my ship as the key and the enemy ship as the value.
   TODO - this will only find a single dock point most of the time because the same ship of mine
   is probably the closest to several spots. Remove my ship each time it is selected. Will require
   several passes."
   [moving-ships]
-  ; (log "Moving ships are" moving-ships)
   (let [potential-ships (filter #(and (= :undocked (-> % :docking :status))
                                       (not (some (set [(:id %)]) moving-ships)))
                                 (vals *ships*))
@@ -397,9 +332,7 @@
 (defn get-vulnerable-ships
   "Returns a list of vulnerable ships."
   [my-ships]
-  (let [
-        ; my-ships (filter #(= *player-id* (:owner-id %)) (vals *ships*))
-        my-docked-ships (remove #(= :undocked (-> % :docking :status))
+  (let [my-docked-ships (remove #(= :undocked (-> % :docking :status))
                                 my-ships)
         my-fighter-ships (filter #(= :undocked (-> % :docking :status))
                                 my-ships)
@@ -432,13 +365,7 @@
     (when (and (> *num-players* 2)
                (> (count (vals *ships*)) 60)
                (< num-undocked-ships 6))
-      (let [
-            ; my-ships (filter #(and (= *player-id* (:owner-id %))
-            ;                        (= :undocked (-> % :docking :status)))
-            ;                  my-ships)
-            ; first-ship (first my-ships)
-            ; second-ship (second my-ships)
-            moves (for [ship (take 2 my-ships)
+      (let [moves (for [ship (take 2 my-ships)
                         :when ship]
                     (navigation/navigate-to-nearest-corner ship))]
         (for [move moves
@@ -449,25 +376,15 @@
 (defn-timed defend-vulnerable-ships
   "Returns moves to defend vulnerable ships."
   [moving-ships]
-  ;; Doing two things
-  (let [
-        ; retreat-moves (run-to-corner (filter #(and (= *player-id* (:owner-id %))
-        ;                                            (= :undocked (-> % :docking :status)))
-        ;                                      (vals *ships*)))
-        potential-ships (filter #(not (some (set [(:id %)]) moving-ships))
+  (let [potential-ships (filter #(not (some (set [(:id %)]) moving-ships))
                                 (vals *ships*))
-        vulnerable-ships (get-vulnerable-ships potential-ships)
-        ; (log "Vulnerable ships " vulnerable-ships)
-        defend-moves
-                      (for [[defender ship] vulnerable-ships
-                            :let [move (navigation/navigate-to-friendly-ship defender ship)]
-                            :when move]
-                        (do (change-ship-positions! move)
-                            move))]
-    defend-moves))
-    ; (doall (if (seq retreat-moves)
-    ;          (apply conj defend-moves retreat-moves)
-    ;          defend-moves))))
+        vulnerable-ships (get-vulnerable-ships potential-ships)]
+    (doall
+     (for [[defender ship] vulnerable-ships
+           :let [move (navigation/navigate-to-friendly-ship defender ship)]
+           :when move]
+       (do (change-ship-positions! move)
+           move)))))
 
 (defn-timed sort-ships-by-distance
   "Returns ships from closest to point of interest to farthest. A point of interest is a planet,
@@ -481,21 +398,18 @@
   "Returns the retreat to nearby friendly moves now that we know where all the other ships are
   going."
   [moves]
-  (let []
-        ; my-ships (filter #(= *player-id* (:owner-id %))
-        ;                  (vals *ships*))]
-    (for [move moves
-          :let [;; Have to recalculate every turn in order to get the newly added imaginary ships - no I shouldn't :()
-                my-ships (filter #(= *player-id* (:owner-id %))
-                                 (vals *ships*))
-                ship (:ship move)
-                my-other-ships (remove #(= (:id ship) (:id %))
-                                       my-ships)
-                closest-friendly-ship (nearest-enemy-ship ship my-other-ships)
-                new-move (navigation/navigate-to-friendly-ship ship closest-friendly-ship)]
-          :when new-move]
-      (do (change-ship-positions! (assoc new-move :subtype :friendly2))
-          new-move))))
+  (for [move moves
+        :let [;; Have to recalculate every turn in order to get the newly added imaginary ships - no I shouldn't :()
+              my-ships (filter #(= *player-id* (:owner-id %))
+                               (vals *ships*))
+              ship (:ship move)
+              my-other-ships (remove #(= (:id ship) (:id %))
+                                     my-ships)
+              closest-friendly-ship (nearest-enemy-ship ship my-other-ships)
+              new-move (navigation/navigate-to-friendly-ship ship closest-friendly-ship)]
+        :when new-move]
+    (do (change-ship-positions! (assoc new-move :subtype :friendly2))
+        new-move)))
 
 (defn-timed get-planet-values
   "Returns how valuable the planets are based on the current map."
