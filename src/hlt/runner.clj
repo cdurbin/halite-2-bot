@@ -56,12 +56,13 @@
 (defn -main
   [& args]
   (initialize-game
+   (durbinator/initial-map)
    (io/send-done-initialized)
    (doseq [turn (iterate inc 1)]
      (with-updated-map
       (do
         (log "==== Turn" turn)
-        (let [custom-map-info (custom-map-info-fn)
+        (let [custom-map-info (custom-map-info-fn turn)
               ships-in-order (ships-in-order-fn (vals (get *owner-ships* *player-id*)))
               runaway-moves (durbinator/run-to-corner-moves (reverse ships-in-order))
               moving-ships (map #(get-in % [:ship :id]) runaway-moves)
