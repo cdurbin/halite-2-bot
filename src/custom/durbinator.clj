@@ -97,27 +97,52 @@
 ;     (navigation/navigate-to-attack-ship ship enemy-ship)
 ;     (navigation/navigate-to-attack-docked-ship ship enemy-ship)))
 
+; (defn move-ship-to-attack
+;   "Moves the ship to attack the enemy ship."
+;   [ship enemy-ship]
+;   ; (log "Pesky" *pesky-fighters*)
+;   (let [fighter? (= :undocked (-> enemy-ship :docking :status))
+;         attack-count (inc (get enemy-ship :attack-count 0))
+;         ;_ (log "Atack count: " attack-count "enemy-ship" enemy-ship)
+;         remove? (= 2 (:attack-count enemy-ship))]
+;     (if fighter?
+;       (if remove?
+;         (do ;(log "Removing fighting enemy-ship" enemy-ship)
+;             (set! *pesky-fighters* (dissoc *pesky-fighters* (:id enemy-ship))))
+;         (do ;(log "Setting attack-count for " enemy-ship)
+;             ;log "Before: " (get *pesky-fighters* (:id enemy-ship)))
+;             (set! *pesky-fighters* (assoc-in *pesky-fighters* [(:id enemy-ship) :attack-count] attack-count))))
+;             ; (log "After: " (get *pesky-fighters* (:id enemy-ship)))))
+;       (if remove?
+;         (do ;(log "Removing docked enemy-ship" enemy-ship)
+;             (set! *docked-enemies* (dissoc *docked-enemies* (:id enemy-ship))))
+;         (set! *docked-enemies* (assoc-in *docked-enemies* [(:id enemy-ship) :attack-count] attack-count)))))
+;   (navigation/navigate-to-attack-ship ship enemy-ship))
+
+
 (defn move-ship-to-attack
   "Moves the ship to attack the enemy ship."
   [ship enemy-ship]
   ; (log "Pesky" *pesky-fighters*)
-  (let [fighter? (= :undocked (-> enemy-ship :docking :status))
-        attack-count (inc (get enemy-ship :attack-count 0))
-        ;_ (log "Atack count: " attack-count "enemy-ship" enemy-ship)
-        remove? (= 3 (:attack-count enemy-ship))]
-    (if fighter?
-      (if remove?
-        (do ;(log "Removing fighting enemy-ship" enemy-ship)
-            (set! *pesky-fighters* (dissoc *pesky-fighters* (:id enemy-ship))))
-        (do ;(log "Setting attack-count for " enemy-ship)
-            ;log "Before: " (get *pesky-fighters* (:id enemy-ship)))
-            (set! *pesky-fighters* (assoc-in *pesky-fighters* [(:id enemy-ship) :attack-count] attack-count))))
-            ; (log "After: " (get *pesky-fighters* (:id enemy-ship)))))
-      (if remove?
-        (do ;(log "Removing docked enemy-ship" enemy-ship)
-            (set! *docked-enemies* (dissoc *docked-enemies* (:id enemy-ship))))
-        (set! *docked-enemies* (assoc-in *docked-enemies* [(:id enemy-ship) :attack-count] attack-count)))))
-  (navigation/navigate-to-attack-ship ship enemy-ship))
+  (let [move (navigation/navigate-to-attack-ship ship enemy-ship)]
+    (when (and move (pos? (:thrust move)))
+      (let [fighter? (= :undocked (-> enemy-ship :docking :status))
+            attack-count (inc (get enemy-ship :attack-count 0))
+            ;_ (log "Atack count: " attack-count "enemy-ship" enemy-ship)
+            remove? (= 2 (:attack-count enemy-ship))]
+        (if fighter?
+          (if remove?
+            (do ;(log "Removing fighting enemy-ship" enemy-ship)
+                (set! *pesky-fighters* (dissoc *pesky-fighters* (:id enemy-ship))))
+            (do ;(log "Setting attack-count for " enemy-ship)
+                ;log "Before: " (get *pesky-fighters* (:id enemy-ship)))
+                (set! *pesky-fighters* (assoc-in *pesky-fighters* [(:id enemy-ship) :attack-count] attack-count))))
+                ; (log "After: " (get *pesky-fighters* (:id enemy-ship)))))
+          (if remove?
+            (do ;(log "Removing docked enemy-ship" enemy-ship)
+                (set! *docked-enemies* (dissoc *docked-enemies* (:id enemy-ship))))
+            (set! *docked-enemies* (assoc-in *docked-enemies* [(:id enemy-ship) :attack-count] attack-count))))))
+    move))
 
 (def retreat-if-this-close 35)
 
@@ -203,7 +228,7 @@
         max-other-count (apply max 0 (map count (vals (dissoc fighters-by-owner *player-id*))))]
     (or
         (>= my-count (max 1 (* 2 max-other-count)))
-        (>= my-count (+ 2 max-other-count))
+        ; (>= my-count (+ 2 max-other-count))
         (and (zero? max-other-count) (zero? (count closeby-docked))))))
 
 (defn get-safe-planets

@@ -33,7 +33,7 @@
   (filter #(< (math/distance-between ship %) potential-obstacle-distance) all-ships))
 
 (def slightly-smaller-fudge-factor 0.6)
-(def planet-fudge-factor 1.0)
+(def planet-fudge-factor 0.6)
 
 ; (defn entities-between-filter-fn
 ;   "Returns the function to use for the entities-between-filter-fn."
@@ -54,10 +54,10 @@
 
 (def all-navigation-iterations
   "Returns the angular-step and max thrust for each potential navigation iteration."
-  (for [iterations (range 1 5)
-        thrust [7 6 4]
+  (for [iterations (range 1 6)
+        thrust [7 6 4 2]
         ; thrust [7 6 5 4 3 2 1]
-        angular-step (range 20)
+        angular-step (range 22)
         opposite (range 2)
         ; :let [angular-step (* 2 (/ Math/PI 180.0) angular-step)]
         :let [angular-step (* 1 (/ Math/PI 180.0) angular-step)]]
