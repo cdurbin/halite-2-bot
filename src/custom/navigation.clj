@@ -9,7 +9,7 @@
 
 (def default-navigation-opts
   (assoc hlt-navigation/default-navigation-opts
-         :max-corrections 220 :buffer 0))
+         :max-corrections 200 :buffer 0))
 
 (def reverse-nagivation-opts
   (assoc default-navigation-opts :angular-step (/ Math/PI -180.0)))
@@ -38,6 +38,18 @@
     (concat (filter filter-fn (vals *planets*))
             (filter filter-fn obstacles))))
 
+(def all-navigation-iterations
+  "Returns the angular-step and max thrust for each potential navigation iteration."
+  (for [iterations (range 1 10)
+        thrust [7 6 5 4]
+        ; thrust [7 6 5 4 3 2 1]
+        angular-step (range 10)
+        opposite (range 2)
+        :let [angular-step (* (/ Math/PI 180.0) angular-step)]]
+    {:max-thrust thrust
+     :angular-step (if (zero? opposite) (* -1 iterations angular-step) (* iterations angular-step))}))
+
+
 (defn navigate-to
   "Returns a thrust move that moves the ship to the provided goal. The
   goal is treated as a point, i.e. the thrust move attempts to move
@@ -56,21 +68,50 @@
          thrust (int (min (- distance buffer) max-thrust))]
      (if (< distance buffer)
        (e/thrust-move ship 0 first-angle)
-       (loop [goal goal
-              iteration 0]
-         (if (<= max-corrections iteration)
-           (e/thrust-move ship 0 first-angle)
-           (let [angular-step (* -1 angular-step)
-                 angle (math/orient-towards ship goal)
-                 point (custom-math/get-point ship thrust angle)]
-             (if (or (not (valid-point? point))
-                     (and avoid-obstacles (first (new-entities-between ship goal obstacles))))
-               (let [new-target-dx (* (Math/cos (+ first-angle (* 0.5 iteration angular-step))) distance)
-                     new-target-dy (* (Math/sin (+ first-angle (* 0.5 iteration angular-step))) distance)
-                     new-goal (math/->Position (+ new-target-dx (get-x ship))
-                                               (+ new-target-dy (get-y ship)))]
-                 (recur new-goal (inc iteration)))
-               (assoc (e/thrust-move ship thrust angle) :subtype subtype)))))))))
+       (loop [iterations (rest all-navigation-iterations)]
+         (let [{:keys [max-thrust angular-step]} (first iterations)]
+           (if (nil? max-thrust)
+             (e/thrust-move ship 0 first-angle)
+             (let [angle (+ first-angle angular-step)
+                   point (custom-math/get-point ship (min max-thrust thrust) angle)]
+               (if (or (not (valid-point? point))
+                       (and avoid-obstacles (first (new-entities-between ship point obstacles))))
+                   (recur (rest iterations))
+                 (assoc (e/thrust-move ship (min max-thrust thrust) angle) :subtype subtype))))))))))
+
+; (defn navigate-to
+;   "Returns a thrust move that moves the ship to the provided goal. The
+;   goal is treated as a point, i.e. the thrust move attempts to move
+;   the ship to the center of the goal. Use navigate-to-dock to compute
+;   a thrust move that does not collide with entities, or use
+;   closest-point yourself to find a suitable point. This function
+;   returns nil if it cannot find a suitable path."
+;   ([ship goal]
+;    (navigate-to ship goal default-navigation-opts))
+;   ([ship goal {:keys [max-corrections avoid-obstacles
+;                       angular-step max-thrust buffer subtype]
+;                :as opts}]
+;    (let [distance (math/distance-between ship goal)
+;          first-angle (math/orient-towards ship goal)
+;          obstacles (figure-out-potential-obstacles ship goal (vals *ships*))
+;          thrust (int (min (- distance buffer) max-thrust))]
+;      (if (< distance buffer)
+;        (e/thrust-move ship 0 first-angle)
+;        (loop [goal goal
+;               iteration 0]
+;          (if (<= max-corrections iteration)
+;            (e/thrust-move ship 0 first-angle)
+;            (let [angular-step (* -1 angular-step)
+;                  angle (math/orient-towards ship goal)
+;                  point (custom-math/get-point ship thrust angle)]
+;              (if (or (not (valid-point? point))
+;                      (and avoid-obstacles (first (new-entities-between ship goal obstacles))))
+;                (let [new-target-dx (* (Math/cos (+ first-angle (* 0.5 iteration angular-step))) distance)
+;                      new-target-dy (* (Math/sin (+ first-angle (* 0.5 iteration angular-step))) distance)
+;                      new-goal (math/->Position (+ new-target-dx (get-x ship))
+;                                                (+ new-target-dy (get-y ship)))]
+;                  (recur new-goal (inc iteration)))
+;                (assoc (e/thrust-move ship thrust angle) :subtype subtype)))))))))
 
 (defn navigate-to-attack-ship
   "Navigate to with a buffer to not crash into ship."
@@ -85,8 +126,11 @@
 (defn unreachable?
   "Returns true if none of the passed in ships can attack this position on the map."
   [position ships]
-  (let [safe-radius (+ e/max-ship-speed e/ship-radius e/weapon-radius)]
+  (let [safe-radius (+ e/max-ship-speed (* 2 e/ship-radius) e/weapon-radius)]
     (not (some? (seq (filter #(< (math/distance-between position %) safe-radius) ships))))))
+
+(def retreat-iterations 18)
+(def retreat-angular-step (/ 360 retreat-iterations))
 
 (defn navigate-to-retreat-ship
   "Attempt to retreat and pull the ships away from my planets. Pick four points and make sure
@@ -102,8 +146,8 @@
           (navigate-to ship goal (merge default-navigation-opts {:buffer 0.0
                                                                  :max-thrust e/max-ship-speed
                                                                  :subtype :retreat}))
-          (when (<= iteration 7)
-            (recur (mod (+ 45 angle) 360)
+          (when (<= iteration retreat-iterations)
+            (recur (mod (+ retreat-angular-step angle) 360)
                    (inc iteration))))))))
 
 (defn navigate-to-friendly-ship
@@ -135,11 +179,11 @@
            iteration 0]
       (let [planet (custom-math/get-point ship e/max-ship-speed angle)]
         (if (unreachable? planet ships)
-          (navigate-to ship planet (merge default-navigation-opts {:buffer 2.0
+          (navigate-to ship planet (merge default-navigation-opts {:buffer 0.0
                                                                    :max-thrust e/max-ship-speed
                                                                    :subtype :retreat}))
-          (when (<= iteration 7)
-            (recur (mod (+ 45 angle) 360)
+          (when (<= iteration retreat-iterations)
+            (recur (mod (+ retreat-angular-step angle) 360)
                    (inc iteration))))))))
 
 (def infinity 99999999)

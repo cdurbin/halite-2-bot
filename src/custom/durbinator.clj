@@ -112,7 +112,7 @@
 ;         (set! *docked-enemies* (assoc-in *docked-enemies* [(:id enemy-ship) :attack-count] attack-count)))))
 ;   (navigation/navigate-to-attack-ship ship enemy-ship))
 
-(def retreat-if-this-close 35)
+(def retreat-if-this-close 15)
 
 (defn move-ship-to-retreat
   "Moves the ship to retreat from the enemy ship."
@@ -132,8 +132,8 @@
           (navigation/navigate-to-retreat ship closest-enemy-planet)
           (navigation/navigate-to-retreat-ship ship enemy-ship))))))
 
-(def tag-team-range 8)
-(def retreat-range 25)
+(def tag-team-range 5)
+(def retreat-range 30)
 
 (defn alone?
   "Returns true if I'm the only fighter nearby."
@@ -348,7 +348,7 @@
                                 my-ships)
         my-fighter-ships (filter #(= :undocked (-> % :docking :status))
                                 my-ships)
-        vulnerable-distance 16
+        vulnerable-distance 21
         all-permutations
          (for [ship my-docked-ships
                ;; We should break out as soon as we find a single close enemy
@@ -412,7 +412,7 @@
   going."
   [moves]
   (for [move moves
-        :let [;; Have to recalculate every turn in order to get the newly added imaginary ships - no I shouldn't :()
+        :let [;; Have to recalculate every turn in order to get the newly added imaginary ships
               my-ships (filter #(= *player-id* (:owner-id %))
                                (vals *ships*))
               ship (:ship move)
