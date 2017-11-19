@@ -49,6 +49,58 @@
         y (+ (hlt-math/get-y pos) (* distance (Math/sin angle)))]
     (hlt-math/->Position x y)))
 
+; (defn get-values-for-segment-circle-intersects
+;   "Optimization"
+;   [p1 p2]
+;   (let [x1 (get-x p1)
+;         y1 (get-y p1)
+;         x2 (get-x p2)
+;         y2 (get-y p2)
+;         dx (- x2 x1)
+;         dy (- y2 y1)
+;         a (+ (square dx) (square dy))]
+;     {:a a :dx dx :dy dy}))
+;
+;
+; (defn faster-segment-circle-intersects?
+;   "Returns true if the entity intersects with the line segment between p1 and p2,
+;   false otherwise. An optional fudge factor can be used to ensure a
+;   little padding around entities that may move, to reduce the
+;   probability of hitting into them."
+;   ([entity {:keys [a dx dy] :as params} (segment-circle-intersects? entity params 0.0)])
+;   ([entity {:keys [a dx dy]} fudge-factor]
+;    ;; Parameterize the segment as start + t * (end - start),
+;    ;; and substitute into the equation of a circle
+;    ;; Solve for t
+;    (let [fudged-radius (+ (:radius entity) fudge-factor)
+;          x1 (get-x p1)
+;          y1 (get-y p1)
+;          x2 (get-x p2)
+;          y2 (get-y p2)
+;          dx (- x2 x1)
+;          dy (- y2 y1)
+;          a (+ (square dx) (square dy))
+;
+;          center-x (get-x entity)
+;          center-y (get-y entity)
+;
+;          b (* -2 (+ (square x1) (- (* x1 x2))
+;                     (- (* x1 center-x)) (* center-x x2)
+;                     (square y1) (- (* y1 y2))
+;                     (- (* y1 center-y)) (* center-y y2)))]
+;      (if (== a 0.0)
+;        ;; start == end
+;        (<= (distance-between p1 entity) fudged-radius)
+;        ;; time along segment when closest to the circle (vertex of the quadratic)
+;        (let [t (min (/ (- b) (* 2 a)) 1.0)]
+;          (if (< t 0)
+;            false
+;            (let [closest-x (+ x1 (* dx t))
+;                  closest-y (+ y1 (* dy t))
+;                  closest-distance (distance-between (->Position closest-x closest-y)
+;                                                     entity)]
+;              (<= closest-distance fudged-radius))))))))
+
 (comment
  (range 1 (+ 0.2 7) 2)
  (all-positions-start-to-end 10 3 7 15)

@@ -1,6 +1,7 @@
 (ns custom.navigation
   (:require
    [custom.math :as custom-math]
+   [custom.utils :refer [defn-timed]]
    [hlt.entity :as e]
    [hlt.utils :refer [log]]
    [hlt.navigation :as hlt-navigation]
@@ -23,29 +24,43 @@
     (and (< 0 x max-x)
          (< 0 y max-y))))
 
+(def potential-obstacle-distance
+  (+ e/max-ship-speed 2.2 0.6))
+
 (defn figure-out-potential-obstacles
   "TODO: Note planets I should look further out, but ships this is fine."
-  [ship goal all-ships]
-  (filter #(< (math/distance-between ship %) (+ e/max-ship-speed 2.2)) all-ships))
+  [ship all-ships]
+  (filter #(< (math/distance-between ship %) potential-obstacle-distance) all-ships))
 
 (def slightly-smaller-fudge-factor 0.6)
+(def planet-fudge-factor 1.0)
+
+; (defn entities-between-filter-fn
+;   "Returns the function to use for the entities-between-filter-fn."
+;   (fn [entity]
+;     (and (distinct? a b %)
+;          (math/segment-circle-intersects? a b % slightly-smaller-fudge-factor))))
 
 (defn new-entities-between
   "More efficient entities-between"
   [a b obstacles]
-  (let [filter-fn #(and (distinct? a b %)
-                        (math/segment-circle-intersects? a b % slightly-smaller-fudge-factor))]
-    (concat (filter filter-fn (vals *planets*))
+  (let [filter-fn #(math/segment-circle-intersects? a b % slightly-smaller-fudge-factor)
+        filter-fn-planets #(math/segment-circle-intersects? a b % planet-fudge-factor)]
+    (concat (filter filter-fn-planets (vals *planets*))
             (filter filter-fn obstacles))))
+
+(comment
+  (count all-navigation-iterations))
 
 (def all-navigation-iterations
   "Returns the angular-step and max thrust for each potential navigation iteration."
-  (for [iterations (range 1 10)
-        thrust [7 6 5 4]
+  (for [iterations (range 1 5)
+        thrust [7 6 4]
         ; thrust [7 6 5 4 3 2 1]
-        angular-step (range 10)
+        angular-step (range 20)
         opposite (range 2)
-        :let [angular-step (* (/ Math/PI 180.0) angular-step)]]
+        ; :let [angular-step (* 2 (/ Math/PI 180.0) angular-step)]
+        :let [angular-step (* 1 (/ Math/PI 180.0) angular-step)]]
     {:max-thrust thrust
      :angular-step (if (zero? opposite) (* -1 iterations angular-step) (* iterations angular-step))}))
 
@@ -64,7 +79,9 @@
                :as opts}]
    (let [distance (math/distance-between ship goal)
          first-angle (math/orient-towards ship goal)
-         obstacles (figure-out-potential-obstacles ship goal (vals *ships*))
+         obstacles (figure-out-potential-obstacles ship (remove #(or (= (:id ship) (:id %))
+                                                                     (= (:id goal) (:id %)))
+                                                                (vals *ships*)))
          thrust (int (min (- distance buffer) max-thrust))]
      (if (< distance buffer)
        (e/thrust-move ship 0 first-angle)
@@ -123,13 +140,16 @@
   [ship goal]
   (navigate-to ship goal (merge default-navigation-opts {:buffer 1.1 :subtype :docked-attack})))
 
+(def safe-radius
+  "How far away a spot is guaranteed to be safe."
+  (+ e/max-ship-speed (* 2 e/ship-radius) e/weapon-radius 0.6))
+
 (defn unreachable?
   "Returns true if none of the passed in ships can attack this position on the map."
   [position ships]
-  (let [safe-radius (+ e/max-ship-speed (* 2 e/ship-radius) e/weapon-radius)]
-    (not (some? (seq (filter #(< (math/distance-between position %) safe-radius) ships))))))
+  (not (some? (seq (filter #(< (math/distance-between position %) safe-radius) ships)))))
 
-(def retreat-iterations 18)
+(def retreat-iterations 9)
 (def retreat-angular-step (/ 360 retreat-iterations))
 
 (defn navigate-to-retreat-ship

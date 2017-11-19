@@ -112,7 +112,7 @@
 ;         (set! *docked-enemies* (assoc-in *docked-enemies* [(:id enemy-ship) :attack-count] attack-count)))))
 ;   (navigation/navigate-to-attack-ship ship enemy-ship))
 
-(def retreat-if-this-close 15)
+(def retreat-if-this-close 35)
 
 (defn move-ship-to-retreat
   "Moves the ship to retreat from the enemy ship."
@@ -151,7 +151,7 @@
   "Optimization to not worry about running away when I have this many ships."
   65)
 
-(defn-timed move-to-nearest-enemy-ship
+(defn move-to-nearest-enemy-ship
   "Moves the ship to the nearest enemy ship."
   [ship enemy-ships]
   (when-let [enemy-ship (nearest-enemy-not-decoy ship enemy-ships)]
@@ -177,7 +177,7 @@
                        (< (math/distance-between ship planet) close-distance))]
         ship))))
 
-(defn-timed have-most-ships-surrounding-planet?
+(defn have-most-ships-surrounding-planet?
   "Have the most fighters (non docking) surrounding the planet."
   [planet]
   (let [close-distance 39
@@ -267,7 +267,7 @@
       (change-ship-positions! move)
       move)))
 
-(defn-timed get-custom-map-info
+(defn get-custom-map-info
   "Returns additional map info that is useful to calculate at the beginning of each turn."
   [turn]
   (set! *safe-planets* (into {} (map (fn [planet] [(:id planet) planet]) (get-safe-planets))))
@@ -329,7 +329,7 @@
       (for [triple-map sorted-order]
         [(:ship triple-map) (:enemy-ship triple-map)]))))
 
-(defn-timed attack-unprotected-enemy-ships
+(defn attack-unprotected-enemy-ships
   "Returns moves to attack the unprotected enemy ships"
   [moving-ships]
   (let [ship-attacks (unprotected-enemy-ships moving-ships)]
@@ -385,7 +385,7 @@
           (do (change-ship-positions! move)
               move))))))
 
-(defn-timed defend-vulnerable-ships
+(defn defend-vulnerable-ships
   "Returns moves to defend vulnerable ships."
   [moving-ships]
   (let [potential-ships (filter #(and (= *player-id* (:owner-id %))
@@ -399,7 +399,7 @@
        (do (change-ship-positions! move)
            move)))))
 
-(defn-timed sort-ships-by-distance
+(defn sort-ships-by-distance
   "Returns ships from closest to point of interest to farthest. A point of interest is a planet,
   docked enemy ship, enemy ship near one of my planets."
   [ships]
@@ -424,7 +424,7 @@
     (do (change-ship-positions! (assoc new-move :subtype :friendly2))
         new-move)))
 
-(defn-timed get-planet-values
+(defn get-planet-values
   "Returns how valuable the planets are based on the current map."
   []
   nil)
@@ -434,7 +434,7 @@
 
 (def num-turns-to-kill-ship 2)
 
-(defn initial-map
+(defn-timed initial-map
   "Function called at beginning of game before starting."
   []
   (let [closet-planet-docking-spots-by-owner
