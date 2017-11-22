@@ -8,3 +8,4 @@ jars/
 .lein-repl-history
 halite*
 hlts/
+.DS_Store

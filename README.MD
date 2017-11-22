@@ -40,4 +40,10 @@ Before submitting a bot, make sure you adhere to our guidelines, or the upload o
   * [ ] Pick a default location to move to if I run out of time and submit that move (oh but I could run into things.. maybe not)
   * [ ] Stop running into the edges of the map (if y > max-y or < min-y , x... etc)
   * [ ] Docking - keep track of docking during a turn so I keep at least one fighter nearby instead of letting all dock at once.
-  * [ ] 
+
+# 11/21
+
+  * [ ] Too many protecting
+  * [ ] Get dominated by massively grouped together ships
+  * [ ] Not going after planets when my ships are just sitting around
+  *

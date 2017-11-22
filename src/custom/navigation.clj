@@ -149,7 +149,7 @@
   [position ships]
   (not (some? (seq (filter #(< (math/distance-between position %) safe-radius) ships)))))
 
-(def retreat-iterations 9)
+(def retreat-iterations 36)
 (def retreat-angular-step (/ 360 retreat-iterations))
 
 (defn navigate-to-retreat-ship
@@ -194,8 +194,9 @@
   [ship planet]
   (let [ships (remove #(or (= *player-id* (:owner-id %))
                            (not= :undocked (-> % :docking :status)))
-                      (vals *ships*))]
-    (loop [angle (math/orient-towards ship planet)
+                      (vals *ships*))
+        orig-angle (math/orient-towards ship planet)]
+    (loop [angle orig-angle
            iteration 0]
       (let [planet (custom-math/get-point ship e/max-ship-speed angle)]
         (if (unreachable? planet ships)
@@ -203,8 +204,11 @@
                                                                    :max-thrust e/max-ship-speed
                                                                    :subtype :retreat}))
           (when (<= iteration retreat-iterations)
-            (recur (mod (+ retreat-angular-step angle) 360)
-                   (inc iteration))))))))
+            (let [angle (if (even? iteration)
+                          (mod (+ (* retreat-angular-step (int (/ iteration 2))) orig-angle) 360)
+                          (mod (+ (* retreat-angular-step (int (/ (inc iteration) 2)) -1) orig-angle) 360))]
+              (recur angle
+                     (inc iteration)))))))))
 
 (def infinity 99999999)
 
