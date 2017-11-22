@@ -30,7 +30,7 @@
 (defn figure-out-potential-obstacles
   "TODO: Note planets I should look further out, but ships this is fine."
   [ship all-ships]
-  (filter #(< (math/distance-between ship %) potential-obstacle-distance) all-ships))
+  (filter #(<= (math/distance-between ship %) potential-obstacle-distance) all-ships))
 
 (def slightly-smaller-fudge-factor 0.6)
 (def planet-fudge-factor 0.6)
@@ -176,7 +176,7 @@
   `docking-distance` units above the planet's surface. Returns nil if
   it cannot find a suitable path."
   [ship friendly-ship]
-  (navigate-to ship friendly-ship (merge default-navigation-opts {:buffer 1.1
+  (navigate-to ship friendly-ship (merge default-navigation-opts {:buffer 3.0
                                                                   :subtype :friendly})))
 
 (defn navigate-to-dock
@@ -202,7 +202,7 @@
         (if (unreachable? planet ships)
           (navigate-to ship planet (merge default-navigation-opts {:buffer 0.0
                                                                    :max-thrust e/max-ship-speed
-                                                                   :subtype :retreat}))
+                                                                   :subtype :retreat3}))
           (when (<= iteration retreat-iterations)
             (let [angle (if (even? iteration)
                           (mod (+ (* retreat-angular-step (int (/ iteration 2))) orig-angle) 360)

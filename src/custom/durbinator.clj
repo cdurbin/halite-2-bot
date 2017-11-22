@@ -164,6 +164,20 @@
           (navigation/navigate-to-retreat ship closest-enemy-planet)
           (navigation/navigate-to-retreat-ship ship enemy-ship))))))
 
+(defn move-ship-to-retreat-for-real
+  "Moves the ship to retreat from the enemy ship."
+  [ship enemy-ship]
+  (let [my-closest-planet (nearest-enemy-planet ship (filter #(= *player-id* (:owner-id %))
+                                                             (vals *planets*)))
+        closest-enemy-planet (nearest-enemy-planet ship (filter #(= (:owner-id enemy-ship)
+                                                                    (:owner-id %))
+                                                                (vals *planets*)))]
+    ; (if my-closest-planet
+    (if closest-enemy-planet
+      (navigation/navigate-to-retreat ship closest-enemy-planet)
+      ; (navigation/navigate-to-retreat ship my-closest-planet)
+      (navigation/navigate-to-retreat-ship ship enemy-ship))))
+
 (def tag-team-range 5)
 (def retreat-range 35)
 
@@ -179,23 +193,53 @@
              (filter #(= *player-id* (:owner-id %))
                      (vals *ships*))))))
 
+(def advantage-range (* 2 (+ e/max-ship-speed e/ship-radius e/weapon-radius)))
+
+(defn have-advantage?
+  "Returns true if I have more fighters at a given position than the enemy."
+  [position]
+  (let [filter-fn (fn [ship]
+                    (and (= :undocked (-> ship :docking :status))
+                         (< (math/distance-between ship position) advantage-range)))
+        ships (for [[k v] *ships*
+                    :when (integer? k)]
+                v)
+        ; nearby-fighters (filter filter-fn (vals (filter (fn [[k v]]
+        ;                                                   (integer? k))
+        ;                                                 *ships*)))
+        nearby-fighters (filter filter-fn ships)
+        ; _ (log "Nearby fighters are" nearby-fighters)
+        my-fighter-count (count (filter #(= *player-id* (:owner-id %))
+                                        nearby-fighters))
+        enemy-count (- (count nearby-fighters) my-fighter-count)]
+    (or (zero? enemy-count)
+        (and (> my-fighter-count 1)
+             (>= my-fighter-count enemy-count)))))
+
 (def ignore-retreating-ship-count
   "Optimization to not worry about running away when I have this many ships."
-  65)
+  75)
 
 (defn move-to-nearest-enemy-ship
   "Moves the ship to the nearest enemy ship."
   [ship enemy-ships]
   (when-let [enemy-ship (nearest-enemy-not-decoy ship enemy-ships)]
-    (let [enemy-fighters (filter #(and (not= *player-id* (:owner-id %))
-                                       (= :undocked (-> % :docking :status)))
-                                 (vals *ships*))]
-      (if (or (> *num-ships* ignore-retreating-ship-count)
-              (> (math/distance-between ship enemy-ship) retreat-range)
-              (not (alone? ship enemy-ship *player-id* tag-team-range false))
-              (navigation/unreachable? enemy-ship enemy-ships))
-        (move-ship-to-attack ship enemy-ship)
-        (move-ship-to-retreat ship enemy-ship)))))
+    ; (let [enemy-fighters (filter #(and (not= *player-id* (:owner-id %))
+    ;                                    (= :undocked (-> % :docking :status)))
+    ;                              (vals *ships*))]
+    (if (or (> *num-ships* ignore-retreating-ship-count)
+            (> (math/distance-between ship enemy-ship) retreat-range))
+      (move-ship-to-attack ship enemy-ship)
+      (let [attack? (have-advantage? enemy-ship)]
+            ; _ (log "Have advantage" attack? "for" ship)]
+            ; (not (alone? ship enemy-ship *player-id* tag-team-range false))
+            ; (have-advantage? ship)]
+            ; (navigation/unreachable? enemy-ship enemy-ships))
+        (if attack?
+          (move-ship-to-attack ship enemy-ship)
+          (if (alone? ship enemy-ship *player-id* tag-team-range false)
+            (move-ship-to-retreat ship enemy-ship)
+            (move-ship-to-retreat-for-real ship enemy-ship)))))))
 
 (defn get-pesky-fighters
   "Fighters near my planets or neutral planets."
@@ -305,8 +349,8 @@
 (defn change-ship-positions!
   "Changes a ships position in the main ships."
   [{:keys [ship type subtype] :as move}]
-  (when (and (= :thrust type)
-            (not= :friendly subtype))
+  (when (and (= :thrust type))
+            ; (not= :friendly subtype))
     (let [imaginary-ships (calculate-end-positions move)]
       (doseq [i-ship imaginary-ships]
         (set! *ships* (assoc *ships* (java.util.UUID/randomUUID) i-ship))))))
@@ -432,8 +476,8 @@
             :when (<= defender-distance (+ 7 distance))]
         (do
            (swap! assigned-ships conj closest-defender)
-           ; [closest-defender vulnerable]
-           [closest-defender enemy])))))
+           [closest-defender vulnerable])))))
+           ; [closest-defender enemy])))))
 
 (defn run-to-corner-moves
   "Run away"
@@ -462,7 +506,8 @@
         vulnerable-ships (get-vulnerable-ships potential-ships)]
     (doall
      (for [[defender ship] vulnerable-ships
-           :let [move (navigation/navigate-to-attack-ship defender ship)]
+           ; :let [move (navigation/navigate-to-attack-ship defender ship)]
+           :let [move (navigation/navigate-to-friendly-ship defender ship)]
            :when move]
        (do (change-ship-positions! move)
            move)))))
