@@ -47,3 +47,5 @@ Before submitting a bot, make sure you adhere to our guidelines, or the upload o
   * [ ] Get dominated by massively grouped together ships
   * [ ] Not going after planets when my ships are just sitting around
   *
+
+NOTE: V31 is the same jar as V24 just to see if that one really is better than 25-30.

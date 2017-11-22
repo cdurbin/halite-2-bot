@@ -66,6 +66,8 @@
               ships-in-order (ships-in-order-fn (vals (get *owner-ships* *player-id*)))
               runaway-moves (durbinator/run-to-corner-moves (reverse ships-in-order))
               moving-ships (map #(get-in % [:ship :id]) runaway-moves)
+              ; initial-moves (durbinator/attack-unprotected-enemy-ships moving-ships)
+              ; moving-ships (map #(get-in % [:ship :id]) (concat initial-moves runaway-moves))
               defend-moves (durbinator/defend-vulnerable-ships moving-ships)
               moving-ships (map #(get-in % [:ship :id]) (concat defend-moves runaway-moves))
               initial-moves (durbinator/attack-unprotected-enemy-ships moving-ships)

@@ -21,8 +21,8 @@
   (let [[max-x max-y] *map-size*
         x (get-x point)
         y (get-y point)]
-    (and (< 0 x max-x)
-         (< 0 y max-y))))
+    (and (< 0.5 x (dec max-x))
+         (< 0.5 y (dec max-y)))))
 
 (def potential-obstacle-distance
   (+ e/max-ship-speed 2.2 0.6))
@@ -57,7 +57,7 @@
   (for [iterations (range 1 6)
         thrust [7 6 4 2]
         ; thrust [7 6 5 4 3 2 1]
-        angular-step (range 22)
+        angular-step (range 30)
         opposite (range 2)
         ; :let [angular-step (* 2 (/ Math/PI 180.0) angular-step)]
         :let [angular-step (* 1 (/ Math/PI 180.0) angular-step)]]
@@ -133,7 +133,7 @@
 (defn navigate-to-attack-ship
   "Navigate to with a buffer to not crash into ship."
   [ship goal]
-  (navigate-to ship goal (merge default-navigation-opts {:buffer 4.5 :subtype :attack})))
+  (navigate-to ship goal (merge default-navigation-opts {:buffer 3.5 :subtype :attack})))
 
 (defn navigate-to-attack-docked-ship
   "Navigate to with a buffer to not crash into ship."
@@ -143,6 +143,7 @@
 (def safe-radius
   "How far away a spot is guaranteed to be safe."
   (+ e/max-ship-speed (* 2 e/ship-radius) e/weapon-radius 0.6))
+  ; (+ e/max-ship-speed (* 2 e/ship-radius) e/weapon-radius))
 
 (defn unreachable?
   "Returns true if none of the passed in ships can attack this position on the map."
@@ -176,7 +177,7 @@
   `docking-distance` units above the planet's surface. Returns nil if
   it cannot find a suitable path."
   [ship friendly-ship]
-  (navigate-to ship friendly-ship (merge default-navigation-opts {:buffer 3.0
+  (navigate-to ship friendly-ship (merge default-navigation-opts {:buffer 2.0
                                                                   :subtype :friendly})))
 
 (defn navigate-to-dock
@@ -188,6 +189,14 @@
   (let [docking-point (math/closest-point ship planet hlt-navigation/docking-distance)]
     (navigate-to ship docking-point (assoc default-navigation-opts :subtype :dock))))
 
+(def too-close-distance 2.0)
+
+(defn too-close-to-planet
+  "Returns true if the point is < than 3 units away from a planet."
+  [position planet]
+  (let [distance-from-planet (- (math/distance-between position planet) (:radius planet))]
+    (< distance-from-planet too-close-distance)))
+
 (defn navigate-to-retreat
   "Attempt to retreat and pull the ships away from my planets and towards their own.
   I cannot be attacked from them."
@@ -195,11 +204,12 @@
   (let [ships (remove #(or (= *player-id* (:owner-id %))
                            (not= :undocked (-> % :docking :status)))
                       (vals *ships*))
-        orig-angle (math/orient-towards ship planet)]
+        orig-angle (math/orient-towards ship planet)
+        orig-planet planet]
     (loop [angle orig-angle
            iteration 0]
       (let [planet (custom-math/get-point ship e/max-ship-speed angle)]
-        (if (unreachable? planet ships)
+        (if (and (unreachable? planet ships) (not (too-close-to-planet planet orig-planet)))
           (navigate-to ship planet (merge default-navigation-opts {:buffer 0.0
                                                                    :max-thrust e/max-ship-speed
                                                                    :subtype :retreat3}))
