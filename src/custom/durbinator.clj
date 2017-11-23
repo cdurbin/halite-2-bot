@@ -16,7 +16,7 @@
 (def infinity 99999999)
 
 (def all-out-attack
-  (atom false))
+  (atom 0))
 
 (defn move-ship-to-planet!
   "Moves the ship to the given planet. Side effect to update the planet to reduce the number of
@@ -316,7 +316,7 @@
     (if (or times-up?
             (not= :undocked (-> ship :docking :status)))
       nil
-      (if @all-out-attack
+      (if (pos? @all-out-attack)
         (move-to-nearest-enemy-ship ship (concat (vals *pesky-fighters*) (vals *docked-enemies*)))
 
         (when-let [planets (filter #(or (not= *player-id* (:owner-id %))
@@ -325,7 +325,7 @@
           (let [nearest-planet
                 (:nearest-planet
                  (reduce (fn [{:keys [min-distance nearest-planet]} planet]
-                           (let [distance-to-planet (math/distance-between ship planet)]
+                           (let [distance-to-planet (- (math/distance-between ship planet) (:radius planet))]
                              (if (< distance-to-planet min-distance)
                                {:min-distance distance-to-planet :nearest-planet planet}
                                {:min-distance min-distance :nearest-planet nearest-planet})))
@@ -388,8 +388,7 @@
   (set! *pesky-fighters* (into {} (map (fn [ship] [(:id ship) ship]) (get-pesky-fighters))))
   (set! *num-ships* (count (filter #(= *player-id* (:owner-id %)) (vals *ships*))))
   (set! *num-players* (count (keys *owner-ships*)))
-  (when (> turn 20)
-    (reset! all-out-attack false))
+  (swap! all-out-attack dec)
   {:start-ms (System/currentTimeMillis)})
 
 (defn distance-to-poi
@@ -595,7 +594,7 @@
             num-turns-to-two-ships (+ num-turns-to-planet e/dock-turns turns-to-produce-two-ships-with-three-docked)
             num-turns-to-attack (+ num-turns-me-to-dock-spot num-turns-to-kill-ship)]
         (when (<= num-turns-to-attack num-turns-to-two-ships)
-          (reset! all-out-attack true))
+          (reset! all-out-attack (inc num-turns-to-attack)))
         (log "The distance between my ship" my-ship "and their planet " pos "is " distance-to-pos
              "total turns" num-turns-to-planet "and " num-turns-me-to-dock-spot
              "they produce 2 in " num-turns-to-two-ships "and I kill in" num-turns-to-attack)))))
