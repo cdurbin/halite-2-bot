@@ -44,6 +44,7 @@
 ;; Hooks to track per turn custom map info and calling the custom function for determining a move
 ;; for a ship
 (def compute-move-fn durbinator/compute-move-closest-planet)
+; (def compute-move-fn durbinator/compute-move-best-planet)
 (def custom-map-info-fn durbinator/get-custom-map-info)
 (def ships-in-order-fn durbinator/sort-ships-by-distance)
 
