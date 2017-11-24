@@ -7,6 +7,7 @@
             [custom.durbinator :as durbinator]
             [custom.game-map :refer [*safe-planets* *docked-enemies* *pesky-fighters* *num-ships*
                                      *num-players*]]
+            [custom.map-analysis :as map]
             [custom.utils :refer [defn-timed]])
 
   (:import (java.io PrintWriter))
@@ -45,8 +46,8 @@
 ;; for a ship
 (def compute-move-fn durbinator/compute-move-closest-planet)
 ; (def compute-move-fn durbinator/compute-move-best-planet)
-(def custom-map-info-fn durbinator/get-custom-map-info)
-(def ships-in-order-fn durbinator/sort-ships-by-distance)
+(def custom-map-info-fn durbinator/calculations-for-turn)
+(def ships-in-order-fn map/sort-ships-by-distance)
 
 (defn-timed all-moves
   [ships-in-order custom-map-info]
@@ -57,7 +58,7 @@
 (defn -main
   [& args]
   (initialize-game
-   (durbinator/initial-map)
+   (durbinator/starting-game-strategy!)
    (io/send-done-initialized)
    (doseq [turn (iterate inc 1)]
      (with-updated-map

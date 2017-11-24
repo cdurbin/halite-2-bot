@@ -3,6 +3,8 @@
   (:require
    [hlt.math :as hlt-math]))
 
+(def infinity 99999999)
+
 (defn deg->rad
   "Translates degrees to radians."
   [deg]
