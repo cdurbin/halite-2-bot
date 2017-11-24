@@ -49,3 +49,10 @@ Before submitting a bot, make sure you adhere to our guidelines, or the upload o
   *
 
 NOTE: V31 is the same jar as V24 just to see if that one really is better than 25-30.
+
+map_sizes = [80, 80, 88, 88, 96, 96, 96, 104, 104, 104, 104,
+             112, 112, 112, 120, 120, 128, 128]
+base_size = random.choice(map_sizes)
+# Always generate 3:2 aspect ratio
+map_width = 3 * base_size
+map_height = 2 * base_size
