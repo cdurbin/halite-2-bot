@@ -502,6 +502,17 @@
           (change-ship-positions! move)
           move))))
 
+(defn get-best-planet-moves
+  "Returns moves towards the best planet."
+  [planet moving-ships]
+  (when (and planet (some #{(:id planet)} (keys *safe-planets*)))
+    (let [potential-ships (filter #(and (= :undocked (-> % :docking :status))
+                                        (= *player-id* (:owner-id %))
+                                        (not (some (set [(:id %)]) moving-ships)))
+                                  (vals *ships*))
+          closest-ship (map/nearest-entity planet potential-ships)]
+      (when closest-ship (move-ship-to-planet! closest-ship planet)))))
+
 (defn get-moves-for-turn
   "Returns all of the moves for this turn."
   [turn]
@@ -509,17 +520,20 @@
         ships-in-order (map/sort-ships-by-distance (vals (get *owner-ships* *player-id*)))
         runaway-moves (run-to-corner-moves (reverse ships-in-order))
         moving-ships (map #(get-in % [:ship :id]) runaway-moves)
+        best-planet (map/my-best-planet)
+        best-planet-moves (get-best-planet-moves best-planet moving-ships)
+        moving-ships (map #(get-in % [:ship :id]) (concat runaway-moves best-planet-moves))
         defend-moves (defend-vulnerable-ships moving-ships)
-        moving-ships (map #(get-in % [:ship :id]) (concat defend-moves runaway-moves))
+        moving-ships (map #(get-in % [:ship :id]) (concat defend-moves runaway-moves best-planet-moves))
 
         attack-moves (attack-unprotected-enemy-ships moving-ships)
-        moving-ships (map #(get-in % [:ship :id]) (concat runaway-moves attack-moves defend-moves))
+        moving-ships (map #(get-in % [:ship :id]) (concat runaway-moves attack-moves defend-moves best-planet-moves))
                        ; planet-moves (pick-moves-by-planets moving-ships)
                        ; moving-ships (map #(get-in % [:ship :id]) (concat runaway-moves attack-moves defend-moves planet-moves))
         my-fighters (map/get-fighters *player-id* moving-ships)
         assigned-fighter-to-targets (map/fighters-to-targets my-fighters)
         main-moves (get-fighter-moves custom-map-info assigned-fighter-to-targets)
-        moving-ships (map #(get-in % [:ship :id]) (concat runaway-moves attack-moves defend-moves main-moves))
+        moving-ships (map #(get-in % [:ship :id]) (concat runaway-moves attack-moves defend-moves main-moves best-planet-moves))
         fallback-moves (get-main-moves ships-in-order (assoc custom-map-info :moving-ships moving-ships))
         ; moving-ships (map #(get-in % [:ship :id]) (concat runaway-moves fighter-moves defend-moves))
         _ (log "Assigned fighters are" assigned-fighter-to-targets)
