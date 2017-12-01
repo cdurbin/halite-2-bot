@@ -13,6 +13,7 @@
 (defn nearest-entity
   "Returns the closest other entity to the passed in entity."
   [entity other-entities]
+  ; (log "Called with entity" entity "Other entities" other-entities)
   (:nearest-entity
    (reduce (fn [{:keys [min-distance nearest-entity]} other-entity]
              (let [distance (- (math/distance-between entity other-entity)
@@ -73,6 +74,38 @@
   (filter #(= *player-id* (:owner-id %))
           (vals *ships*)))
 
+(defn remove-imaginary-ships
+  "Returns a list of all real ships"
+  []
+  (vals
+   (filter (fn [[k v]]
+             (integer? k))
+           *ships*)))
+
+(defn get-fighters
+  "Returns my fighter ships that aren't already moving."
+  [owner-id moving-ships]
+  ; (log "Ships:" *ships*)
+  ; (log "Remove imaginary:" (remove-imaginary-ships))
+  (filter #(and (= owner-id (:owner-id %))
+                (= :undocked (-> % :docking :status))
+                (not (some (set [(:id %)]) moving-ships)))
+          (remove-imaginary-ships)))
+
+(defn sort-by-furthest
+  "Sorts the passed in planets based on the furthest distance from any of the compared planets."
+  [planets compared-planets]
+  (when (and (seq planets)
+             (seq compared-planets))
+    (let [planet-maps (for [planet planets
+                            :let [closest-planet (nearest-entity planet compared-planets)]
+                            :when closest-planet
+                            :let [distance (- (math/distance-between planet closest-planet)
+                                              (:radius planet)
+                                              (:radius closest-planet))]]
+                        {:planet planet :distance distance})]
+      (map :planet (sort (utils/compare-by :distance utils/desc) planet-maps)))))
+
 (defn get-docked-enemy-ships
   "Returns all of the docked enemy ships."
   []
@@ -89,10 +122,11 @@
 (defn get-enemy-planets
   "Returns the enemy planets."
   []
-  (filter (fn [planet]
-            (and (not (nil? (:owner-id planet)))
-                 (not= *player-id* (:owner-id planet))))
-          (vals *planets*)))
+  (let [my-enemy (find-nemesis (vals *planets*))]
+    (when my-enemy
+      (filter (fn [planet]
+                (= my-enemy (:owner-id planet)))
+              (vals *planets*)))))
 
 (defn nearest-enemy-not-decoy
   "Returns the closest enemy ship from the passed in enemy ships."
@@ -189,7 +223,7 @@
         (and (> my-fighter-count 1)
              (> my-fighter-count enemy-count)))))
 
-(defn get-pesky-fighters
+(defn get-pesky-fighters-orig
   "Fighters near my planets or neutral planets."
   []
   (let [mine-or-neutral-planets (filter #(or (nil? (:owner-id %))
@@ -204,6 +238,13 @@
                        (< (math/distance-between ship planet) close-distance))]
         ship))))
 
+(defn get-pesky-fighters
+  "Fighters near my planets or neutral planets."
+  []
+  (filter #(and (not= *player-id* (:owner-id %))
+                (= :undocked (-> % :docking :status)))
+          (vals *ships*)))
+
 (defn get-safe-planets
   "Returns a list of planets that are safe to dock at."
   []
@@ -212,6 +253,15 @@
                              (and (= *player-id* (:owner-id planet))
                                   (e/any-remaining-docking-spots? planet)))
                          (have-most-ships-surrounding-planet? planet)))]
+    (filter filter-fn (vals *planets*))))
+
+(defn get-safe-planets-new
+  "Returns a list of planets that are safe to dock at."
+  []
+  (let [filter-fn (fn [planet]
+                    (and (or (nil? (:owner-id planet))
+                             (and (= *player-id* (:owner-id planet))
+                                  (e/any-remaining-docking-spots? planet)))))]
     (filter filter-fn (vals *planets*))))
 
 (defn nearest-planet-distance
@@ -246,7 +296,7 @@
                                  0
                                  distances)
             square-value (Math/sqrt square-value)]
-        (log "Square value for" planet "is" square-value)
+        ; (log "Square value for" planet "is" square-value)
         (set! *planets* (assoc-in *planets* [(:id planet) :square-value] square-value))))))
 
 (defn get-custom-map-info
@@ -260,3 +310,46 @@
     (set! *num-ships* (count (filter #(= *player-id* (:owner-id %)) (vals *ships*))))
     (set! *num-players* (count (keys *owner-ships*)))
     {:start-ms start-ms}))
+
+(defn get-planets
+  "Return all of the planets for the given owner ID."
+  [owner-id]
+  (filter #(= owner-id (:owner-id %))
+          (vals *planets*)))
+
+(defn fighters-to-targets
+  "Returns a target for each of the fighters passed in."
+  [ships]
+  (when (seq ships)
+    (when-let [enemy-planets (seq (sort-by-furthest (get-enemy-planets)
+                                                    (or (seq (get-planets *player-id*))
+                                                        [(first ships)])))]
+      (let [num-per-planet (Math/ceil (/ (count ships) (count enemy-planets)))
+            - (log "Num per planet" num-per-planet)
+            _ (log "Enemy planets" enemy-planets)
+            ; remaining (- (count ships) (* num-per-planet (count enemy-planets)))
+            assigned-ships (atom nil)]
+        (flatten
+          (for [planet enemy-planets
+                :let [my-ships (remove #(some (set [%]) @assigned-ships)
+                                       ships)
+                      ; _ (log "CDD: assigned" @assigned-ships)
+                      ; _ (log "remaining:" my-ships)
+                      sorted-ships (take num-per-planet (sort-by #(math/distance-between planet %)
+                                                                 my-ships))]]
+            (doall
+             (for [ship sorted-ships]
+              (do (swap! assigned-ships conj ship)
+                  ; (log "I just swapped" ship "- assigned" @assigned-ships)
+                  {:target planet :ship ship})))))))))
+      ; (for [planet enemy-planets
+      ;       :let [my-ships (remove #(some (set [%]) @assigned-ships)
+      ;                              ships)
+      ;             my-ship (map/nearest-entity planet my-ships)]
+      ;       :when my-ship
+      ;       :let [move (navigation/navigate-to-retreat my-ship planet)]
+      ;       :when move]
+      ;   (do
+      ;     (swap! assigned-ships conj my-ship)
+      ;     (change-ship-positions! move)
+      ;     (assoc move :subtype :retreat5)))))

@@ -150,7 +150,7 @@
   [position ships]
   (not (some? (seq (filter #(< (math/distance-between position %) safe-radius) ships)))))
 
-(def retreat-iterations 36)
+(def retreat-iterations 180)
 (def retreat-angular-step (/ 360 retreat-iterations))
 
 (defn navigate-to-retreat-ship

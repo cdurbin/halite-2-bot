@@ -56,3 +56,7 @@ base_size = random.choice(map_sizes)
 # Always generate 3:2 aspect ratio
 map_width = 3 * base_size
 map_height = 2 * base_size
+
+# 11/30
+
+* [ ] Planets with open dock spots should pull the closest ships.
