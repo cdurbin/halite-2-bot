@@ -42,7 +42,7 @@
     (when (and move (pos? (:thrust move)))
       (let [fighter? (= :undocked (-> enemy-ship :docking :status))
             attack-count (inc (get enemy-ship :attack-count 0))
-            remove? (= 7 (:attack-count enemy-ship))]
+            remove? (= 5 (:attack-count enemy-ship))]
         (if fighter?
           (if remove?
             (set! *pesky-fighters* (dissoc *pesky-fighters* (:id enemy-ship)))
@@ -52,7 +52,7 @@
             (set! *docked-enemies* (assoc-in *docked-enemies* [(:id enemy-ship) :attack-count] attack-count))))))
     move))
 
-(def retreat-if-this-close 10)
+(def retreat-if-this-close 25)
 
 (defn move-ship-to-retreat
   "Moves the ship to retreat from the enemy ship."
@@ -287,6 +287,7 @@
         my-fighter-ships (filter #(= :undocked (-> % :docking :status))
                                 my-ships)
         vulnerable-distance 38
+        ; vulnerable-distance 19
         ; vulnerable-distance 30
         potential-issues (for [enemy-ship (vals *pesky-fighters*)
                                :let [nearest-docked-ship (map/nearest-entity enemy-ship my-docked-ships)]
@@ -299,30 +300,31 @@
         sorted-issues (sort (utils/compare-by :distance utils/asc) potential-issues)
         assigned-ships (atom nil)]
     ;; Go through closest first
-    (into {}
-      (for [{:keys [enemy vulnerable distance]} sorted-issues
-            :let [closest-defender (map/nearest-entity vulnerable
-                                                       (remove #(some (set [%]) @assigned-ships)
-                                                               my-fighter-ships))]
-            :when closest-defender
-            :let [defender-distance (math/distance-between closest-defender vulnerable)]
-            ;; Close enough to defend
-            :when (<= defender-distance (+ 7 distance))]
-        (do
-           (swap! assigned-ships conj closest-defender)
-           [closest-defender vulnerable])))))
+    ; (into {}
+    (for [{:keys [enemy vulnerable distance]} sorted-issues
+          :let [closest-defender (map/nearest-entity vulnerable
+                                                     (remove #(some (set [%]) @assigned-ships)
+                                                             my-fighter-ships))]
+          :when closest-defender
+          :let [defender-distance (math/distance-between closest-defender vulnerable)]
+          ;; Close enough to defend
+          :when (<= defender-distance (+ 7 distance))]
+      (do
+         (swap! assigned-ships conj closest-defender)
+         [closest-defender vulnerable enemy]))))
 
 (defn run-to-corner-moves
   "Run away"
   [my-ships]
-  (let [my-ships (filter #(and (= *player-id* (:owner-id %))
-                               (= :undocked (-> % :docking :status)))
-                         my-ships)
-        num-undocked-ships (count my-ships)]
+  (let [my-undocked-ships (filter #(and (= *player-id* (:owner-id %))
+                                        (= :undocked (-> % :docking :status)))
+                                  my-ships)]
+        ; num-undocked-ships (count my-ships)]
     (when (and (> *num-players* 2)
-               (> (count (vals *ships*)) 60)
-               (< num-undocked-ships 6))
-      (let [moves (for [ship (take 2 my-ships)
+               ; (> (count (vals *ships*)) 60)
+               ;; Less than 10 percent of the total ships
+               (< (count my-ships) (* 0.1 (count (vals *ships*)))))
+      (let [moves (for [ship (take 2 my-undocked-ships)
                         :when ship]
                     (navigation/navigate-to-nearest-corner ship))]
         (for [move moves
@@ -338,8 +340,8 @@
                                 (vals *ships*))
         vulnerable-ships (get-vulnerable-ships potential-ships)]
     (doall
-     (for [[defender ship] vulnerable-ships
-           :let [move (navigation/navigate-to-friendly-ship defender ship)]
+     (for [[defender ship enemy] vulnerable-ships
+           :let [move (navigation/navigate-to-defend-ship defender ship enemy)]
            :when move]
        (do (change-ship-positions! move)
            move)))))

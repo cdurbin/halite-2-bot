@@ -180,6 +180,20 @@
   (navigate-to ship friendly-ship (merge default-navigation-opts {:buffer 2.0
                                                                   :subtype :friendly})))
 
+(defn navigate-to-defend-ship
+  "Returns a thrust move which will navigate this ship to the requested
+  planet for docking. The ship will attempt to get to
+  `docking-distance` units above the planet's surface. Returns nil if
+  it cannot find a suitable path."
+  [ship friendly-ship enemy-ship]
+  (let [angle (math/orient-towards friendly-ship enemy-ship)
+        distance (math/distance-between friendly-ship enemy-ship)
+        ;; Try to prevent sending my ship in to die
+        distance (/ distance 3)
+        midpoint (custom-math/get-point friendly-ship distance angle)]
+    (navigate-to ship midpoint (merge default-navigation-opts {:buffer 2.0
+                                                               :subtype :defend}))))
+
 (defn navigate-to-dock
   "Returns a thrust move which will navigate this ship to the requested
   planet for docking. The ship will attempt to get to

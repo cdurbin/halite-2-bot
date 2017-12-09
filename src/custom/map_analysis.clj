@@ -171,7 +171,7 @@
              (zero? (count closeby-docked)))
         (and
           (> my-count (+ 2 max-other-count))
-          (let [close-distance 15
+          (let [close-distance 25
                 filter-fn (fn [ship]
                             (and (= :undocked (-> ship :docking :status))
                                  (< (math/distance-between ship planet) (+ close-distance (:radius planet)))))
@@ -184,8 +184,10 @@
                 fighters-by-owner (group-by :owner-id nearby-fighters)
                 my-count (dec (count (get fighters-by-owner *player-id*)))
                 max-other-count (apply max 0 (map count (vals (dissoc fighters-by-owner *player-id*))))]
-            ; (>= my-count (+ 3 max-other-count))
-            (>= my-count (max 1 (* 2 max-other-count))))))))
+            ;; TODO which is better?
+            (>= my-count (+ 2 max-other-count)))))))
+            ; (>= my-count (max 1 (* 2 max-other-count)))
+            ; (> my-count (max 1 (* 2 max-other-count))))))))
 
 (defn alone?
   "Returns true if I'm the only fighter nearby."
@@ -221,7 +223,9 @@
         enemy-count (- (count nearby-fighters) my-fighter-count)]
     (or (zero? enemy-count)
         (and (> my-fighter-count 1)
+             ;; TODO figure out which works better
              (> my-fighter-count enemy-count)))))
+             ; (>= my-fighter-count enemy-count)))))
 
 (defn get-pesky-fighters-orig
   "Fighters near my planets or neutral planets."

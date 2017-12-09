@@ -60,3 +60,9 @@ map_height = 2 * base_size
 # 11/30
 
 * [ ] Planets with open dock spots should pull the closest ships.
+
+# 12/6
+
+* [ ] When retreating - retreat the minimum distance to still be safe
+* [ ] Go back to V33 and see if there are small changes from V34 and above to use
+* [ ]
