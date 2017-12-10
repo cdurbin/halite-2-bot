@@ -323,7 +323,8 @@
                                 my-ships)
         my-fighter-ships (filter #(= :undocked (-> % :docking :status))
                                 my-ships)
-        vulnerable-distance 28
+        vulnerable-distance 42
+        ; vulnerable-distance 28
         ; vulnerable-distance 19
         ; vulnerable-distance 30
         potential-issues (for [enemy-ship (vals *pesky-fighters*)
@@ -427,7 +428,8 @@
 (defn-timed starting-game-strategy!
   "Function called at beginning of game before starting."
   []
-  (let [closet-planet-docking-spots-by-owner
+  (let [four-center-planets (map/find-four-center-planets)
+        closet-planet-docking-spots-by-owner
         (into {}
               (for [owner-id (keys *owner-ships*)
                     :let [ship (first (vals (get *owner-ships* owner-id)))
@@ -439,6 +441,7 @@
                                      (remove #(= *player-id* %)
                                              (keys *owner-ships*)))
         my-ship (first (vals (get *owner-ships* *player-id*)))]
+    (reset! map/avoid-planets four-center-planets)
     (doseq [[owner {:keys [pos distance]}] enemy-positions]
       (let [distance-to-pos (math/distance-between my-ship pos)
             num-turns-to-planet (Math/ceil (/ (- distance e/dock-radius) e/max-ship-speed))
@@ -446,7 +449,8 @@
             num-turns-to-two-ships (+ num-turns-to-planet e/dock-turns turns-to-produce-two-ships-with-three-docked)
             num-turns-to-attack (+ num-turns-me-to-dock-spot num-turns-to-kill-ship)]
         (when (<= num-turns-to-attack num-turns-to-two-ships)
-          (reset! all-out-attack (inc num-turns-me-to-dock-spot)))
+          ; (reset! all-out-attack (inc num-turns-me-to-dock-spot))
+          (reset! all-out-attack (+ 5 num-turns-to-two-ships)))
         (log "The distance between my ship" my-ship "and their planet " pos "is " distance-to-pos
              "total turns" num-turns-to-planet "and " num-turns-me-to-dock-spot
              "they produce 2 in " num-turns-to-two-ships "and I kill in" num-turns-to-attack)))))
@@ -516,7 +520,7 @@
             (if (and nearest-planet
                      (some #{(:id nearest-planet)} (keys *safe-planets*))
                      ; No fighters close to taking me
-                     (let [all-fighters (filter #(and (= :undocked (-> ship :docking :status))
+                     (let [all-fighters (filter #(and (= :undocked (-> % :docking :status))
                                                       (not= (:id ship) (:id %)))
                                                 (vals *ships*))
                            closest-fighter (map/nearest-entity ship all-fighters)]
@@ -576,6 +580,7 @@
              (<= *num-ships* 3)
              planet
              (some #{(:id planet)} (keys *safe-planets*)))
+
     (let [potential-ships (filter #(and (= :undocked (-> % :docking :status))
                                         (= *player-id* (:owner-id %))
                                         (not (some (set [(:id %)]) moving-ships)))
@@ -584,7 +589,12 @@
       ;       :let [move (move-ship-to-planet! ship planet)]
       ;       :when move]
           closest-ship (map/nearest-entity planet potential-ships)]
-      (when closest-ship
+      (when (and closest-ship
+                 (let [all-fighters (filter #(and (= :undocked (-> % :docking :status))
+                                                  (not= (:id closest-ship) (:id %)))
+                                            (vals *ships*))
+                       closest-fighter (map/nearest-entity closest-ship all-fighters)]
+                   (or (nil? closest-fighter) (= *player-id* (:owner-id closest-fighter)))))
         (let [move (move-ship-to-planet! closest-ship planet)]
           (do (change-ship-positions! move)
               move))))))
@@ -615,7 +625,8 @@
 
         best-planet (if (= *num-players* 2)
                       (map/my-best-planet)
-                      (map/safest-planet))
+                      (map/corner-planet))
+                      ; (map/safest-planet))
         best-planet-move (get-best-planet-moves best-planet moving-ships)
         ; best-planet-moves (get-best-planet-moves best-planet moving-ships)
         ; best-planet-moves (if (seq best-planet-moves) best-planet-moves [])

@@ -6,7 +6,7 @@
    [custom.math :refer [infinity]]
    [custom.utils :as utils]
    [hlt.entity :as e]
-   [hlt.game-map :refer [*player-id* *ships* *planets* *owner-ships*]]
+   [hlt.game-map :refer [*player-id* *ships* *planets* *owner-ships* *map-size*]]
    [hlt.math :as math]
    [hlt.utils :refer [log]]))
 
@@ -24,25 +24,62 @@
            {:min-distance infinity}
            other-entities)))
 
+(defn farthest-entity
+  "Returns the farthest other entity to the passed in entity."
+  [entity other-entities]
+  ; (log "Called with entity" entity "Other entities" other-entities)
+  (:farthest-entity
+   (reduce (fn [{:keys [max-distance farthest-entity]} other-entity]
+             (let [distance (- (math/distance-between entity other-entity)
+                               (:radius other-entity))]
+               (if (> distance max-distance)
+                 {:max-distance distance :farthest-entity other-entity}
+                 {:max-distance max-distance :farthest-entity farthest-entity})))
+           {:max-distance 0}
+           other-entities)))
+
 (defn find-nemesis
   "Returns the player I should focus on battling."
   [planets]
   (let [my-planets (filter #(= *player-id* (:owner-id %)) planets)
-        enemy-planets (remove #(or (= *player-id* (:owner-id %))
-                                   (nil? (:owner-id %)))
-                              planets)
-        closest-enemy-planet (atom nil)
-        closest-distance (atom infinity)]
-    (doseq [my-planet my-planets
-            enemy-planet enemy-planets
-            :let [distance (- (math/distance-between my-planet enemy-planet)
-                              (:radius my-planet)
-                              (:radius enemy-planet))]
-            :when (< distance @closest-distance)]
-      (do
-       (reset! closest-enemy-planet enemy-planet)
-       (reset! closest-distance distance)))
-    (:owner-id @closest-enemy-planet)))
+        close-fighters (filter #(and (= :undocked (-> % :docking :status))
+                                     (not= *player-id* (:owner-id %))
+                                     (let [closest-planet (nearest-entity % my-planets)]
+                                       (and closest-planet
+                                            (< (- (math/distance-between % closest-planet)
+                                                  (:radius closest-planet))
+                                               30))))
+                               (vals *ships*))
+        fighters-by-owner-id (group-by :owner-id close-fighters)
+        max-close-fighters (apply max 0 (map count (vals fighters-by-owner-id)))
+        bad-guys (keep (fn [[k v]]
+                         (when (= max-close-fighters (count v))
+                           k))
+                       fighters-by-owner-id)]
+    ; (log "close fighters" (pr-str close-fighters))
+    ; (log "Max-close-fighters" max-close-fighters)
+    ; (log "Nemesis: " (first bad-guys))
+    (first bad-guys)))
+
+; (defn find-nemesis
+;   "Returns the player I should focus on battling."
+;   [planets]
+;   (let [my-planets (filter #(= *player-id* (:owner-id %)) planets)
+;         enemy-planets (remove #(or (= *player-id* (:owner-id %))
+;                                    (nil? (:owner-id %)))
+;                               planets)
+;         closest-enemy-planet (atom nil)
+;         closest-distance (atom infinity)]
+;     (doseq [my-planet my-planets
+;             enemy-planet enemy-planets
+;             :let [distance (- (math/distance-between my-planet enemy-planet)
+;                               (:radius my-planet)
+;                               (:radius enemy-planet))]
+;             :when (< distance @closest-distance)]
+;       (do
+;        (reset! closest-enemy-planet enemy-planet)
+;        (reset! closest-distance distance)))
+;     (:owner-id @closest-enemy-planet)))
 
 (defn get-planet-values
   "Returns how valuable the planets are based on the current map."
@@ -119,10 +156,14 @@
     (- (math/distance-between position nearest-planet) (:radius nearest-planet))
     0))
 
+(def nemesis
+  "My nemesis"
+  (atom nil))
+
 (defn get-enemy-planets
   "Returns the enemy planets."
   []
-  (let [my-enemy (find-nemesis (vals *planets*))]
+  (let [my-enemy @nemesis]
     (when my-enemy
       (filter (fn [planet]
                 (= my-enemy (:owner-id planet)))
@@ -249,6 +290,25 @@
                 (= :undocked (-> % :docking :status)))
           (vals *ships*)))
 
+(defn players-with-planets
+  "Returns the number of players with planets"
+  []
+  (->> *planets*
+       vals
+       (filter :owner-id)
+       (group-by :owner-id)
+       keys
+       count))
+
+(def avoid-planets
+  (atom nil))
+
+(defn avoid-planet?
+  "Returns whether we've decided to avoid this planet."
+  [planet]
+  (if (> (players-with-planets) 2)
+    (some #{(:id planet)} @avoid-planets)))
+
 (defn get-safe-planets
   "Returns a list of planets that are safe to dock at."
   []
@@ -256,7 +316,8 @@
                     (and (or (nil? (:owner-id planet))
                              (and (= *player-id* (:owner-id planet))
                                   (e/any-remaining-docking-spots? planet)))
-                         (have-most-ships-surrounding-planet? planet)))]
+                         (have-most-ships-surrounding-planet? planet)
+                         (not (avoid-planet? planet))))]
     (filter filter-fn (vals *planets*))))
 
 (defn get-safe-planets-new
@@ -315,6 +376,7 @@
     (set! *pesky-fighters* (into {} (map (fn [ship] [(:id ship) ship]) (get-pesky-fighters))))
     (set! *num-ships* (count (filter #(= *player-id* (:owner-id %)) (vals *ships*))))
     (set! *num-players* (count (keys *owner-ships*)))
+    (reset! nemesis (find-nemesis (vals *planets*)))
     {:start-ms start-ms}))
 
 (defn get-planets
@@ -390,11 +452,26 @@
   "Finds the planet that is the farthest away from every other player."
   []
   (let [unowned-planets (get-unowned-planets)
+        potential-planets (planets-closest-to-me unowned-planets)
         enemy-ships (filter #(not= *player-id* (:owner-id %))
                             (vals *ships*))
-        planet-distances (for [planet unowned-planets
+        planet-distances (for [planet potential-planets
                                :let [closest-ship (nearest-entity planet enemy-ships)
                                      distance (math/distance-between planet closest-ship)]]
+                           {:planet planet
+                            :distance distance})]
+    (:planet (first (sort (utils/compare-by :distance utils/desc) planet-distances)))))
+
+(defn corner-planet
+  "Finds the planet that is the farthest away from the opposite corner player."
+  []
+  (let [unowned-planets (get-unowned-planets)
+        potential-planets (planets-closest-to-me unowned-planets)
+        enemy-ships (filter #(not= *player-id* (:owner-id %))
+                            (vals *ships*))
+        planet-distances (for [planet potential-planets
+                               :let [farthest-ship (farthest-entity planet enemy-ships)
+                                     distance (math/distance-between planet farthest-ship)]]
                            {:planet planet
                             :distance distance})]
     (:planet (first (sort (utils/compare-by :distance utils/desc) planet-distances)))))
@@ -424,3 +501,24 @@
 ;         sorted-list (sort (utils/compare-by :dock-spots utils/desc) planets-and-dock-spots)]
 ;     (log "Best planet" (first sorted-list))
 ;     (:planet (first sorted-list))))
+
+(defn find-four-center-planets
+  "Returns the four-center-planets"
+  []
+  (let [[max-x max-y] *map-size*
+        midpoint (math/->Position (/ max-x 2) (/ max-y 2))
+        planet-distances (for [planet (vals *planets*)
+                               :let [distance (math/distance-between planet midpoint)]]
+                           {:planet planet
+                            :distance distance})]
+    (:planet (take 4 (sort (utils/compare-by :distance utils/asc) planet-distances)))))
+
+(defn players-with-planets
+  "Returns the number of players with planets"
+  []
+  (->> *planets*
+       vals
+       (filter :owner-id)
+       (group-by :owner-id)
+       keys
+       count))

@@ -256,4 +256,4 @@
         nw (math/->Position 0.1 0.1)
         se (math/->Position (dec max-x) (dec max-y))
         sw (math/->Position 0.1 (dec max-y))]
-    (navigate-to position (closest-position position [ne nw se sw]))))
+    (navigate-to-retreat position (assoc (closest-position position [ne nw se sw]) :radius 0))))
