@@ -386,14 +386,41 @@
               (= *player-id* (:owner-id closest-ship))))
           unowned-planets))
 
+(defn safest-planet
+  "Finds the planet that is the farthest away from every other player."
+  []
+  (let [unowned-planets (get-unowned-planets)
+        enemy-ships (filter #(not= *player-id* (:owner-id %))
+                            (vals *ships*))
+        planet-distances (for [planet unowned-planets
+                               :let [closest-ship (nearest-entity planet enemy-ships)
+                                     distance (math/distance-between planet closest-ship)]]
+                           {:planet planet
+                            :distance distance})]
+    (:planet (first (sort (utils/compare-by :distance utils/desc) planet-distances)))))
+
 (defn my-best-planet
   "Returns the planet that I should target."
   []
   (let [unowned-planets (get-unowned-planets)
         potential-planets (planets-closest-to-me unowned-planets)
+        planets-that-count (if (= 2 *num-players*)
+                             unowned-planets potential-planets)
         planets-and-dock-spots (for [planet potential-planets
-                                     :let [dock-spots (num-dock-slots-around-planet planet unowned-planets)]]
+                                     :let [dock-spots (num-dock-slots-around-planet planet planets-that-count)]]
                                  {:planet planet :dock-spots dock-spots})
         sorted-list (sort (utils/compare-by :dock-spots utils/desc) planets-and-dock-spots)]
     (log "Best planet" (first sorted-list))
     (:planet (first sorted-list))))
+
+; (defn my-best-planet-four-player
+;   "Returns the planet that I should target."
+;   []
+;   (let [unowned-planets (get-unowned-planets)
+;         potential-planets (planets-closest-to-me unowned-planets)
+;         planets-and-dock-spots (for [planet potential-planets
+;                                      :let [dock-spots (num-dock-slots-around-planet planet potential-planets)]]
+;                                  {:planet planet :dock-spots dock-spots})
+;         sorted-list (sort (utils/compare-by :dock-spots utils/desc) planets-and-dock-spots)]
+;     (log "Best planet" (first sorted-list))
+;     (:planet (first sorted-list))))
