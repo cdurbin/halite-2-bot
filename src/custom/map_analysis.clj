@@ -191,7 +191,8 @@
   [planet]
   (let [
         ; close-distance (if (< *num-ships* 6) 60 35)
-        close-distance 60
+        close-distance 80
+        ; close-distance 60
         filter-fn (fn [ship]
                     (and (= :undocked (-> ship :docking :status))
                          (< (math/distance-between ship planet) (+ close-distance (:radius planet)))))
@@ -211,22 +212,29 @@
     (or (and (zero? max-other-count)
              (zero? (count closeby-docked)))
         (and
-          (> my-count (+ 2 max-other-count))
-          (let [close-distance 25
+          ; (> my-count (+ 2 max-other-count))
+          (>= my-count max-other-count)
+          (let [close-distance 13
                 filter-fn (fn [ship]
                             (and (= :undocked (-> ship :docking :status))
                                  (< (math/distance-between ship planet) (+ close-distance (:radius planet)))))
                 docked-filter-fn (fn [ship]
-                                   (and (not= *player-id* (:owner-id ship))
+                                   (and
+                                        ; (not= *player-id* (:owner-id ship))
                                         (not= :undocked (-> ship :docking :status))
                                         (< (math/distance-between ship planet) (+ close-distance (:radius planet)))))
-                ; closeby-docked (filter docked-filter-fn ships)
+                closeby-docked (filter docked-filter-fn ships)
+                docked-by-owner (group-by :owner-id closeby-docked)
+                my-docked-count (count (get docked-by-owner *player-id*))
+                other-docked-count (reduce + (map count (vals (dissoc docked-by-owner *player-id*))))
                 nearby-fighters (filter filter-fn ships)
                 fighters-by-owner (group-by :owner-id nearby-fighters)
-                my-count (dec (count (get fighters-by-owner *player-id*)))
-                max-other-count (apply max 0 (map count (vals (dissoc fighters-by-owner *player-id*))))]
+                max-other-count (reduce + (map count (vals (dissoc fighters-by-owner *player-id*))))
+                my-count (dec (count (get fighters-by-owner *player-id*)))]
+                ; max-other-count (apply max 0 (map count (vals (dissoc fighters-by-owner *player-id*))))
             ;; TODO which is better?
-            (>= my-count (+ 2 max-other-count)))))))
+            (>= (+ my-count (* 0.125 my-docked-count))
+                (+ max-other-count (* 0.125 other-docked-count))))))))
             ; (>= my-count (max 1 (* 2 max-other-count)))
             ; (> my-count (max 1 (* 2 max-other-count))))))))
 

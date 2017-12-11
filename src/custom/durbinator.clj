@@ -493,6 +493,24 @@
         (change-ship-positions! move)
         (assoc move :subtype :retreat5)))))
 
+; (defn pick-moves-by-planets
+;   "Returns moves by pulling ships to the planets. Changed to focus on the nearest enemy-planets"
+;   [moving-ships]
+;   (let [enemy-planets [(first (reverse (map/sort-by-furthest (map/get-enemy-planets) (map/get-planets *player-id*))))]
+;         my-ships (map/get-fighters *player-id* moving-ships)
+;         assigned-ships (atom nil)]
+;     (for [planet enemy-planets
+;           :let [my-ships (remove #(some (set [%]) @assigned-ships)
+;                                  my-ships)
+;                 my-ship (map/nearest-entity planet my-ships)]
+;           :when my-ship
+;           :let [move (navigation/navigate-to-retreat my-ship planet)]
+;           :when move]
+;       (do
+;         (swap! assigned-ships conj my-ship)
+;         (change-ship-positions! move)
+;         (assoc move :subtype :retreat5)))))
+
 (defn get-best-move
   "Returns the best move for the current ship and target planet."
   [start-ms ship target]
@@ -587,9 +605,10 @@
                                         (= *player-id* (:owner-id %))
                                         (not (some (set [(:id %)]) moving-ships)))
                                   (vals *ships*))
-      ; (for [ship potential-ships
-      ;       :let [move (move-ship-to-planet! ship planet)]
-      ;       :when move]
+          ; potential-moves  (for [ship potential-ships
+          ;                        :let [move (move-ship-to-planet! ship planet)]
+          ;                        :when move]
+          ;                    move)
           closest-ship (map/nearest-entity planet potential-ships)]
       (when (and closest-ship
                  (let [all-fighters (filter #(and (= :undocked (-> % :docking :status))
@@ -597,6 +616,9 @@
                                             (vals *ships*))
                        closest-fighter (map/nearest-entity closest-ship all-fighters)]
                    (or (nil? closest-fighter) (= *player-id* (:owner-id closest-fighter)))))
+        ; (for [move potential-moves]
+        ;   (do (change-ship-positions! move)
+        ;       move))
         (let [move (move-ship-to-planet! closest-ship planet)]
           (do (change-ship-positions! move)
               move))))))
@@ -632,7 +654,7 @@
         best-planet-move (get-best-planet-moves best-planet moving-ships)
         ; best-planet-moves (get-best-planet-moves best-planet moving-ships)
         ; best-planet-moves (if (seq best-planet-moves) best-planet-moves [])
-        best-planet-moves (if best-planet-move [best-planet-move] [])
+        best-planet-moves (if (seq best-planet-move) (flatten [best-planet-move]) [])
         moving-ships (map #(get-in % [:ship :id]) (concat runaway-moves attack-moves defend-moves best-planet-moves))
 
 
