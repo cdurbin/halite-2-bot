@@ -576,7 +576,9 @@
 (defn get-best-planet-moves
   "Returns moves towards the best planet."
   [planet moving-ships]
-  (when (and (<= @all-out-attack 0)
+  (when (and
+             (not= 2 *num-players*)
+             (<= @all-out-attack 0)
              (<= *num-ships* 3)
              planet
              (some #{(:id planet)} (keys *safe-planets*)))
