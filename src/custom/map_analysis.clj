@@ -191,7 +191,7 @@
   [planet]
   (let [
         ; close-distance (if (< *num-ships* 6) 60 35)
-        close-distance 80
+        close-distance 84
         ; close-distance 60
         filter-fn (fn [ship]
                     (and (= :undocked (-> ship :docking :status))
@@ -233,8 +233,10 @@
                 my-count (dec (count (get fighters-by-owner *player-id*)))]
                 ; max-other-count (apply max 0 (map count (vals (dissoc fighters-by-owner *player-id*))))
             ;; TODO which is better?
-            (>= (+ my-count (* 0.125 my-docked-count))
-                (+ max-other-count (* 0.125 other-docked-count))))))))
+            (> (+ my-count (* 0.125 my-docked-count))
+               (+ max-other-count (* 0.125 other-docked-count))))))))
+            ; (>= (+ my-count (* 0.125 my-docked-count))
+            ;     (+ max-other-count (* 0.125 other-docked-count))))))))
             ; (>= my-count (max 1 (* 2 max-other-count)))
             ; (> my-count (max 1 (* 2 max-other-count))))))))
 
@@ -251,7 +253,8 @@
              (filter #(= *player-id* (:owner-id %))
                      (vals *ships*))))))
 
-(def advantage-range (* 2 (+ e/max-ship-speed e/ship-radius e/weapon-radius)))
+; (def advantage-range (* 2 (+ e/max-ship-speed e/ship-radius e/weapon-radius)))
+(def advantage-range (+ e/max-ship-speed e/ship-radius e/weapon-radius))
 
 (defn have-advantage?
   "Returns true if I have more fighters at a given position than the enemy."

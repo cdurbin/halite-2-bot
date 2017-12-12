@@ -81,8 +81,9 @@
 ; (def retreat-range 21.1)
 ; (def retreat-range-early 35)
 
-(def retreat-range 40)
-(def retreat-range-early 60)
+(def retreat-range 21.1)
+(def retreat-range-early 21.1)
+; (def retreat-range-early 60)
 
 ; (def retreat-range 50)
 ; (def retreat-range-early 70)
