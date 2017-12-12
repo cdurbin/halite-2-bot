@@ -379,7 +379,8 @@
         vulnerable-ships (get-vulnerable-ships potential-ships)]
     (doall
      (for [[defender ship enemy] vulnerable-ships
-           :let [move (navigation/navigate-to-defend-ship defender ship enemy)]
+           :let [advantage? (map/have-advantage? enemy)
+                 move (navigation/navigate-to-defend-ship defender ship enemy advantage?)]
            :when move]
        (do (change-ship-positions! move)
            move)))))
@@ -594,7 +595,7 @@
 (defn get-best-planet-moves
   "Returns moves towards the best planet."
   [planet moving-ships]
-  (when (and
+  (if (and
              (not= 2 *num-players*)
              (<= @all-out-attack 0)
              (<= *num-ships* 3)
@@ -621,7 +622,55 @@
         ;       move))
         (let [move (move-ship-to-planet! closest-ship planet)]
           (do (change-ship-positions! move)
-              move))))))
+              move))))
+    (if (and planet (> *num-ships* 20))
+      (let [potential-ships (filter #(and (= :undocked (-> % :docking :status))
+                                          (= *player-id* (:owner-id %))
+                                          (not (some (set [(:id %)]) moving-ships)))
+                                    (vals *ships*))
+            ; potential-moves  (for [ship potential-ships
+            ;                        :let [move (move-ship-to-planet! ship planet)]
+            ;                        :when move]
+            ;                    move)
+            closest-ship (map/nearest-entity planet potential-ships)]
+        (when (and closest-ship)
+          (let [move (move-ship-to-planet! closest-ship planet)]
+            (do (change-ship-positions! move)
+                move)))))))
+
+
+
+; (defn get-best-planet-moves
+;   "Returns moves towards the best planet."
+;   [planet moving-ships]
+;   (when (and
+;              (not= 2 *num-players*)
+;              (<= @all-out-attack 0)
+;              (<= *num-ships* 3)
+;              planet
+;              (some #{(:id planet)} (keys *safe-planets*)))
+;
+;     (let [potential-ships (filter #(and (= :undocked (-> % :docking :status))
+;                                         (= *player-id* (:owner-id %))
+;                                         (not (some (set [(:id %)]) moving-ships)))
+;                                   (vals *ships*))
+;           ; potential-moves  (for [ship potential-ships
+;           ;                        :let [move (move-ship-to-planet! ship planet)]
+;           ;                        :when move]
+;           ;                    move)
+;           closest-ship (map/nearest-entity planet potential-ships)]
+;       (when (and closest-ship
+;                  (let [all-fighters (filter #(and (= :undocked (-> % :docking :status))
+;                                                   (not= (:id closest-ship) (:id %)))
+;                                             (vals *ships*))
+;                        closest-fighter (map/nearest-entity closest-ship all-fighters)]
+;                    (or (nil? closest-fighter) (= *player-id* (:owner-id closest-fighter)))))
+;         ; (for [move potential-moves]
+;         ;   (do (change-ship-positions! move)
+;         ;       move))
+;         (let [move (move-ship-to-planet! closest-ship planet)]
+;           (do (change-ship-positions! move)
+;               move))))))
 
 
 (defn get-moves-for-turn
