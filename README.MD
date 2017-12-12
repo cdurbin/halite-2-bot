@@ -65,4 +65,8 @@ map_height = 2 * base_size
 
 * [ ] When retreating - retreat the minimum distance to still be safe
 * [ ] Go back to V33 and see if there are small changes from V34 and above to use
-* [ ]
+
+
+# 12/12
+  - Keep using nemesis
+  - Target 3 ships at every docked ship

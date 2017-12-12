@@ -41,6 +41,7 @@
 (defn find-nemesis
   "Returns the player I should focus on battling."
   [planets]
+  ; nil
   (let [my-planets (filter #(= *player-id* (:owner-id %)) planets)
         close-fighters (filter #(and (= :undocked (-> % :docking :status))
                                      (not= *player-id* (:owner-id %))
@@ -253,8 +254,9 @@
              (filter #(= *player-id* (:owner-id %))
                      (vals *ships*))))))
 
-; (def advantage-range (* 2 (+ e/max-ship-speed e/ship-radius e/weapon-radius)))
-(def advantage-range (+ e/max-ship-speed e/ship-radius e/weapon-radius))
+(def advantage-range (* 2 (+ e/max-ship-speed e/ship-radius e/weapon-radius)))
+; (def advantage-range (+ e/max-ship-speed e/ship-radius e/weapon-radius))
+; (def advantage-range (+ e/max-ship-speed e/ship-radius e/weapon-radius))
 
 (defn have-advantage?
   "Returns true if I have more fighters at a given position than the enemy."
@@ -279,13 +281,13 @@
              (> my-fighter-count enemy-count)))))
              ; (>= my-fighter-count enemy-count)))))
 
-(defn get-pesky-fighters-orig
+(defn get-pesky-fighters
   "Fighters near my planets or neutral planets."
   []
   (let [mine-or-neutral-planets (filter #(or (nil? (:owner-id %))
                                              (= *player-id* (:owner-id %)))
                                         (vals *planets*))
-        close-distance 56]
+        close-distance (if (<= *num-ships* 10) 130 21.1)]
     (set
       (for [planet mine-or-neutral-planets
             ship (vals *ships*)
@@ -294,7 +296,7 @@
                        (< (math/distance-between ship planet) close-distance))]
         ship))))
 
-(defn get-pesky-fighters
+(defn get-pesky-fighters-new
   "Fighters near my planets or neutral planets."
   []
   (filter #(and (not= *player-id* (:owner-id %))

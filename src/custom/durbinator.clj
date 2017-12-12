@@ -81,9 +81,11 @@
 ; (def retreat-range 21.1)
 ; (def retreat-range-early 35)
 
-(def retreat-range 21.1)
-(def retreat-range-early 21.1)
-; (def retreat-range-early 60)
+; (def retreat-range 21.1)
+; (def retreat-range-early 21.1)
+
+(def retreat-range 40)
+(def retreat-range-early 60)
 
 ; (def retreat-range 50)
 ; (def retreat-range-early 70)
@@ -106,7 +108,7 @@
     (if (or (> *num-ships* ignore-retreating-ship-count)
             (> (math/distance-between ship enemy-ship) (get-retreat-range *num-ships*)))
       (move-ship-to-attack ship enemy-ship)
-      (let [attack? (map/have-advantage? enemy-ship)]
+      (let [attack? (map/have-advantage? (custom-math/get-point-between ship enemy-ship 0.5))]
         (if attack?
           (move-ship-to-attack ship enemy-ship)
           (if (map/alone? ship enemy-ship *player-id* tag-team-range false)
@@ -120,7 +122,7 @@
     (if (or (> *num-ships* ignore-retreating-ship-count)
             (> (math/distance-between ship enemy-ship) (get-retreat-range *num-ships*)))
       (move-ship-to-attack ship enemy-ship)
-      (let [attack? (map/have-advantage? enemy-ship)]
+      (let [attack? (map/have-advantage? (custom-math/get-point-between ship enemy-ship 0.5))]
         (if attack?
           (move-ship-to-attack ship enemy-ship)
           (if (map/alone? ship enemy-ship *player-id* tag-team-range false)
@@ -230,7 +232,30 @@
 
 (def unprotected-distance
   "How far away we look for unprotected ships."
-  55)
+  84)
+
+(defn- find-unprotected-ships
+  "Helper function."
+  [potential-ships assigned-ships]
+  (for [enemy-ship (vals *docked-enemies*)
+        :let [no-help (navigation/unreachable? enemy-ship (filter #(= (:owner-id enemy-ship)
+                                                                      (:owner-id %))
+                                                                  potential-ships))]
+        :when no-help
+        :let [closest-ship (map/nearest-entity enemy-ship
+                                               (remove #(or (= (:id enemy-ship) (:id %))
+                                                            ; (not= *player-id* (:id %))
+                                                            (some (set [%]) @assigned-ships))
+                                                       potential-ships))]
+        :when (and (= *player-id* (:owner-id closest-ship))
+                   (not (some #{closest-ship} @assigned-ships)))
+        :let [distance (math/distance-between enemy-ship closest-ship)]
+        :when (< distance unprotected-distance)]
+    (do
+      (swap! assigned-ships conj closest-ship)
+      {:ship closest-ship
+       :enemy-ship enemy-ship
+       :distance distance})))
 
 (defn unprotected-enemy-ships
   "Returns a map of unprotected enemy ships with my ship as the key and the enemy ship as the value.
@@ -243,26 +268,65 @@
                                       (not (some (set [(:id %)]) moving-ships)))
                                 (vals *ships*))
         assigned-ships (atom nil)
-        all-permutations
-         (for [enemy-ship (vals *docked-enemies*)
-               :let [no-help (navigation/unreachable? enemy-ship (filter #(= (:owner-id enemy-ship)
-                                                                             (:owner-id %))
-                                                                         potential-ships))]
-               :when no-help
-               :let [closest-ship (map/nearest-entity enemy-ship
-                                                      (remove #(or (= (:id enemy-ship) (:id %))
-                                                                   (some (set [%]) @assigned-ships))
-                                                              potential-ships))]
-               :when (and (= *player-id* (:owner-id closest-ship))
-                          (not (some #{closest-ship} @assigned-ships)))
-               :let [distance (math/distance-between enemy-ship closest-ship)]
-               :when (< distance unprotected-distance)]
-           (do
-             (swap! assigned-ships conj closest-ship)
-             {:ship closest-ship
-              :enemy-ship enemy-ship
-              :distance distance}))
-        sorted-order (sort (utils/compare-by :distance utils/desc) all-permutations)]
+        all-permutations (find-unprotected-ships potential-ships assigned-ships)
+         ; (for [enemy-ship (vals *docked-enemies*)
+         ;       :let [no-help (navigation/unreachable? enemy-ship (filter #(= (:owner-id enemy-ship)
+         ;                                                                     (:owner-id %))
+         ;                                                                 potential-ships))]
+         ;       :when no-help
+         ;       :let [closest-ship (map/nearest-entity enemy-ship
+         ;                                              (remove #(or (= (:id enemy-ship) (:id %))
+         ;                                                           (some (set [%]) @assigned-ships))
+         ;                                                      potential-ships))]
+         ;       :when (and (= *player-id* (:owner-id closest-ship))
+         ;                  (not (some #{closest-ship} @assigned-ships)))
+         ;       :let [distance (math/distance-between enemy-ship closest-ship)]
+         ;       :when (< distance unprotected-distance)]
+         ;   (do
+         ;     (swap! assigned-ships conj closest-ship)
+         ;     {:ship closest-ship
+         ;      :enemy-ship enemy-ship
+         ;      :distance distance}))
+        all-permutations-2 (find-unprotected-ships potential-ships assigned-ships)
+         ; (for [enemy-ship (vals *docked-enemies*)
+         ;       :let [no-help (navigation/unreachable? enemy-ship (filter #(= (:owner-id enemy-ship)
+         ;                                                                     (:owner-id %))
+         ;                                                                 potential-ships))]
+         ;       :when no-help
+         ;       :let [closest-ship (map/nearest-entity enemy-ship
+         ;                                              (remove #(or (= (:id enemy-ship) (:id %))
+         ;                                                           (not= *player-id* (:id %))
+         ;                                                           (some (set [%]) @assigned-ships))
+         ;                                                      potential-ships))]
+         ;       :when (and (= *player-id* (:owner-id closest-ship))
+         ;                  (not (some #{closest-ship} @assigned-ships)))
+         ;       :let [distance (math/distance-between enemy-ship closest-ship)]
+         ;       :when (< distance unprotected-distance)]
+         ;   (do
+         ;     (swap! assigned-ships conj closest-ship)
+         ;     {:ship closest-ship
+         ;      :enemy-ship enemy-ship
+         ;      :distance distance}))
+        all-permutations-3 (find-unprotected-ships potential-ships assigned-ships)
+         ; (for [enemy-ship (vals *docked-enemies*)
+         ;       :let [no-help (navigation/unreachable? enemy-ship (filter #(= (:owner-id enemy-ship)
+         ;                                                                     (:owner-id %))
+         ;                                                                 potential-ships))]
+         ;       :when no-help
+         ;       :let [closest-ship (map/nearest-entity enemy-ship
+         ;                                              (remove #(or (= (:id enemy-ship) (:id %))
+         ;                                                           (some (set [%]) @assigned-ships))
+         ;                                                      potential-ships))]
+         ;       :when (and (= *player-id* (:owner-id closest-ship))
+         ;                  (not (some #{closest-ship} @assigned-ships)))
+         ;       :let [distance (math/distance-between enemy-ship closest-ship)]
+         ;       :when (< distance unprotected-distance)]
+         ;   (do
+         ;     (swap! assigned-ships conj closest-ship)
+         ;     {:ship closest-ship
+         ;      :enemy-ship enemy-ship
+         ;      :distance distance}))
+        sorted-order (sort (utils/compare-by :distance utils/desc) (concat all-permutations all-permutations-2 all-permutations-3))]
     ;; This makes sure that if the same ship is the closest to multiple it picks the closest one.
     (into {}
       (for [triple-map sorted-order]
@@ -380,7 +444,7 @@
         vulnerable-ships (get-vulnerable-ships potential-ships)]
     (doall
      (for [[defender ship enemy] vulnerable-ships
-           :let [advantage? (map/have-advantage? enemy)
+           :let [advantage? (map/have-advantage? (custom-math/get-point-between ship enemy 0.5))
                  move (navigation/navigate-to-defend-ship defender ship enemy advantage?)]
            :when move]
        (do (change-ship-positions! move)

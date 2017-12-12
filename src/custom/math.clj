@@ -51,6 +51,13 @@
         y (+ (hlt-math/get-y pos) (* distance (Math/sin angle)))]
     (hlt-math/->Position x y)))
 
+(defn get-point-between
+  "Returns a point between the two positions at percent."
+  [start end multiplier]
+  (let [angle (hlt-math/orient-towards start end)
+        distance (* multiplier (hlt-math/distance-between start end))]
+    (get-point start distance angle)))
+
 ; (defn get-values-for-segment-circle-intersects
 ;   "Optimization"
 ;   [p1 p2]
