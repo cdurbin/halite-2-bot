@@ -108,7 +108,7 @@
     (if (or (> *num-ships* ignore-retreating-ship-count)
             (> (math/distance-between ship enemy-ship) (get-retreat-range *num-ships*)))
       (move-ship-to-attack ship enemy-ship)
-      (let [attack? (map/have-advantage? (custom-math/get-point-between ship enemy-ship 0.5))]
+      (let [attack? (map/have-advantage? (custom-math/get-point-between ship enemy-ship 0.8))]
         (if attack?
           (move-ship-to-attack ship enemy-ship)
           (if (map/alone? ship enemy-ship *player-id* tag-team-range false)
@@ -122,7 +122,7 @@
     (if (or (> *num-ships* ignore-retreating-ship-count)
             (> (math/distance-between ship enemy-ship) (get-retreat-range *num-ships*)))
       (move-ship-to-attack ship enemy-ship)
-      (let [attack? (map/have-advantage? (custom-math/get-point-between ship enemy-ship 0.5))]
+      (let [attack? (map/have-advantage? (custom-math/get-point-between ship enemy-ship 0.8))]
         (if attack?
           (move-ship-to-attack ship enemy-ship)
           (if (map/alone? ship enemy-ship *player-id* tag-team-range false)
@@ -388,9 +388,9 @@
                                 my-ships)
         my-fighter-ships (filter #(= :undocked (-> % :docking :status))
                                 my-ships)
-        vulnerable-distance 42
+        ; vulnerable-distance 42
         ; vulnerable-distance 28
-        ; vulnerable-distance 19
+        vulnerable-distance 19
         ; vulnerable-distance 30
         potential-issues (for [enemy-ship (vals *pesky-fighters*)
                                :let [nearest-docked-ship (map/nearest-entity enemy-ship my-docked-ships)]
@@ -444,7 +444,7 @@
         vulnerable-ships (get-vulnerable-ships potential-ships)]
     (doall
      (for [[defender ship enemy] vulnerable-ships
-           :let [advantage? (map/have-advantage? (custom-math/get-point-between ship enemy 0.5))
+           :let [advantage? (map/have-advantage? (custom-math/get-point-between ship enemy 0.8))
                  move (navigation/navigate-to-defend-ship defender ship enemy advantage?)]
            :when move]
        (do (change-ship-positions! move)
