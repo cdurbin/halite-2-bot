@@ -193,11 +193,11 @@
                    (/ (* 2 distance) 3)
                    0)
         midpoint (custom-math/get-point friendly-ship distance angle)]
-    (if (and (not advantage?) (< distance 7))
-      (navigate-to ship (custom-math/get-point friendly-ship 7 angle)
-                   (merge default-navigation-opts {:buffer 0.0 :subtype :suicide}))
+    ; (if (and (not advantage?) (< distance 7))
+    ;   (navigate-to ship (custom-math/get-point friendly-ship 7 angle)
+    ;                (merge default-navigation-opts {:buffer 0.0 :subtype :suicide}))
       (navigate-to ship midpoint (merge default-navigation-opts {:buffer 1.1
-                                                                 :subtype :defend})))))
+                                                                 :subtype :defend}))))
 
 (defn navigate-to-dock
   "Returns a thrust move which will navigate this ship to the requested
