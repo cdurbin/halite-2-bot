@@ -108,8 +108,8 @@
     (if (or (> *num-ships* ignore-retreating-ship-count)
             (> (math/distance-between ship enemy-ship) (get-retreat-range *num-ships*)))
       (move-ship-to-attack ship enemy-ship)
-      ; (let [attack? (map/have-advantage? (custom-math/get-point-between ship enemy-ship 0.8))])
-      (let [attack? (map/have-advantage? enemy-ship)]
+      (let [attack? (map/have-advantage? (custom-math/get-point-between ship enemy-ship 0.8))]
+      ; (let [attack? (map/have-advantage? enemy-ship)]
         (if attack?
           (move-ship-to-attack ship enemy-ship)
           (if (map/alone? ship enemy-ship *player-id* tag-team-range false)
@@ -123,8 +123,8 @@
     (if (or (> *num-ships* ignore-retreating-ship-count)
             (> (math/distance-between ship enemy-ship) (get-retreat-range *num-ships*)))
       (move-ship-to-attack ship enemy-ship)
-      (let [attack? (map/have-advantage? enemy-ship)]
-      ; (let [attack? (map/have-advantage? (custom-math/get-point-between ship enemy-ship 0.8))]
+      ; (let [attack? (map/have-advantage? enemy-ship)]
+      (let [attack? (map/have-advantage? (custom-math/get-point-between ship enemy-ship 0.8))]
         (if attack?
           (move-ship-to-attack ship enemy-ship)
           (if (map/alone? ship enemy-ship *player-id* tag-team-range false)
@@ -391,8 +391,8 @@
         vulnerable-ships (get-vulnerable-ships potential-ships)]
     (doall
      (for [[defender ship enemy] vulnerable-ships
-           ; :let [advantage? (map/have-advantage? (custom-math/get-point-between ship enemy 0.8))]
-           :let [advantage? (map/have-advantage? enemy)
+           :let [advantage? (map/have-advantage? (custom-math/get-point-between ship enemy 0.8))
+           ; :let [advantage? (map/have-advantage? enemy)
                  move (navigation/navigate-to-defend-ship defender ship enemy advantage?)]
            :when move]
        (do (change-ship-positions! move)
