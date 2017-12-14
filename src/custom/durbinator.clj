@@ -357,7 +357,8 @@
           :when closest-defender
           :let [defender-distance (math/distance-between closest-defender vulnerable)]
           ;; Close enough to defend
-          :when (<= defender-distance (+ 7 distance))]
+          ; :when (<= defender-distance (+ 7 distance))
+          :when (<= defender-distance (+ 14 distance))]
       (do
          (swap! assigned-ships conj closest-defender)
          [closest-defender vulnerable enemy]))))
