@@ -70,3 +70,7 @@ map_height = 2 * base_size
 # 12/12
   - Keep using nemesis
   - Target 3 ships at every docked ship
+
+# 12/13
+  - Defending against attack - if can't win crash into their ships
+  - Fix best planet choice to pick closest planet (including extra dock slot)
