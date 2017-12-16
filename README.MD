@@ -74,3 +74,12 @@ map_height = 2 * base_size
 # 12/13
   - Defending against attack - if can't win crash into their ships
   - Fix best planet choice to pick closest planet (including extra dock slot)
+
+# 12/16
+  - Swarm
+    - Track anywhere I find a good attack place
+    - Track anywhere I find a safe retreat place
+    - Each turn check if there's any reachable attack place
+      - Move to the one that is closest to a planet I don't own
+      - If no attack place, look for the closest(? maybe another choice) safe retreat place and move there
+      - If neither, run through code as normal

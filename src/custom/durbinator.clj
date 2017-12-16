@@ -40,6 +40,7 @@
   [ship enemy-ship]
   (let [move (navigation/navigate-to-attack-ship ship enemy-ship)]
     (when (and move (pos? (:thrust move)))
+      (swap! map/attack-spots conj (custom-math/get-point ship (:thrust move) (:angle move)))
       (let [fighter? (= :undocked (-> enemy-ship :docking :status))
             attack-count (inc (get enemy-ship :attack-count 0))
             remove? (= 5 (:attack-count enemy-ship))]
@@ -57,7 +58,9 @@
 (defn move-ship-to-retreat
   "Moves the ship to retreat from the enemy ship."
   [ship enemy-ship]
-  (let [my-ships (map/get-my-ships) ;; TODO should this only be fighters?
+  (let [
+        ; my-ships (map/get-my-ships) ;; TODO should this only be fighters?
+        my-ships (map/get-fighters *player-id*) ;; TODO should this only be fighters?
         my-other-ships (remove #(= (:id ship) (:id %))
                                my-ships)
         closest-friendly-ship (map/nearest-entity ship my-other-ships)]
@@ -108,8 +111,8 @@
     (if (or (> *num-ships* ignore-retreating-ship-count)
             (> (math/distance-between ship enemy-ship) (get-retreat-range *num-ships*)))
       (move-ship-to-attack ship enemy-ship)
-      (let [attack? (map/have-advantage? (custom-math/get-point-between ship enemy-ship 0.8))]
-      ; (let [attack? (map/have-advantage? enemy-ship)]
+      ; (let [attack? (map/have-advantage? (custom-math/get-point-between ship enemy-ship 1.1))]
+      (let [attack? (map/have-advantage? enemy-ship)]
         (if attack?
           (move-ship-to-attack ship enemy-ship)
           (if (map/alone? ship enemy-ship *player-id* tag-team-range false)
@@ -123,13 +126,22 @@
     (if (or (> *num-ships* ignore-retreating-ship-count)
             (> (math/distance-between ship enemy-ship) (get-retreat-range *num-ships*)))
       (move-ship-to-attack ship enemy-ship)
-      ; (let [attack? (map/have-advantage? enemy-ship)]
-      (let [attack? (map/have-advantage? (custom-math/get-point-between ship enemy-ship 0.8))]
+      (let [attack? (map/have-advantage? enemy-ship)]
+      ; (let [attack? (map/have-advantage? (custom-math/get-point-between ship enemy-ship 1.1))]
         (if attack?
           (move-ship-to-attack ship enemy-ship)
           (if (map/alone? ship enemy-ship *player-id* tag-team-range false)
             (move-ship-to-retreat ship enemy-ship)
             (move-ship-to-retreat-for-real ship enemy-ship)))))))
+
+(defn get-reachable-attack-spot-move
+  "Figures out the move to make in order to move to an attack spot."
+  [ship]
+  (when-let [best-spot (map/get-best-attack-spot ship)]
+    (log "I am trying to move to best spot" best-spot)
+    (let [move (navigation/navigate-to-friendly-ship ship best-spot)]
+      (when (and move (pos? (:thrust move)))
+        move))))
 
 (defn compute-move-closest-planet*
   "Picks the move for the ship based on proximity to planets and fighters near planets."
@@ -138,31 +150,34 @@
     (if (or times-up?
             (not= :undocked (-> ship :docking :status)))
       nil
-      (if (pos? @all-out-attack)
-        (move-to-nearest-enemy-ship ship (concat (vals *pesky-fighters*) (vals *docked-enemies*)))
+      (let [move (get-reachable-attack-spot-move ship)]
+        (if move
+          move
+          (if (pos? @all-out-attack)
+            (move-to-nearest-enemy-ship ship (concat (vals *pesky-fighters*) (vals *docked-enemies*)))
 
-        (when-let [planets (filter #(or (not= *player-id* (:owner-id %))
-                                        (e/any-remaining-docking-spots? %))
-                                   (vals *planets*))]
-          (let [nearest-planet
-                (:nearest-planet
-                 (reduce (fn [{:keys [min-distance nearest-planet]} planet]
-                           (let [distance-to-planet (- (math/distance-between ship planet) (:radius planet))]
-                             (if (< distance-to-planet min-distance)
-                               {:min-distance distance-to-planet :nearest-planet planet}
-                               {:min-distance min-distance :nearest-planet nearest-planet})))
-                         {:min-distance infinity}
-                         planets))]
-            (if (and nearest-planet
-                     (some #{(:id nearest-planet)} (keys *safe-planets*))
-                     ; No fighters close to taking me
-                     (let [all-fighters (filter #(and (= :undocked (-> ship :docking :status))
-                                                      (not= (:id ship) (:id %)))
-                                                (vals *ships*))
-                           closest-fighter (map/nearest-entity ship all-fighters)]
-                       (or (nil? closest-fighter) (= *player-id* (:owner-id closest-fighter)))))
-              (move-ship-to-planet! ship nearest-planet)
-              (move-to-nearest-enemy-ship ship (concat (vals *pesky-fighters*) (vals *docked-enemies*))))))))))
+            (when-let [planets (filter #(or (not= *player-id* (:owner-id %))
+                                            (e/any-remaining-docking-spots? %))
+                                       (vals *planets*))]
+              (let [nearest-planet
+                    (:nearest-planet
+                     (reduce (fn [{:keys [min-distance nearest-planet]} planet]
+                               (let [distance-to-planet (- (math/distance-between ship planet) (:radius planet))]
+                                 (if (< distance-to-planet min-distance)
+                                   {:min-distance distance-to-planet :nearest-planet planet}
+                                   {:min-distance min-distance :nearest-planet nearest-planet})))
+                             {:min-distance infinity}
+                             planets))]
+                (if (and nearest-planet
+                         (some #{(:id nearest-planet)} (keys *safe-planets*))
+                         ; No fighters close to taking me
+                         (let [all-fighters (filter #(and (= :undocked (-> ship :docking :status))
+                                                          (not= (:id ship) (:id %)))
+                                                    (vals *ships*))
+                               closest-fighter (map/nearest-entity ship all-fighters)]
+                           (or (nil? closest-fighter) (= *player-id* (:owner-id closest-fighter)))))
+                  (move-ship-to-planet! ship nearest-planet)
+                  (move-to-nearest-enemy-ship ship (concat (vals *pesky-fighters*) (vals *docked-enemies*))))))))))))
 
 (defn calculate-end-positions
   "Returns a ship in its end position based on thrust for this turn."
@@ -234,7 +249,7 @@
 
 (def unprotected-distance
   "How far away we look for unprotected ships."
-  84)
+  72)
 
 (defn- find-unprotected-ships
   "Helper function."
@@ -271,9 +286,10 @@
                                 (vals *ships*))
         assigned-ships (atom nil)
         all-permutations (find-unprotected-ships potential-ships assigned-ships)
-        all-permutations-2 (find-unprotected-ships potential-ships assigned-ships)
-        all-permutations-3 (find-unprotected-ships potential-ships assigned-ships)
-        sorted-order (sort (utils/compare-by :distance utils/desc) (concat all-permutations all-permutations-2 all-permutations-3))]
+        ; all-permutations-2 (find-unprotected-ships potential-ships assigned-ships)
+        ; all-permutations-3 (find-unprotected-ships potential-ships assigned-ships)
+        ; sorted-order (sort (utils/compare-by :distance utils/desc) (concat all-permutations all-permutations-2 all-permutations-3))
+        sorted-order (sort (utils/compare-by :distance utils/desc) all-permutations)]
     ;; This makes sure that if the same ship is the closest to multiple it picks the closest one.
     (into {}
       (for [triple-map sorted-order]
@@ -283,7 +299,7 @@
   "Returns moves to attack the unprotected enemy ships"
   [moving-ships]
   (let [ship-attacks (unprotected-enemy-ships moving-ships)]
-    (log "unprotected enemy ships are:" ship-attacks)
+    ; (log "unprotected enemy ships are:" ship-attacks)
     (doall
      (for [[ship enemy-ship] ship-attacks
            :let [move (navigation/navigate-to-attack-ship ship enemy-ship)]
@@ -335,8 +351,8 @@
                                 my-ships)
         my-fighter-ships (filter #(= :undocked (-> % :docking :status))
                                 my-ships)
-        ; vulnerable-distance 42
-        vulnerable-distance 28
+        vulnerable-distance 42
+        ; vulnerable-distance 35
         ; vulnerable-distance 19
         ; vulnerable-distance 30
         potential-issues (for [enemy-ship (vals *pesky-fighters*)
@@ -391,9 +407,12 @@
         vulnerable-ships (get-vulnerable-ships potential-ships)]
     (doall
      (for [[defender ship enemy] vulnerable-ships
-           :let [advantage? (map/have-advantage? (custom-math/get-point-between ship enemy 0.8))
-           ; :let [advantage? (map/have-advantage? enemy)
-                 move (navigation/navigate-to-defend-ship defender ship enemy advantage?)]
+           ; :let [advantage? (map/have-advantage? (custom-math/get-point-between ship enemy 1.1))
+           :let [advantage? (map/have-advantage? enemy)
+                 move (get-reachable-attack-spot-move ship)
+                 move (if move
+                        move
+                        (navigation/navigate-to-defend-ship defender ship enemy advantage?))]
            :when move]
        (do (change-ship-positions! move)
            move)))))
@@ -455,7 +474,9 @@
                                      (remove #(= *player-id* %)
                                              (keys *owner-ships*)))
         my-ship (first (vals (get *owner-ships* *player-id*)))]
-    (reset! map/avoid-planets four-center-planets)
+    (log "Avoiding" four-center-planets)
+    (when (> *num-players* 2)
+      (reset! map/avoid-planets (map :id four-center-planets)))
     (doseq [[owner {:keys [pos distance]}] enemy-positions]
       (let [distance-to-pos (math/distance-between my-ship pos)
             num-turns-to-planet (Math/ceil (/ (- distance e/dock-radius) e/max-ship-speed))
@@ -532,35 +553,38 @@
     (if (or times-up?
             (not= :undocked (-> ship :docking :status)))
       nil
-      (if (pos? @all-out-attack)
-        (move-to-nearest-enemy-ship ship (concat (vals *pesky-fighters*) (vals *docked-enemies*)))
+      (let [move (get-reachable-attack-spot-move ship)]
+        (if move
+          move
+          (if (pos? @all-out-attack)
+            (move-to-nearest-enemy-ship ship (concat (vals *pesky-fighters*) (vals *docked-enemies*)))
 
-        (let [planets (filter #(e/any-remaining-docking-spots? %)
-                              (vals *planets*))]
-        ; (when-let [planets (filter #(or (not= *player-id* (:owner-id %))
-        ;                                 (e/any-remaining-docking-spots? %))
-        ;                            (vals *planets*))]
-          (let [nearest-planet
-                (:nearest-planet
-                 (reduce (fn [{:keys [min-distance nearest-planet]} planet]
-                           (let [distance-to-planet (- (math/distance-between ship planet) (:radius planet))]
-                             (if (< distance-to-planet min-distance)
-                               {:min-distance distance-to-planet :nearest-planet planet}
-                               {:min-distance min-distance :nearest-planet nearest-planet})))
-                         {:min-distance infinity}
-                         planets))]
-            (if (and nearest-planet
-                     (some #{(:id nearest-planet)} (keys *safe-planets*))
-                     ; No fighters close to taking me
-                     (let [all-fighters (filter #(and (= :undocked (-> % :docking :status))
-                                                      (not= (:id ship) (:id %)))
-                                                (vals *ships*))
-                           closest-fighter (map/nearest-entity ship all-fighters)]
-                       (or (nil? closest-fighter) (= *player-id* (:owner-id closest-fighter)))))
-              (move-ship-to-planet! ship nearest-planet)
-              ; (move-to-nearest-enemy-ship-or-target ship (vals *docked-enemies*) target)
-              (move-to-nearest-enemy-ship-or-target ship (concat (vals *pesky-fighters*) (vals *docked-enemies*))
-                                                    target))))))))
+            (let [planets (filter #(e/any-remaining-docking-spots? %)
+                                  (vals *planets*))]
+            ; (when-let [planets (filter #(or (not= *player-id* (:owner-id %))
+            ;                                 (e/any-remaining-docking-spots? %))
+            ;                            (vals *planets*))]
+              (let [nearest-planet
+                    (:nearest-planet
+                     (reduce (fn [{:keys [min-distance nearest-planet]} planet]
+                               (let [distance-to-planet (- (math/distance-between ship planet) (:radius planet))]
+                                 (if (< distance-to-planet min-distance)
+                                   {:min-distance distance-to-planet :nearest-planet planet}
+                                   {:min-distance min-distance :nearest-planet nearest-planet})))
+                             {:min-distance infinity}
+                             planets))]
+                (if (and nearest-planet
+                         (some #{(:id nearest-planet)} (keys *safe-planets*))
+                         ; No fighters close to taking me
+                         (let [all-fighters (filter #(and (= :undocked (-> % :docking :status))
+                                                          (not= (:id ship) (:id %)))
+                                                    (vals *ships*))
+                               closest-fighter (map/nearest-entity ship all-fighters)]
+                           (or (nil? closest-fighter) (= *player-id* (:owner-id closest-fighter)))))
+                  (move-ship-to-planet! ship nearest-planet)
+                  ; (move-to-nearest-enemy-ship-or-target ship (vals *docked-enemies*) target)
+                  (move-to-nearest-enemy-ship-or-target ship (concat (vals *pesky-fighters*) (vals *docked-enemies*))
+                                                        target))))))))))
               ; (navigation/navigate-to-retreat ship target))))))))
 
 ; (defn get-fighter-moves
@@ -699,6 +723,7 @@
         ; ; best-planet-moves (if (seq best-planet-moves) best-planet-moves [])
         ; best-planet-moves (if best-planet-move [best-planet-move] [])
         ; moving-ships (map #(get-in % [:ship :id]) (concat runaway-moves best-planet-moves))
+
         defend-moves (defend-vulnerable-ships moving-ships)
         ; moving-ships (map #(get-in % [:ship :id]) (concat defend-moves runaway-moves best-planet-moves))
         moving-ships (map #(get-in % [:ship :id]) (concat defend-moves runaway-moves))
@@ -710,8 +735,11 @@
                        ; moving-ships (map #(get-in % [:ship :id]) (concat runaway-moves attack-moves defend-moves planet-moves))
 
         best-planet (if (= *num-players* 2)
-                      (map/my-best-planet)
-                      (map/corner-planet))
+                      ; (map/my-best-planet)
+                      (map/closest-dockable-planet)
+                      (if (> *num-ships* 8)
+                        (map/closest-dockable-planet)
+                        (map/corner-planet)))
                       ; (map/safest-planet))
         best-planet-move (get-best-planet-moves best-planet moving-ships)
         ; best-planet-moves (get-best-planet-moves best-planet moving-ships)

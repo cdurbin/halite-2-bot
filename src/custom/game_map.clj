@@ -19,3 +19,7 @@
 (def ^:dynamic *num-players*
   "Number of players left with ships."
   0)
+
+(def ^:dynamic *attack-spots*
+  "Locations to attack."
+  nil)
