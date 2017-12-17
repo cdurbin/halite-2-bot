@@ -40,7 +40,7 @@
   [ship enemy-ship]
   (let [move (navigation/navigate-to-attack-ship ship enemy-ship)]
     (when (and move (pos? (:thrust move)))
-      (swap! map/attack-spots conj (custom-math/get-point ship (:thrust move) (:angle move)))
+      ; (swap! map/attack-spots conj (custom-math/get-point ship (:thrust move) (:angle move)))
       (let [fighter? (= :undocked (-> enemy-ship :docking :status))
             attack-count (inc (get enemy-ship :attack-count 0))
             remove? (= 5 (:attack-count enemy-ship))]
@@ -137,11 +137,12 @@
 (defn get-reachable-attack-spot-move
   "Figures out the move to make in order to move to an attack spot."
   [ship]
-  (when-let [best-spot (map/get-best-attack-spot ship)]
-    (log "I am trying to move to best spot" best-spot)
-    (let [move (navigation/navigate-to-friendly-ship ship best-spot)]
-      (when (and move (pos? (:thrust move)))
-        move))))
+  nil)
+  ; (when-let [best-spot (map/get-best-attack-spot ship)]
+  ;   (log "I am trying to move to best spot" best-spot)
+  ;   (let [move (navigation/navigate-to-friendly-ship ship best-spot)]
+  ;     (when (and move (pos? (:thrust move)))
+  ;       move))))
 
 (defn compute-move-closest-planet*
   "Picks the move for the ship based on proximity to planets and fighters near planets."
