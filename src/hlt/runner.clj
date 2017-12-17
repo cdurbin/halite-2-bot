@@ -56,4 +56,5 @@
       (do
         (log "==== Turn" turn)
         (let [moves (get-moves-for-turn-fn turn)]
+          ; (log "Moves" moves)
           (io/send-moves moves)))))))

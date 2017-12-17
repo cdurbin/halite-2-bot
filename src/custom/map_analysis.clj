@@ -235,7 +235,7 @@
                 nearby-fighters (filter filter-fn ships)
                 fighters-by-owner (group-by :owner-id nearby-fighters)
                 max-other-count (reduce + (map count (vals (dissoc fighters-by-owner *player-id*))))
-                my-count (dec (count (get fighters-by-owner *player-id*)))
+                ; my-count (dec (count (get fighters-by-owner *player-id*)))
                 my-count (if (and (< *num-ships* 5) (pos? max-other-count))
                            (dec my-count)
                            my-count)]
@@ -262,8 +262,9 @@
              (filter #(= *player-id* (:owner-id %))
                      (vals *ships*))))))
 
-; (def advantage-range (* 2 (+ e/max-ship-speed e/ship-radius e/weapon-radius)))
-(def advantage-range (+ e/max-ship-speed e/ship-radius e/weapon-radius))
+; (def advantage-range (* 3 (+ e/max-ship-speed e/ship-radius e/weapon-radius)))
+(def advantage-range (* 2 (+ e/max-ship-speed e/ship-radius e/weapon-radius)))
+; (def advantage-range (+ e/max-ship-speed e/ship-radius e/weapon-radius))
 
 (defn have-advantage?
   "Returns true if I have more fighters at a given position than the enemy."

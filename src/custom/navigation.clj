@@ -10,7 +10,7 @@
 
 (def default-navigation-opts
   (assoc hlt-navigation/default-navigation-opts
-         :max-corrections 200 :buffer 0 :avoid-attack true))
+         :max-corrections 360 :buffer 0 :avoid-attack true))
 
 (def reverse-nagivation-opts
   (assoc default-navigation-opts :angular-step (/ Math/PI -180.0)))
@@ -74,6 +74,11 @@
   [position ships]
   (not (some? (seq (filter #(< (math/distance-between position %) safe-radius) ships)))))
 
+; (defn really-close?
+;   "Returns true if there's a ."
+;   [position ships]
+;   (some? (seq (filter #(< (math/distance-between position %) safe-radius) ships))))
+
 (defn navigate-to
   "Returns a thrust move that moves the ship to the provided goal. The
   goal is treated as a point, i.e. the thrust move attempts to move
@@ -95,6 +100,9 @@
                        (remove #(or (= *player-id* (:owner-id %))
                                     (not= (:undocked (-> % :docking :status))))
                                obstacles))
+         avoid-attack (if (unreachable? ship other-ships)
+                        avoid-attack
+                        false)
          thrust (int (min (- distance buffer) max-thrust))]
      (if (< distance buffer)
        (e/thrust-move ship 0 first-angle)
@@ -107,7 +115,7 @@
                (if (or (not (valid-point? point))
                        (and avoid-attack (not (unreachable? point other-ships)))
                        (and avoid-obstacles (first (new-entities-between ship point obstacles))))
-                   (recur (rest iterations))
+                 (recur (rest iterations))
                  (assoc (e/thrust-move ship (min max-thrust thrust) angle) :subtype subtype))))))))))
 
 ; (defn navigate-to
@@ -150,20 +158,41 @@
    (navigate-to-attack-ship ship goal false))
   ([ship goal avoid-attack?]
    (navigate-to ship goal
-                (merge default-navigation-opts {:buffer 2.5
+                (merge default-navigation-opts {:buffer 3.5
                                                 :subtype :attack
                                                 :avoid-attack avoid-attack?}))))
+                                                ; :avoid-attack false}))))
 
 (defn navigate-to-attack-docked-ship
   "Navigate to with a buffer to not crash into ship."
   ([ship goal]
    (navigate-to-attack-docked-ship ship goal false))
   ([ship goal avoid-attack?]
-   (navigate-to ship goal (merge default-navigation-opts {:buffer 1.1 :subtype :docked-attack
+   (navigate-to ship goal (merge default-navigation-opts {:buffer 1.1
+                                                          :subtype :docked-attack
+                                                          ; :avoid-attack false
                                                           :avoid-attack avoid-attack?}))))
 
 (def retreat-iterations 180)
 (def retreat-angular-step (/ 360 retreat-iterations))
+
+; (defn navigate-to-retreat-ship
+;   "Attempt to retreat and pull the ships away from my planets. Pick four points and make sure
+;   I cannot be attacked from them."
+;   [ship goal]
+;   (let [ships (remove #(or (= *player-id* (:owner-id %))
+;                            (not= :undocked (-> % :docking :status)))
+;                       (vals *ships*))]
+;     ; (loop [angle (custom-math/orient-away ship goal)
+;     ;        iteration 0]
+;     ;   (let [goal (custom-math/get-point ship e/max-ship-speed angle)]
+;     ;     (if (unreachable? goal ships)
+;     (navigate-to ship goal (merge default-navigation-opts {:buffer 0.0
+;                                                            :max-thrust e/max-ship-speed
+;                                                            :subtype :retreat}))))
+          ; (when (<= iteration retreat-iterations)
+          ;   (recur (mod (+ retreat-angular-step angle) 360)
+          ;          (inc iteration)))]))
 
 (defn navigate-to-retreat-ship
   "Attempt to retreat and pull the ships away from my planets. Pick four points and make sure
@@ -205,11 +234,11 @@
                    (/ (* 2 distance) 3)
                    0)
         midpoint (custom-math/get-point friendly-ship distance angle)]
-    (if (and (not advantage?) (< distance 7))
-      (navigate-to ship (custom-math/get-point friendly-ship 7 angle)
-                   (merge default-navigation-opts {:buffer 0.0 :subtype :suicide}))
-      (navigate-to ship midpoint (merge default-navigation-opts {:buffer 1.1
-                                                                 :subtype :defend})))))
+    ; (if (and (not advantage?) (< distance 7))
+    ;   (navigate-to ship (custom-math/get-point friendly-ship 7 angle)
+    ;                (merge default-navigation-opts {:buffer 0.0 :subtype :suicide}))
+    (navigate-to ship midpoint (merge default-navigation-opts {:buffer 1.1
+                                                               :subtype :defend}))))
 
 (defn navigate-to-dock
   "Returns a thrust move which will navigate this ship to the requested
@@ -227,6 +256,21 @@
   [position planet]
   (let [distance-from-planet (- (math/distance-between position planet) (:radius planet))]
     (< distance-from-planet too-close-distance)))
+
+; (defn navigate-to-retreat
+;   "Attempt to retreat and pull the ships away from my planets and towards their own.
+;   I cannot be attacked from them."
+;   [ship planet]
+;   (let [ships (remove #(or (= *player-id* (:owner-id %))
+;                            (not= :undocked (-> % :docking :status)))
+;                       (vals *ships*))
+;         orig-angle (math/orient-towards ship planet)
+;         orig-planet planet
+;         angle orig-angle
+;         planet orig-planet]
+;     (navigate-to ship planet (merge default-navigation-opts {:buffer 0.0
+;                                                              :max-thrust e/max-ship-speed
+;                                                              :subtype :retreat3}))))
 
 (defn navigate-to-retreat
   "Attempt to retreat and pull the ships away from my planets and towards their own.

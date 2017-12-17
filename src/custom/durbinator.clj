@@ -39,7 +39,7 @@
   "Moves the ship to attack the enemy ship."
   [ship enemy-ship]
   (let [move (navigation/navigate-to-attack-ship ship enemy-ship
-                                                 (> (math/distance-between ship enemy-ship) 12.6))]
+                                                 (> (math/distance-between ship enemy-ship) 21.1))]
     (when (and move (pos? (:thrust move)))
       ; (swap! map/attack-spots conj (custom-math/get-point ship (:thrust move) (:angle move)))
       (let [fighter? (= :undocked (-> enemy-ship :docking :status))
@@ -81,7 +81,8 @@
       (navigation/navigate-to-retreat ship closest-enemy-planet)
       (navigation/navigate-to-retreat-ship ship enemy-ship))))
 
-(def tag-team-range 5)
+; (def tag-team-range 5)
+(def tag-team-range 8)
 ; (def retreat-range 21.1)
 ; (def retreat-range-early 35)
 
@@ -237,7 +238,9 @@
                                                       (not= (:id ship) (:id %)))
                                                 (vals *ships*))
                            closest-fighter (map/nearest-entity ship all-fighters)]
-                       (or (nil? closest-fighter) (= *player-id* (:owner-id closest-fighter)))))
+                       (or (nil? closest-fighter)
+                           (= *player-id* (:owner-id closest-fighter))
+                           (> (math/distance-between ship closest-fighter) 21))))
               (move-ship-to-planet! ship best-planet)
               (move-to-nearest-enemy-ship ship (concat (vals *pesky-fighters*) (vals *docked-enemies*))))))))))
 
@@ -305,7 +308,7 @@
     (doall
      (for [[ship enemy-ship] ship-attacks
            :let [move (navigation/navigate-to-attack-docked-ship
-                       ship enemy-ship (< (math/distance-between ship enemy-ship) 12.6))]
+                       ship enemy-ship (> (math/distance-between ship enemy-ship) 21.1))]
            :when move]
        (do (change-ship-positions! move)
            move)))))
@@ -583,7 +586,9 @@
                                                           (not= (:id ship) (:id %)))
                                                     (vals *ships*))
                                closest-fighter (map/nearest-entity ship all-fighters)]
-                           (or (nil? closest-fighter) (= *player-id* (:owner-id closest-fighter)))))
+                           (or (nil? closest-fighter)
+                               (= *player-id* (:owner-id closest-fighter))
+                               (> (math/distance-between ship closest-fighter) 21))))
                   (move-ship-to-planet! ship nearest-planet)
                   ; (move-to-nearest-enemy-ship-or-target ship (vals *docked-enemies*) target)
                   (move-to-nearest-enemy-ship-or-target ship (concat (vals *pesky-fighters*) (vals *docked-enemies*))
