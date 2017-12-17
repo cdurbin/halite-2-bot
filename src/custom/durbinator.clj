@@ -38,12 +38,13 @@
 (defn move-ship-to-attack
   "Moves the ship to attack the enemy ship."
   [ship enemy-ship]
-  (let [move (navigation/navigate-to-attack-ship ship enemy-ship)]
+  (let [move (navigation/navigate-to-attack-ship ship enemy-ship
+                                                 (> (math/distance-between ship enemy-ship) 12.6))]
     (when (and move (pos? (:thrust move)))
       ; (swap! map/attack-spots conj (custom-math/get-point ship (:thrust move) (:angle move)))
       (let [fighter? (= :undocked (-> enemy-ship :docking :status))
             attack-count (inc (get enemy-ship :attack-count 0))
-            remove? (= 5 (:attack-count enemy-ship))]
+            remove? (= 4 (:attack-count enemy-ship))]
         (if fighter?
           (if remove?
             (set! *pesky-fighters* (dissoc *pesky-fighters* (:id enemy-ship)))
@@ -303,7 +304,8 @@
     ; (log "unprotected enemy ships are:" ship-attacks)
     (doall
      (for [[ship enemy-ship] ship-attacks
-           :let [move (navigation/navigate-to-attack-ship ship enemy-ship)]
+           :let [move (navigation/navigate-to-attack-docked-ship
+                       ship enemy-ship (< (math/distance-between ship enemy-ship) 12.6))]
            :when move]
        (do (change-ship-positions! move)
            move)))))

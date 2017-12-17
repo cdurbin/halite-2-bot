@@ -10,7 +10,7 @@
 
 (def default-navigation-opts
   (assoc hlt-navigation/default-navigation-opts
-         :max-corrections 200 :buffer 0))
+         :max-corrections 200 :buffer 0 :avoid-attack true))
 
 (def reverse-nagivation-opts
   (assoc default-navigation-opts :angular-step (/ Math/PI -180.0)))
@@ -64,6 +64,15 @@
     {:max-thrust thrust
      :angular-step (if (zero? opposite) (* -1 iterations angular-step) (* iterations angular-step))}))
 
+(def safe-radius
+  "How far away a spot is guaranteed to be safe."
+  (+ e/max-ship-speed (* 2 e/ship-radius) e/weapon-radius 0.6))
+  ; (+ e/max-ship-speed (* 2 e/ship-radius) e/weapon-radius))
+
+(defn unreachable?
+  "Returns true if none of the passed in ships can attack this position on the map."
+  [position ships]
+  (not (some? (seq (filter #(< (math/distance-between position %) safe-radius) ships)))))
 
 (defn navigate-to
   "Returns a thrust move that moves the ship to the provided goal. The
@@ -75,13 +84,17 @@
   ([ship goal]
    (navigate-to ship goal default-navigation-opts))
   ([ship goal {:keys [max-corrections avoid-obstacles
-                      angular-step max-thrust buffer subtype]
+                      angular-step max-thrust buffer subtype avoid-attack]
                :as opts}]
    (let [distance (math/distance-between ship goal)
          first-angle (math/orient-towards ship goal)
          obstacles (figure-out-potential-obstacles ship (remove #(or (= (:id ship) (:id %))
                                                                      (= (:id goal) (:id %)))
                                                                 (vals *ships*)))
+         other-ships (when avoid-attack
+                       (remove #(or (= *player-id* (:owner-id %))
+                                    (not= (:undocked (-> % :docking :status))))
+                               obstacles))
          thrust (int (min (- distance buffer) max-thrust))]
      (if (< distance buffer)
        (e/thrust-move ship 0 first-angle)
@@ -92,6 +105,7 @@
              (let [angle (+ first-angle angular-step)
                    point (custom-math/get-point ship (min max-thrust thrust) angle)]
                (if (or (not (valid-point? point))
+                       (and avoid-attack (not (unreachable? point other-ships)))
                        (and avoid-obstacles (first (new-entities-between ship point obstacles))))
                    (recur (rest iterations))
                  (assoc (e/thrust-move ship (min max-thrust thrust) angle) :subtype subtype))))))))))
@@ -132,23 +146,21 @@
 
 (defn navigate-to-attack-ship
   "Navigate to with a buffer to not crash into ship."
-  [ship goal]
-  (navigate-to ship goal (merge default-navigation-opts {:buffer 3.5 :subtype :attack})))
+  ([ship goal]
+   (navigate-to-attack-ship ship goal false))
+  ([ship goal avoid-attack?]
+   (navigate-to ship goal
+                (merge default-navigation-opts {:buffer 2.5
+                                                :subtype :attack
+                                                :avoid-attack avoid-attack?}))))
 
 (defn navigate-to-attack-docked-ship
   "Navigate to with a buffer to not crash into ship."
-  [ship goal]
-  (navigate-to ship goal (merge default-navigation-opts {:buffer 1.1 :subtype :docked-attack})))
-
-(def safe-radius
-  "How far away a spot is guaranteed to be safe."
-  (+ e/max-ship-speed (* 2 e/ship-radius) e/weapon-radius 0.6))
-  ; (+ e/max-ship-speed (* 2 e/ship-radius) e/weapon-radius))
-
-(defn unreachable?
-  "Returns true if none of the passed in ships can attack this position on the map."
-  [position ships]
-  (not (some? (seq (filter #(< (math/distance-between position %) safe-radius) ships)))))
+  ([ship goal]
+   (navigate-to-attack-docked-ship ship goal false))
+  ([ship goal avoid-attack?]
+   (navigate-to ship goal (merge default-navigation-opts {:buffer 1.1 :subtype :docked-attack
+                                                          :avoid-attack avoid-attack?}))))
 
 (def retreat-iterations 180)
 (def retreat-angular-step (/ 360 retreat-iterations))
