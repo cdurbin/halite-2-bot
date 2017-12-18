@@ -545,11 +545,14 @@
   []
   (let [planets (if (= 2 *num-players*)
                   (vals *planets*)
-                  (remove avoid-planet? (vals *planets*)))]
-    (filter #(or (nil? (:owner-id %))
-                 (and (= *player-id* (:owner-id %))
-                      (e/any-remaining-docking-spots? %)))
-            planets)))
+                  (remove avoid-planet? (vals *planets*)))
+        dockable-planets (filter #(nil? (:owner-id %))
+                                 planets)]
+    (if (seq dockable-planets)
+      dockable-planets
+      (filter #(and (= *player-id* (:owner-id %))
+                    (e/any-remaining-docking-spots? %))
+              planets))))
 
 (defn closest-dockable-planet
   "Returns the closest planet I can dock at."
