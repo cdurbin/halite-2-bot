@@ -79,6 +79,11 @@
 ;   [position ships]
 ;   (some? (seq (filter #(< (math/distance-between position %) safe-radius) ships))))
 
+(defn not-guaranteed-safe?
+  "Returns true if we're less than 5 away from a ship."
+  [ship ships]
+  (some? (first (filter #(<= (math/distance-between ship %) 7) ships))))
+
 (defn navigate-to
   "Returns a thrust move that moves the ship to the provided goal. The
   goal is treated as a point, i.e. the thrust move attempts to move
@@ -100,7 +105,7 @@
                        (remove #(or (= *player-id* (:owner-id %))
                                     (not= (:undocked (-> % :docking :status))))
                                obstacles))
-         avoid-attack (if (unreachable? ship other-ships)
+         avoid-attack (if (and avoid-attack (unreachable? ship other-ships))
                         avoid-attack
                         false)
          thrust (int (min (- distance buffer) max-thrust))]
@@ -202,17 +207,19 @@
   [ship goal]
   (let [ships (remove #(or (= *player-id* (:owner-id %))
                            (not= :undocked (-> % :docking :status)))
-                      (vals *ships*))]
+                      (vals *ships*))
+        not-safe (not-guaranteed-safe? ship ships)]
     (loop [angle (custom-math/orient-away ship goal)
            iteration 0]
       (let [goal (custom-math/get-point ship e/max-ship-speed angle)]
-        (if (unreachable? goal ships)
+        (if (or not-safe (unreachable? goal ships))
           (navigate-to ship goal (merge default-navigation-opts {:buffer 0.0
                                                                  :max-thrust e/max-ship-speed
                                                                  :subtype :retreat}))
-          (when (<= iteration retreat-iterations)
+          (if (<= iteration retreat-iterations)
             (recur (mod (+ retreat-angular-step angle) 360)
                    (inc iteration))))))))
+
 
 (defn navigate-to-friendly-ship
   "Returns a thrust move which will navigate this ship to the requested
@@ -272,7 +279,23 @@
 ;         planet orig-planet]
 ;     (navigate-to ship planet (merge default-navigation-opts {:buffer 0.0
 ;                                                              :max-thrust e/max-ship-speed
-;                                                              :subtype :retreat3}))))
+;                                                              :subtype :retreat3
+
+(def infinity 99999999)
+
+(defn nearest-entity
+  "Returns the closest other entity to the passed in entity."
+  [entity other-entities]
+  ; (log "Called with entity" entity "Other entities" other-entities)
+  (:nearest-entity
+   (reduce (fn [{:keys [min-distance nearest-entity]} other-entity]
+             (let [distance (- (math/distance-between entity other-entity)
+                               (:radius other-entity))]
+               (if (< distance min-distance)
+                 {:min-distance distance :nearest-entity other-entity}
+                 {:min-distance min-distance :nearest-entity nearest-entity})))
+           {:min-distance infinity}
+           other-entities)))
 
 (defn navigate-to-retreat
   "Attempt to retreat and pull the ships away from my planets and towards their own.
@@ -281,12 +304,16 @@
   (let [ships (remove #(or (= *player-id* (:owner-id %))
                            (not= :undocked (-> % :docking :status)))
                       (vals *ships*))
-        orig-angle (math/orient-towards ship planet)
-        orig-planet planet]
+        orig-planet planet
+        not-safe (not-guaranteed-safe? ship ships)
+        orig-angle (if not-safe
+                     (custom-math/orient-away ship (nearest-entity ship ships))
+                     (math/orient-towards ship planet))]
     (loop [angle orig-angle
            iteration 0]
       (let [planet (custom-math/get-point ship e/max-ship-speed angle)]
-        (if (and (unreachable? planet ships) (not (too-close-to-planet planet orig-planet)))
+        (if (and (or not-safe (unreachable? planet ships))
+                 (not (too-close-to-planet planet orig-planet)))
           (navigate-to ship planet (merge default-navigation-opts {:buffer 0.0
                                                                    :max-thrust e/max-ship-speed
                                                                    :subtype :retreat3}))
