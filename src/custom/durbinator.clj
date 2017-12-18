@@ -86,12 +86,12 @@
       (navigation/navigate-to-retreat-ship ship enemy-ship))))
 
 ; (def tag-team-range 5)
-(def tag-team-range 8)
-; (def retreat-range 21.1)
+(def tag-team-range 5)
+(def retreat-range 21.1)
 ; (def retreat-range-early 35)
 
 ; (def retreat-range 21.1)
-(def retreat-range 25)
+; (def retreat-range 28)
 ; (def retreat-range-early 21.1)
 
 ; (def retreat-range 40)
@@ -102,7 +102,8 @@
 
 (def ignore-retreating-ship-count
   "Optimization to not worry about running away when I have this many ships."
-  85)
+  ; 85
+  125)
 
 (defn get-retreat-range
   "Returns the retreat range based on number of ships."
@@ -260,7 +261,7 @@
 
 (def unprotected-distance
   "How far away we look for unprotected ships."
-  72)
+  56)
 
 (defn- find-unprotected-ships
   "Helper function."
@@ -420,7 +421,8 @@
   (let [potential-ships (filter #(and (= *player-id* (:owner-id %))
                                       (not (some (set [(:id %)]) moving-ships)))
                                 (vals *ships*))
-        vulnerable-ships (get-vulnerable-ships potential-ships)]
+        max-defenders (/ *num-ships* 2)
+        vulnerable-ships (take max-defenders (get-vulnerable-ships potential-ships))]
     (doall
      (for [[defender ship enemy] vulnerable-ships
            ; :let [advantage? (map/have-advantage? (custom-math/get-point-between ship enemy 1.1))

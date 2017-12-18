@@ -168,7 +168,9 @@
   ([ship goal]
    (navigate-to-attack-docked-ship ship goal false))
   ([ship goal avoid-attack?]
-   (navigate-to ship goal (merge default-navigation-opts {:buffer 1.1
+   (navigate-to ship goal (merge default-navigation-opts {
+                                                          ; :buffers 1.1
+                                                          :buffer 4.5
                                                           :subtype :docked-attack
                                                           ; :avoid-attack false
                                                           :avoid-attack avoid-attack?}))))
@@ -249,7 +251,7 @@
   (let [docking-point (math/closest-point ship planet hlt-navigation/docking-distance)]
     (navigate-to ship docking-point (assoc default-navigation-opts :subtype :dock))))
 
-(def too-close-distance 2.0)
+(def too-close-distance 1.0)
 
 (defn too-close-to-planet
   "Returns true if the point is < than 3 units away from a planet."
