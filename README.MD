@@ -83,3 +83,8 @@ map_height = 2 * base_size
       - Move to the one that is closest to a planet I don't own
       - If no attack place, look for the closest(? maybe another choice) safe retreat place and move there
       - If neither, run through code as normal
+
+# 12/19
+  - Newly created ships will appear within 2 units from the surface of the planet (i.e. within 2 + radius units of the center of the planet), in the unoccupied space closest to the center of the map. The ship will start with full health and zero velocity. If there is not adequate space anywhere near the planet, the ship will not spawn.
+  - Move as far as I can to attack docked ships (don't just sit still to be picked off if I'm in range)
+  - 
