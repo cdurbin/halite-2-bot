@@ -220,10 +220,6 @@
             (recur (mod (+ retreat-angular-step angle) 360)
                    (inc iteration))))))))
 
-(defn navigate-to-friendly-ship-later
-  "Return a fake move to be processed later."
-  [ship friendly-ship]
-  (assoc (e/thrust-move ship 0 0) :subtype :friendly))
 
 (defn navigate-to-friendly-ship
   "Returns a thrust move which will navigate this ship to the requested

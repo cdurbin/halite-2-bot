@@ -89,7 +89,7 @@
       (navigation/navigate-to-retreat-ship ship enemy-ship))))
 
 ; (def tag-team-range 5)
-(def tag-team-range 9)
+(def tag-team-range 5)
 (def retreat-range 21.1)
 ; (def retreat-range-early 35)
 
@@ -205,14 +205,11 @@
 
 (defn change-ship-positions!
   "Changes a ships position in the main ships."
-  [{:keys [ship type subtype thrust] :as move}]
-  (when (and (= :thrust type) (pos? thrust))
+  [{:keys [ship type subtype] :as move}]
+  (when (and (= :thrust type))
     (let [imaginary-ships (calculate-end-positions move)]
-      (doseq [i-ship (conj (butlast imaginary-ships) ship)]
-        (set! *ships* (assoc *ships* (java.util.UUID/randomUUID) i-ship)))
-      (when (last imaginary-ships)
-        ; (log "Last imaginary-ship is:" (last imaginary-ships))
-        (set! *ships* (assoc *ships* (:id ship) (last imaginary-ships)))))))
+      (doseq [i-ship imaginary-ships]
+        (set! *ships* (assoc *ships* (java.util.UUID/randomUUID) i-ship))))))
 
 (defn compute-move-closest-planet
   "Picks the move for the ship based on proximity to planets and fighters near planets."
@@ -468,20 +465,16 @@
   "Returns the retreat to nearby friendly moves now that we know where all the other ships are
   going."
   [moves]
-  (let [ignore-ships (atom (mapv #(get-in % [:ship :id]) moves))]
-    (for [move moves
-          :let [my-ships (map/get-my-real-ships)
-                ship (:ship move)
-                my-other-ships (remove #(or (= (:id ship) (:id %))
-                                            (some (set [(:id %)]) @ignore-ships))
-                                       my-ships)
-                closest-friendly-ship (map/nearest-entity ship my-other-ships)
-                new-move (navigation/navigate-to-friendly-ship ship closest-friendly-ship)]
-          :when new-move]
-      (do
-          (swap! ignore-ships #(remove (set [(:id ship)]) %))
-          (change-ship-positions! (assoc new-move :subtype :friendly2))
-          new-move))))
+  (for [move moves
+        :let [my-ships (map/get-my-ships)
+              ship (:ship move)
+              my-other-ships (remove #(= (:id ship) (:id %))
+                                     my-ships)
+              closest-friendly-ship (map/nearest-entity ship my-other-ships)
+              new-move (navigation/navigate-to-friendly-ship ship closest-friendly-ship)]
+        :when new-move]
+    (do (change-ship-positions! (assoc new-move :subtype :friendly2))
+        new-move)))
 
 (def turns-to-produce-two-ships-with-three-docked
   (* 2 (/ 12 3)))
