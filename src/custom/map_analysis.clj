@@ -3,7 +3,7 @@
   (:require
    [custom.game-map :refer [*docked-enemies* *pesky-fighters* *safe-planets* *num-ships*
                             *num-players*]]
-   [custom.math :refer [infinity]]
+   [custom.math :as custom-math :refer [infinity]]
    [custom.utils :as utils]
    [hlt.entity :as e]
    [hlt.game-map :refer [*player-id* *ships* *planets* *owner-ships* *map-size*]]
@@ -41,7 +41,6 @@
 (defn find-nemesis-ships
   "Returns the player I should focus on battling."
   [planets]
-  ; nil
   (let [my-planets (filter #(= *player-id* (:owner-id %)) planets)
         close-fighters (filter #(and (= :undocked (-> % :docking :status))
                                      (not= *player-id* (:owner-id %))
@@ -57,9 +56,6 @@
                          (when (= max-close-fighters (count v))
                            k))
                        fighters-by-owner-id)]
-    ; (log "close fighters" (pr-str close-fighters))
-    ; (log "Max-close-fighters" max-close-fighters)
-    ; (log "Nemesis: " (first bad-guys))
     (first bad-guys)))
 
 (defn find-nemesis-planet
@@ -110,29 +106,32 @@
 
 (defn get-my-ships
   "Returns all of ships (including imaginary ships)."
-  []
+  [ships]
   (filter #(= *player-id* (:owner-id %))
-          (vals *ships*)))
+          ships))
 
 (defn remove-imaginary-ships
   "Returns a list of all real ships"
-  []
+  [ships]
   (vals
    (filter (fn [[k v]]
              (integer? k))
-           *ships*)))
+           ships)))
+
+(defn get-my-real-ships
+  "Returns my real ships"
+  []
+  (get-my-ships (remove-imaginary-ships *ships*)))
 
 (defn get-fighters
   "Returns my fighter ships that aren't already moving."
   ([owner-id]
    (get-fighters owner-id []))
   ([owner-id moving-ships]
-  ; (log "Ships:" *ships*)
-  ; (log "Remove imaginary:" (remove-imaginary-ships))
    (filter #(and (= owner-id (:owner-id %))
                  (= :undocked (-> % :docking :status))
                  (not (some (set [(:id %)]) moving-ships)))
-           (remove-imaginary-ships))))
+           (remove-imaginary-ships *ships*))))
 
 (defn sort-by-furthest
   "Sorts the passed in planets based on the furthest distance from any of the compared planets."
@@ -195,9 +194,7 @@
   "Have the most fighters (non docking) surrounding the planet."
   [planet]
   (let [
-        ; close-distance (if (< *num-ships* 6) 60 35)
         close-distance 80
-        ; close-distance 60
         filter-fn (fn [ship]
                     (and (= :undocked (-> ship :docking :status))
                          (< (math/distance-between ship planet) (+ close-distance (:radius planet)))))
@@ -213,20 +210,16 @@
         fighters-by-owner (group-by :owner-id nearby-fighters)
         my-count (dec (count (get fighters-by-owner *player-id*)))
         max-other-count (apply max 0 (map count (vals (dissoc fighters-by-owner *player-id*))))]
-    ; (log "Planet" planet)
     (or (and (zero? max-other-count)
              (zero? (count closeby-docked)))
         (and
-          ; (> my-count (+ 2 max-other-count))
           (>= my-count max-other-count)
           (let [close-distance 13
                 filter-fn (fn [ship]
                             (and (= :undocked (-> ship :docking :status))
                                  (< (math/distance-between ship planet) (+ close-distance (:radius planet)))))
                 docked-filter-fn (fn [ship]
-                                   (and
-                                        ; (not= *player-id* (:owner-id ship))
-                                        (not= :undocked (-> ship :docking :status))
+                                   (and (not= :undocked (-> ship :docking :status))
                                         (< (math/distance-between ship planet) (+ close-distance (:radius planet)))))
                 closeby-docked (filter docked-filter-fn ships)
                 docked-by-owner (group-by :owner-id closeby-docked)
@@ -235,19 +228,12 @@
                 nearby-fighters (filter filter-fn ships)
                 fighters-by-owner (group-by :owner-id nearby-fighters)
                 max-other-count (reduce + (map count (vals (dissoc fighters-by-owner *player-id*))))
-                ; my-count (dec (count (get fighters-by-owner *player-id*)))
+                my-count (dec (count (get fighters-by-owner *player-id*)))
                 my-count (if (and (< *num-ships* 5) (pos? max-other-count))
                            (dec my-count)
                            my-count)]
-
-                ; max-other-count (apply max 0 (map count (vals (dissoc fighters-by-owner *player-id*))))
-            ;; TODO which is better?
-            ; (> (+ my-count (* 0.125 my-docked-count))
-            ;    (+ max-other-count (* 0.125 other-docked-count))))))))
             (>= (+ my-count (* 0.125 my-docked-count))
                 (+ max-other-count (* 0.125 other-docked-count))))))))
-            ; (>= my-count (max 1 (* 2 max-other-count)))
-            ; (> my-count (max 1 (* 2 max-other-count))))))))
 
 (defn alone?
   "Returns true if I'm the only fighter nearby."
@@ -262,9 +248,7 @@
              (filter #(= *player-id* (:owner-id %))
                      (vals *ships*))))))
 
-; (def advantage-range (* 3 (+ e/max-ship-speed e/ship-radius e/weapon-radius)))
 (def advantage-range (* 2 (+ e/max-ship-speed e/ship-radius e/weapon-radius)))
-; (def advantage-range (+ e/max-ship-speed e/ship-radius e/weapon-radius))
 
 (defn have-advantage?
   "Returns true if I have more fighters at a given position than the enemy."
@@ -275,19 +259,13 @@
         ships (for [[k v] *ships*
                     :when (integer? k)]
                 v)
-        ; nearby-fighters (filter filter-fn (vals (filter (fn [[k v]]
-        ;                                                   (integer? k))
-        ;                                                 *ships*)))
         nearby-fighters (filter filter-fn ships)
-        ; _ (log "Nearby fighters are" nearby-fighters)
         my-fighter-count (count (filter #(= *player-id* (:owner-id %))
                                         nearby-fighters))
         enemy-count (- (count nearby-fighters) my-fighter-count)]
     (or (zero? enemy-count)
         (and (> my-fighter-count 1)
-             ;; TODO figure out which works better
              (> my-fighter-count enemy-count)))))
-             ; (>= my-fighter-count enemy-count)))))
 
 (defn get-pesky-fighters-new
   "Fighters near my planets or neutral planets."
@@ -339,17 +317,6 @@
                                   (e/any-remaining-docking-spots? planet)))
                          (have-most-ships-surrounding-planet? planet)
                          (not (avoid-planet? planet))))]
-    (filter filter-fn (vals *planets*))))
-
-(defn get-safe-planets-new
-  "Returns a list of planets that are safe to dock at."
-  []
-  (let [filter-fn (fn [planet]
-                    (and (or (nil? (:owner-id planet))
-                             (and (= *player-id* (:owner-id planet))
-                                  (e/any-remaining-docking-spots? planet)))
-                         (or (> *num-ships* 5)
-                             (have-most-ships-surrounding-planet? planet))))]
     (filter filter-fn (vals *planets*))))
 
 (defn nearest-planet-distance
@@ -422,34 +389,17 @@
       (let [num-per-planet (Math/ceil (/ (count ships) (count enemy-planets)))
             - (log "Num per planet" num-per-planet)
             _ (log "Enemy planets" enemy-planets)
-            ; remaining (- (count ships) (* num-per-planet (count enemy-planets)))
             assigned-ships (atom nil)]
         (flatten
           (for [planet enemy-planets
                 :let [my-ships (remove #(some (set [%]) @assigned-ships)
                                        ships)
-                      ; _ (log "CDD: assigned" @assigned-ships)
-                      ; _ (log "remaining:" my-ships)
                       sorted-ships (take num-per-planet (sort-by #(math/distance-between planet %)
                                                                  my-ships))]]
             (doall
              (for [ship sorted-ships]
               (do (swap! assigned-ships conj ship)
-                  ; (log "I just swapped" ship "- assigned" @assigned-ships)
                   {:target planet :ship ship})))))))))
-      ; (for [planet enemy-planets
-      ;       :let [my-ships (remove #(some (set [%]) @assigned-ships)
-      ;                              ships)
-      ;             my-ship (map/nearest-entity planet my-ships)]
-      ;       :when my-ship
-      ;       :let [move (navigation/navigate-to-retreat my-ship planet)]
-      ;       :when move]
-      ;   (do
-      ;     (swap! assigned-ships conj my-ship)
-      ;     (change-ship-positions! move)
-      ;     (assoc move :subtype :retreat5)))))
-
-;; remaining-docking-spots
 
 (defn get-unowned-planets
   "Returns unowned planets."
@@ -517,18 +467,6 @@
     (log "Best planet" (first sorted-list))
     (:planet (first sorted-list))))
 
-; (defn my-best-planet-four-player
-;   "Returns the planet that I should target."
-;   []
-;   (let [unowned-planets (get-unowned-planets)
-;         potential-planets (planets-closest-to-me unowned-planets)
-;         planets-and-dock-spots (for [planet potential-planets
-;                                      :let [dock-spots (num-dock-slots-around-planet planet potential-planets)]]
-;                                  {:planet planet :dock-spots dock-spots})
-;         sorted-list (sort (utils/compare-by :dock-spots utils/desc) planets-and-dock-spots)]
-;     (log "Best planet" (first sorted-list))
-;     (:planet (first sorted-list))))
-
 (defn find-four-center-planets
   "Returns the four-center-planets"
   []
@@ -589,3 +527,23 @@
   "Returns the best attack spot for the current ship."
   [ship]
   (first (filter #(reachable? ship %) @attack-spots)))
+
+(defn calculate-end-positions
+  "Returns a ship in its end position based on thrust for this turn."
+  [{:keys [ship thrust angle] :as move}]
+  (let [x (get-in ship [:pos :x])
+        y (get-in ship [:pos :y])
+        positions (map math/map->Position
+                       (custom-math/all-positions-start-to-end x y thrust angle))]
+    (map #(assoc ship :pos %) positions)))
+
+(defn change-ship-positions!
+  "Changes a ships position in the main ships."
+  [{:keys [ship type subtype thrust] :as move}]
+  (when (and (= :thrust type) (pos? thrust))
+    (let [imaginary-ships (calculate-end-positions move)]
+      (doseq [i-ship (conj (butlast imaginary-ships) ship)]
+        (set! *ships* (assoc *ships* (java.util.UUID/randomUUID) i-ship)))
+      (when (last imaginary-ships)
+        ; (log "Last imaginary-ship is:" (last imaginary-ships))
+        (set! *ships* (assoc *ships* (:id ship) (last imaginary-ships)))))))

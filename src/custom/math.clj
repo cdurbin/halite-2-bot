@@ -33,7 +33,7 @@
 (defn all-positions-start-to-end
   "Returns multiple positions (one for each integer) from starting spot to ending spot."
   [x y thrust angle]
-  (for [n (range 1 (+ 0.2 thrust) 1)]
+  (for [n (range 1 (inc thrust) 1)]
     (final-position x y n angle)))
 
 (defn orient-away
@@ -56,6 +56,12 @@
   [start end multiplier]
   (let [angle (hlt-math/orient-towards start end)
         distance (* multiplier (hlt-math/distance-between start end))]
+    (get-point start distance angle)))
+
+(defn get-closest-point-towards-target
+  "Returns the closest point towards the target."
+  [start target distance]
+  (let [angle (hlt-math/orient-towards start target)]
     (get-point start distance angle)))
 
 ; (defn get-values-for-segment-circle-intersects
