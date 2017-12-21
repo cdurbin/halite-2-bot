@@ -196,7 +196,9 @@
    (navigate-to-attack-ship ship goal false))
   ([ship goal avoid-attack?]
    (navigate-to ship goal
-                (merge default-navigation-opts {:buffer 3.5
+                (merge default-navigation-opts {
+                                                :buffer 4.9
+                                                ; :buffer 3.5
                                                 :subtype :attack
                                                 :avoid-attack avoid-attack?}))))
                                                 ; :avoid-attack false}))))

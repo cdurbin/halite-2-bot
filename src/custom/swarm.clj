@@ -10,7 +10,7 @@
    [hlt.utils :refer [log]]))
 
 (def max-ships-in-swarm 3)
-(def swarm-eligible-distance-apart 5)
+(def swarm-eligible-distance-apart 10)
 (def how-close-to-swarm 1.1)
 (def max-swarm-range 1.5)
 
@@ -69,7 +69,9 @@
                                (reverse (get-best-swarm-spot swarm target))
                                (get-best-swarm-spot swarm target))
         ship (-> swarm-spot-distances first :ship)
-        point (-> swarm-spot-distances last :point)
+        orig-point (-> swarm-spot-distances last :point)
+        angle (math/orient-towards ship orig-point)
+        point (custom-math/get-point ship e/max-ship-speed angle)
         first-move (navigation-fn ship (assoc point :radius 0))]
     (when first-move
       (map/change-ship-positions! first-move)
@@ -77,11 +79,12 @@
             updated-ship (get *ships* (:id ship))
             swarm-point updated-ship
             ; swarm-point (custom-math/get-point ship (:thrust first-move) (:angle first-move))
-            _ (log "Swarming to " swarm-point)
+            ; _ (log "Swarming to " swarm-point)
             next-moves (for [next-ship (map :ship swarm-spot-distances)
                              :when (not= (:id ship) (:id next-ship))
                              ; :let [move (navigation/navigate-to next-ship swarm-point)]
-                             :let [_ (log "Next ship is" next-ship)
+                             :let [
+                                   ; _ (log "Next ship is" next-ship)
                                    move (navigation/navigate-to-friendly-ship-later
                                          ; next-ship (assoc swarm-point :radius 0)
                                          next-ship swarm-point)]
@@ -124,7 +127,7 @@
                                     ships)
                 closeby-ships (filter #(<= (math/distance-between ship %) swarm-eligible-distance-apart)
                                       valid-ships)]
-          :when (>= (count closeby-ships) 3)]
+          :when (>= (count closeby-ships) 2)]
       (do
         (swap! swarm-ships concat (map :id closeby-ships))
         (build-swarm-ship closeby-ships)))))
