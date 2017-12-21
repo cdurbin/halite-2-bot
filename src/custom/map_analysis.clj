@@ -110,29 +110,32 @@
 
 (defn get-my-ships
   "Returns all of ships (including imaginary ships)."
-  []
+  [ships]
   (filter #(= *player-id* (:owner-id %))
-          (vals *ships*)))
+          ships))
 
 (defn remove-imaginary-ships
   "Returns a list of all real ships"
-  []
+  [ships]
   (vals
    (filter (fn [[k v]]
              (integer? k))
-           *ships*)))
+           ships)))
+
+(defn get-my-real-ships
+  "Returns my real ships"
+  []
+  (get-my-ships (remove-imaginary-ships *ships*)))
 
 (defn get-fighters
   "Returns my fighter ships that aren't already moving."
   ([owner-id]
    (get-fighters owner-id []))
   ([owner-id moving-ships]
-  ; (log "Ships:" *ships*)
-  ; (log "Remove imaginary:" (remove-imaginary-ships))
    (filter #(and (= owner-id (:owner-id %))
                  (= :undocked (-> % :docking :status))
                  (not (some (set [(:id %)]) moving-ships)))
-           (remove-imaginary-ships))))
+           (remove-imaginary-ships *ships*))))
 
 (defn sort-by-furthest
   "Sorts the passed in planets based on the furthest distance from any of the compared planets."
