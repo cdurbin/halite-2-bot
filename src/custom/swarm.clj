@@ -3,11 +3,13 @@
   (:require
    [custom.map-analysis :as map]
    [custom.math :as custom-math]
-   [hlt.game-map :refer [*ships*]]
    [custom.navigation :as navigation]
+   [custom.utils :as utils :refer [pretty-log]]
    [hlt.entity :as e]
+   [hlt.game-map :refer [*ships*]]
    [hlt.math :as math]
    [hlt.utils :refer [log]]))
+
 
 (def max-ships-in-swarm 3)
 (def swarm-eligible-distance-apart 10)
@@ -109,13 +111,13 @@
 (defn get-swarm-move
   "Returns the move for a swarm ship. Retreat range of infinity means don't retreat."
   [swarm enemy-ships retreat-range owner-id]
-  (log "The swarm is:" swarm)
+  ; (log "The swarm is:" (pretty-log swarm))
   (when-let [enemy-ship (map/nearest-enemy-not-decoy swarm enemy-ships)]
-    (when (or (= custom-math/infinity retreat-range)
+    (if (or (= custom-math/infinity retreat-range)
             (> (math/distance-between swarm enemy-ship) retreat-range)
             (map/have-advantage? enemy-ship))
-      (move-swarm-to-attack swarm enemy-ship))))
-      ; (move-swarm-to-retreat swarm enemy-ship))))
+      (move-swarm-to-attack swarm enemy-ship)
+      (move-swarm-to-retreat swarm enemy-ship))))
 
 (defn get-swarms
   "Returns a collection of ship swarms."

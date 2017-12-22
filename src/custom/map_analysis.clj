@@ -4,7 +4,7 @@
    [custom.game-map :refer [*docked-enemies* *pesky-fighters* *safe-planets* *num-ships*
                             *num-players*]]
    [custom.math :as custom-math :refer [infinity]]
-   [custom.utils :as utils]
+   [custom.utils :as utils :refer [pretty-log]]
    [hlt.entity :as e]
    [hlt.game-map :refer [*player-id* *ships* *planets* *owner-ships* *map-size*]]
    [hlt.math :as math]
@@ -214,7 +214,7 @@
              (zero? (count closeby-docked)))
         (and
           (>= my-count max-other-count)
-          (let [close-distance 30
+          (let [close-distance 15
                 filter-fn (fn [ship]
                             (and (= :undocked (-> ship :docking :status))
                                  (< (math/distance-between ship planet) (+ close-distance (:radius planet)))))
@@ -574,6 +574,7 @@
 (defn change-ship-positions!
   "Changes a ships position in the main ships."
   [{:keys [ship type subtype thrust] :as move}]
+  ; (log "Trying to build imaginary ships for:" (pretty-log move))
   (when (and (= :thrust type) (pos? thrust))
     (let [imaginary-ships (calculate-end-positions move)]
       (doseq [i-ship (conj (butlast imaginary-ships) ship)]

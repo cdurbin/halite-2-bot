@@ -107,9 +107,14 @@
                :as opts}]
    (let [distance (math/distance-between ship goal)
          first-angle (math/orient-towards ship goal)
-         obstacles (figure-out-potential-obstacles ship (remove #(or (= (:id ship) (:id %))
-                                                                     (= (:id goal) (:id %)))
-                                                                (vals *ships*)))
+         compare-ships (remove (fn [[k v]]
+                                  (or (= (:id ship) (:id v))
+                                      (= (:id goal) k)))
+                               *ships*)
+         obstacles (figure-out-potential-obstacles ship (vals compare-ships))
+         ; obstacles (figure-out-potential-obstacles ship (remove #(or (= (:id ship) (:id %))
+         ;                                                             (= (:id goal) (:id %)))
+         ;                                                        (vals *ships*)))
          other-ships (when avoid-attack
                        (remove #(or (= *player-id* (:owner-id %))
                                     (not= (:undocked (-> % :docking :status))))

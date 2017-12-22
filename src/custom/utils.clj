@@ -1,7 +1,13 @@
 (ns custom.utils
   "Namespace for utility functions."
   (:require
+   [clojure.pprint :as pretty]
    [hlt.utils :refer [log]]))
+
+(defn pretty-log
+  "Pretty logging"
+  [obj]
+  (with-out-str (pretty/pprint obj)))
 
 (def asc
   "Sort in ascending order"

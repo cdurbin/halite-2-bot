@@ -7,7 +7,7 @@
    [custom.math :as custom-math :refer [infinity]]
    [custom.navigation :as navigation]
    [custom.swarm :as swarm]
-   [custom.utils :as utils :refer [defn-timed]]
+   [custom.utils :as utils :refer [defn-timed pretty-log]]
    [hlt.entity :as e]
    [hlt.game-map :refer [*player-id* *map-size* *bot-name* *ships* *planets* *owner-ships*]]
    [hlt.math :as math]
@@ -573,8 +573,8 @@
                     :let [swarm-moves (swarm/get-swarm-move single-swarm enemy-ships retreat-range
                                                             *player-id*)]
                     :when (seq swarm-moves)]
-                swarm-moves)]
-                ; (process-swarm-moves swarm-moves))]
+                (do (process-swarm-moves swarm-moves)
+                    swarm-moves))]
     (log "The swarm-moves " (pr-str moves))
     (flatten moves)))
 
@@ -694,5 +694,8 @@
         ; fallback-moves (remove #(= 0 (:thrust %)) fallback-moves)
         ; swarm-moves (remove #(= :friendly (:subtype %)) swarm-moves)
         ; swarm-moves (remove #(= 0 (:thrust %)) swarm-moves)]
+    ; (if (= 64 turn)
+    ;   (log "All ships" (pretty-log *ships*)))
+
     (concat all-moves friendly-moves)))
     ; (concat runaway-moves defend-moves attack-moves main-moves fallback-moves friendly-moves best-planet-moves swarm-moves more-planet-moves)))
