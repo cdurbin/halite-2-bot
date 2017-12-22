@@ -249,8 +249,9 @@
                      (vals *ships*))))))
 
 ; (def advantage-range (* 2 (+ e/max-ship-speed e/ship-radius e/weapon-radius)))
+(def advantage-range (* 2 (+ e/max-ship-speed e/weapon-radius)))
 ; (def advantage-range (* 1.1 (+ e/max-ship-speed e/ship-radius e/weapon-radius)))
-(def advantage-range (+ e/max-ship-speed e/weapon-radius))
+; (def advantage-range (+ e/max-ship-speed e/weapon-radius))
 
 (defn have-advantage?
   "Returns true if I have more fighters at a given position than the enemy."

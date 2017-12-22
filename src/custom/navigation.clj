@@ -301,7 +301,7 @@
         ;; Try to prevent sending my ship in to die
         distance (if advantage?
                    (/ (* 2 distance) 3)
-                   (/ distance 10))
+                   0)
         midpoint (custom-math/get-point friendly-ship distance angle)]
     ; (if (and (not advantage?) (< distance 7))
     ;   (navigate-to ship (custom-math/get-point friendly-ship 7 angle)
