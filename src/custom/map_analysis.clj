@@ -214,7 +214,7 @@
              (zero? (count closeby-docked)))
         (and
           (>= my-count max-other-count)
-          (let [close-distance 15
+          (let [close-distance 30
                 filter-fn (fn [ship]
                             (and (= :undocked (-> ship :docking :status))
                                  (< (math/distance-between ship planet) (+ close-distance (:radius planet)))))
