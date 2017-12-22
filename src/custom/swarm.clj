@@ -73,7 +73,7 @@
         angle (math/orient-towards ship orig-point)
         point (custom-math/get-point ship e/max-ship-speed angle)
         first-move (navigation-fn ship (assoc point :radius 0))]
-    (when first-move
+    (when (and first-move (pos? (:thrust first-move)))
       (map/change-ship-positions! first-move)
       (let [
             updated-ship (get *ships* (:id ship))
@@ -103,7 +103,7 @@
   [swarm enemy-ship]
   (let [closest-enemy-planet (map/farthest-entity swarm (map/get-planets (:owner-id enemy-ship)))]
     (if closest-enemy-planet
-      (base-swarm-moves swarm closest-enemy-planet navigation/navigate-to-retreat false)
+      (base-swarm-moves swarm closest-enemy-planet navigation/navigate-to-retreat true)
       (base-swarm-moves swarm enemy-ship navigation/navigate-to-retreat-ship true))))
 
 (defn get-swarm-move

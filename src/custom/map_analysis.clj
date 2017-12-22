@@ -214,7 +214,7 @@
              (zero? (count closeby-docked)))
         (and
           (>= my-count max-other-count)
-          (let [close-distance 13
+          (let [close-distance 30
                 filter-fn (fn [ship]
                             (and (= :undocked (-> ship :docking :status))
                                  (< (math/distance-between ship planet) (+ close-distance (:radius planet)))))
@@ -248,7 +248,9 @@
              (filter #(= *player-id* (:owner-id %))
                      (vals *ships*))))))
 
-(def advantage-range (* 2 (+ e/max-ship-speed e/ship-radius e/weapon-radius)))
+; (def advantage-range (* 2 (+ e/max-ship-speed e/ship-radius e/weapon-radius)))
+; (def advantage-range (* 1.1 (+ e/max-ship-speed e/ship-radius e/weapon-radius)))
+(def advantage-range (+ e/max-ship-speed e/weapon-radius))
 
 (defn have-advantage?
   "Returns true if I have more fighters at a given position than the enemy."
@@ -506,6 +508,37 @@
                                                  (:radius planet) (:radius closest-ship))]]
                            {:planet planet
                             :distance distance})]
+    (:planet (first (sort (utils/compare-by :distance utils/asc) planet-distances)))))
+
+(defn most-isolated-planet
+  "Returns the planet the furthest away from enemy planets."
+  []
+  (let [enemy-planets (filter #(and (not (nil? (:owner-id %)))
+                                    (not= *player-id* (:owner-id %)))
+                              (vals *planets*))
+        planets (dockable-planets)
+        planet-distances (for [planet planets
+                               :let [closest-enemy-planet (nearest-entity planet enemy-planets)]
+                               :when closest-enemy-planet
+                               :let [distance (- (math/distance-between planet closest-enemy-planet)
+                                                 (:radius closest-enemy-planet) (:radius planet))]]
+                            {:planet planet
+                             :distance distance})]
+    (:planet (first (sort (utils/compare-by :distance utils/desc) planet-distances)))))
+
+(defn closest-planet-to-my-planets
+  "Returns the planet the furthest away from enemy planets."
+  []
+  (let [my-planets (filter #(= *player-id* (:owner-id %))
+                           (vals *planets*))
+        planets (dockable-planets)
+        planet-distances (for [planet planets
+                               :let [closest-planet (nearest-entity planet my-planets)]
+                               :when closest-planet
+                               :let [distance (- (math/distance-between planet closest-planet)
+                                                 (:radius closest-planet) (:radius planet))]]
+                            {:planet planet
+                             :distance distance})]
     (:planet (first (sort (utils/compare-by :distance utils/asc) planet-distances)))))
 
 (defn players-with-planets

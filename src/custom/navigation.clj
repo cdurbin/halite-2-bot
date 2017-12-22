@@ -114,7 +114,7 @@
                        (remove #(or (= *player-id* (:owner-id %))
                                     (not= (:undocked (-> % :docking :status))))
                                obstacles))
-         avoid-attack (if (and avoid-attack (unreachable? ship other-ships))
+         avoid-attack (if (and avoid-attack (not (not-guaranteed-safe? ship other-ships)))
                         avoid-attack
                         false)
          thrust (int (min (- distance buffer) max-thrust))]
@@ -301,7 +301,7 @@
         ;; Try to prevent sending my ship in to die
         distance (if advantage?
                    (/ (* 2 distance) 3)
-                   0)
+                   (/ distance 10))
         midpoint (custom-math/get-point friendly-ship distance angle)]
     ; (if (and (not advantage?) (< distance 7))
     ;   (navigate-to ship (custom-math/get-point friendly-ship 7 angle)

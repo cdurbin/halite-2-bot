@@ -104,8 +104,8 @@
     (if (or (> *num-ships* ignore-retreating-ship-count)
             (> (math/distance-between ship enemy-ship) (get-retreat-range *num-ships*)))
       (move-ship-to-attack ship enemy-ship)
-      ; (let [attack? (map/have-advantage? (custom-math/get-point-between ship enemy-ship 1.1))])
-      (let [attack? (map/have-advantage? enemy-ship)]
+      (let [attack? (map/have-advantage? (custom-math/get-point-between ship enemy-ship 0.5))]
+      ; (let [attack? (map/have-advantage? enemy-ship)]
         (if attack?
           (move-ship-to-attack ship enemy-ship)
           (if (map/alone? ship enemy-ship *player-id* tag-team-range false)
@@ -119,8 +119,8 @@
     (if (or (> *num-ships* ignore-retreating-ship-count)
             (> (math/distance-between ship enemy-ship) (get-retreat-range *num-ships*)))
       (move-ship-to-attack ship enemy-ship)
-      (let [attack? (map/have-advantage? enemy-ship)]
-      ; (let [attack? (map/have-advantage? (custom-math/get-point-between ship enemy-ship 1.1))]
+      ; (let [attack? (map/have-advantage? enemy-ship)])
+      (let [attack? (map/have-advantage? (custom-math/get-point-between ship enemy-ship 0.5))]
         (if attack?
           (move-ship-to-attack ship enemy-ship)
           (if (map/alone? ship enemy-ship *player-id* tag-team-range false)
@@ -285,7 +285,8 @@
     (doall
      (for [[ship enemy-ship] ship-attacks
            :let [move (navigation/navigate-to-attack-docked-ship
-                       ship enemy-ship (> (math/distance-between ship enemy-ship) 21.1))]
+                       ship enemy-ship true)]
+                       ; ship enemy-ship (> (math/distance-between ship enemy-ship) 21.1))]
            :when move]
        (do (map/change-ship-positions! move)
            move)))))
@@ -348,8 +349,8 @@
         vulnerable-ships (take max-defenders (get-vulnerable-ships potential-ships))]
     (doall
      (for [[defender ship enemy] vulnerable-ships
-           ; :let [advantage? (map/have-advantage? (custom-math/get-point-between ship enemy 1.1))
-           :let [advantage? (map/have-advantage? enemy)
+           :let [advantage? (map/have-advantage? (custom-math/get-point-between ship enemy 0.5))
+           ; :let [advantage? (map/have-advantage? enemy)
                  move (get-reachable-attack-spot-move ship)
                  move (if move
                         move
@@ -617,6 +618,24 @@
    (keep #(compute-planet-only-move custom-map-info %)
          ships-in-order)))
 
+; (defn get-best-planet
+;   "Returns the best planet to take."
+;   []
+;   (if (= *num-players* 2)
+;     (map/closest-dockable-planet)
+;     (if (> *num-ships* 8)
+;       (map/closest-dockable-planet)
+;       (map/corner-planet))))
+
+(defn get-best-planet
+  "Returns the best planet to take."
+  []
+  (if (= *num-players* 2)
+    (map/closest-planet-to-my-planets)
+    (if (> *num-ships* 8)
+      (map/closest-planet-to-my-planets)
+      (map/corner-planet))))
+
 (defn get-moves-for-turn
   "Returns all of the moves for this turn."
   [turn]
@@ -635,11 +654,7 @@
         ; swarm-moves (get-swarm-moves potential-ships)
         ; moving-ships (map #(get-in % [:ship :id]) runaway-moves swarm-moves defend-moves attack-moves)
         swarm-moves []
-        best-planet (if (= *num-players* 2)
-                      (map/closest-dockable-planet)
-                      (if (> *num-ships* 8)
-                        (map/closest-dockable-planet)
-                        (map/corner-planet)))
+        best-planet (get-best-planet)
         best-planet-move (get-best-planet-moves best-planet moving-ships)
         best-planet-moves (if (seq best-planet-move) (flatten [best-planet-move]) [])
         moving-ships (map #(get-in % [:ship :id]) (concat runaway-moves attack-moves defend-moves best-planet-moves swarm-moves))
