@@ -363,15 +363,19 @@
   "Returns the retreat to nearby friendly moves now that we know where all the other ships are
   going."
   [moves]
-  (let [ignore-ships (atom (mapv #(get-in % [:ship :id]) moves))]
+  (let [ignore-ships (if (> *num-ships* 3)
+                       (atom (mapv #(get-in % [:ship :id]) moves))
+                       (atom nil))]
     (for [move moves
           :let [my-ships (map/get-my-real-ships)
                 ship (:ship move)
                 my-other-ships (remove #(or (= (:id ship) (:id %))
                                             (some (set [(:id %)]) @ignore-ships))
                                        my-ships)
-                closest-friendly-ship (map/nearest-entity ship my-other-ships)
-                new-move (navigation/navigate-to-friendly-ship ship closest-friendly-ship)]
+                closest-friendly-ship (map/nearest-entity ship my-other-ships)]
+          :let [new-move (if closest-friendly-ship
+                           (navigation/navigate-to-friendly-ship ship closest-friendly-ship)
+                           (navigation/navigate-to-nearest-corner ship))]
           :when new-move]
       (do
           (swap! ignore-ships #(remove (set [(:id ship)]) %))
@@ -579,29 +583,31 @@
     (if (or times-up?
             (not= :undocked (-> ship :docking :status)))
       nil
-      (when-let [planets (filter #(or (not= *player-id* (:owner-id %))
-                                      (e/any-remaining-docking-spots? %))
-                                 (vals *planets*))]
-        (let [nearest-planet
-              (:nearest-planet
-               (reduce (fn [{:keys [min-distance nearest-planet]} planet]
-                         (let [distance-to-planet (- (math/distance-between ship planet) (:radius planet))]
-                           (if (< distance-to-planet min-distance)
-                             {:min-distance distance-to-planet :nearest-planet planet}
-                             {:min-distance min-distance :nearest-planet nearest-planet})))
-                       {:min-distance infinity}
-                       planets))]
-          (when (and nearest-planet
-                     (some #{(:id nearest-planet)} (keys *safe-planets*))
-                     ; No fighters close to taking me
-                     (let [all-fighters (filter #(and (= :undocked (-> ship :docking :status))
-                                                      (not= (:id ship) (:id %)))
-                                                (vals *ships*))
-                           closest-fighter (map/nearest-entity ship all-fighters)]
-                       (or (nil? closest-fighter)
-                           (= *player-id* (:owner-id closest-fighter))
-                           (> (math/distance-between ship closest-fighter) 55))))
-            (move-ship-to-planet! ship nearest-planet)))))))
+      (if (pos? @all-out-attack)
+        (move-to-nearest-enemy-ship ship (concat (vals *pesky-fighters*) (vals *docked-enemies*)))
+        (when-let [planets (filter #(or (not= *player-id* (:owner-id %))
+                                        (e/any-remaining-docking-spots? %))
+                                   (vals *planets*))]
+          (let [nearest-planet
+                (:nearest-planet
+                 (reduce (fn [{:keys [min-distance nearest-planet]} planet]
+                           (let [distance-to-planet (- (math/distance-between ship planet) (:radius planet))]
+                             (if (< distance-to-planet min-distance)
+                               {:min-distance distance-to-planet :nearest-planet planet}
+                               {:min-distance min-distance :nearest-planet nearest-planet})))
+                         {:min-distance infinity}
+                         planets))]
+            (when (and nearest-planet
+                       (some #{(:id nearest-planet)} (keys *safe-planets*))
+                       ; No fighters close to taking me
+                       (let [all-fighters (filter #(and (= :undocked (-> ship :docking :status))
+                                                        (not= (:id ship) (:id %)))
+                                                  (vals *ships*))
+                             closest-fighter (map/nearest-entity ship all-fighters)]
+                         (or (nil? closest-fighter)
+                             (= *player-id* (:owner-id closest-fighter))
+                             (> (math/distance-between ship closest-fighter) 55))))
+              (move-ship-to-planet! ship nearest-planet))))))))
 
 (defn compute-planet-only-move
   "Picks the move for the ship based on proximity to planets and fighters near planets."
@@ -672,14 +678,19 @@
         ; _ (log "potential ships: " potential-ships)
         swarm-moves (if (> *num-ships* 3)
                       (get-swarm-moves potential-ships)
-                      [])
+                      (get-swarm-moves potential-ships))
+                      ; [])
         moving-ships (map #(get-in % [:ship :id]) (concat runaway-moves swarm-moves defend-moves attack-moves main-moves best-planet-moves more-planet-moves))
         fallback-moves (get-main-moves ships-in-order (assoc custom-map-info :moving-ships moving-ships))
-        friendly-moves (recalculate-friendly-moves (filter #(= :friendly (:subtype %)) (concat main-moves fallback-moves swarm-moves)))
-        main-moves (remove #(= :friendly (:subtype %)) main-moves)
-        main-moves (remove #(= 0 (:thrust %)) main-moves)
-        fallback-moves (remove #(= :friendly (:subtype %)) fallback-moves)
-        fallback-moves (remove #(= 0 (:thrust %)) fallback-moves)
-        swarm-moves (remove #(= :friendly (:subtype %)) swarm-moves)
-        swarm-moves (remove #(= 0 (:thrust %)) swarm-moves)]
-    (concat runaway-moves defend-moves attack-moves main-moves fallback-moves friendly-moves best-planet-moves swarm-moves more-planet-moves)))
+        all-moves (concat runaway-moves defend-moves attack-moves main-moves fallback-moves best-planet-moves swarm-moves more-planet-moves)
+        friendly-moves (recalculate-friendly-moves (filter #(= :friendly (:subtype %)) all-moves))
+        all-moves (remove #(= :friendly (:subtype %)) all-moves)
+        all-moves (remove #(= 0 (:thrust %)) all-moves)]
+        ; main-moves (remove #(= :friendly (:subtype %)) main-moves)
+        ; main-moves (remove #(= 0 (:thrust %)) main-moves)
+        ; fallback-moves (remove #(= :friendly (:subtype %)) fallback-moves)
+        ; fallback-moves (remove #(= 0 (:thrust %)) fallback-moves)
+        ; swarm-moves (remove #(= :friendly (:subtype %)) swarm-moves)
+        ; swarm-moves (remove #(= 0 (:thrust %)) swarm-moves)]
+    (concat all-moves friendly-moves)))
+    ; (concat runaway-moves defend-moves attack-moves main-moves fallback-moves friendly-moves best-planet-moves swarm-moves more-planet-moves)))

@@ -91,7 +91,7 @@
 (defn not-guaranteed-safe?
   "Returns true if we're less than 5 away from a ship."
   [ship ships]
-  (some? (first (filter #(<= (math/distance-between ship %) 7) ships))))
+  (some? (first (filter #(<= (math/distance-between ship %) 8) ships))))
 
 (defn navigate-to
   "Returns a thrust move that moves the ship to the provided goal. The
