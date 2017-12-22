@@ -111,11 +111,11 @@
   [swarm enemy-ships retreat-range owner-id]
   (log "The swarm is:" swarm)
   (when-let [enemy-ship (map/nearest-enemy-not-decoy swarm enemy-ships)]
-    (if (or (= custom-math/infinity retreat-range)
+    (when (or (= custom-math/infinity retreat-range)
             (> (math/distance-between swarm enemy-ship) retreat-range)
             (map/have-advantage? enemy-ship))
-      (move-swarm-to-attack swarm enemy-ship)
-      (move-swarm-to-retreat swarm enemy-ship))))
+      (move-swarm-to-attack swarm enemy-ship))))
+      ; (move-swarm-to-retreat swarm enemy-ship))))
 
 (defn get-swarms
   "Returns a collection of ship swarms."

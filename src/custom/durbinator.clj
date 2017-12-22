@@ -362,11 +362,13 @@
 (defn recalculate-friendly-moves
   "Returns the retreat to nearby friendly moves now that we know where all the other ships are
   going."
-  [moves]
+  [moves {:keys [start-ms]}]
   (let [ignore-ships (if (> *num-ships* 3)
                        (atom (mapv #(get-in % [:ship :id]) moves))
                        (atom nil))]
     (for [move moves
+          :let [times-up? (> (- (System/currentTimeMillis) start-ms) 1550)]
+          :when (not times-up?)
           :let [my-ships (map/get-my-real-ships)
                 ship (:ship move)
                 my-other-ships (remove #(or (= (:id ship) (:id %))
@@ -683,7 +685,7 @@
         moving-ships (map #(get-in % [:ship :id]) (concat runaway-moves swarm-moves defend-moves attack-moves main-moves best-planet-moves more-planet-moves))
         fallback-moves (get-main-moves ships-in-order (assoc custom-map-info :moving-ships moving-ships))
         all-moves (concat runaway-moves defend-moves attack-moves main-moves fallback-moves best-planet-moves swarm-moves more-planet-moves)
-        friendly-moves (recalculate-friendly-moves (filter #(= :friendly (:subtype %)) all-moves))
+        friendly-moves (recalculate-friendly-moves (filter #(= :friendly (:subtype %)) all-moves) custom-map-info)
         all-moves (remove #(= :friendly (:subtype %)) all-moves)
         all-moves (remove #(= 0 (:thrust %)) all-moves)]
         ; main-moves (remove #(= :friendly (:subtype %)) main-moves)
