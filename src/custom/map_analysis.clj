@@ -562,22 +562,23 @@
   [ship]
   (first (filter #(reachable? ship %) @attack-spots)))
 
-(defn calculate-end-positions
-  "Returns a ship in its end position based on thrust for this turn."
-  [{:keys [ship thrust angle] :as move}]
-  (let [x (get-in ship [:pos :x])
-        y (get-in ship [:pos :y])
-        positions (map math/map->Position
-                       (custom-math/all-positions-start-to-end x y thrust angle))]
-    (map #(assoc ship :pos %) positions)))
+; (defn calculate-end-positions
+;   "Returns a ship in its end position based on thrust for this turn."
+;   [{:keys [ship thrust angle] :as move}]
+;   (let [x (get-in ship [:pos :x])
+;         y (get-in ship [:pos :y])
+;         positions (map math/map->Position
+;                        (custom-math/all-positions-start-to-end x y thrust angle))]
+;     (map #(assoc ship :pos %) positions)))
 
 (defn change-ship-positions!
   "Changes a ships position in the main ships."
   [{:keys [ship type subtype thrust] :as move}]
   ; (log "Trying to build imaginary ships for:" (pretty-log move))
   (when (and (= :thrust type) (pos? thrust))
-    (let [imaginary-ships (calculate-end-positions move)]
-      (doseq [i-ship (conj (butlast imaginary-ships) ship)]
+    (let [imaginary-ships (custom-math/calculate-end-positions move)]
+      ; (log "IS:" (pretty-log imaginary-ships))
+      (doseq [i-ship (conj (butlast imaginary-ships) (assoc ship :turn 1))]
         (set! *ships* (assoc *ships* (java.util.UUID/randomUUID) i-ship)))
       (when (last imaginary-ships)
         ; (log "Last imaginary-ship is:" (last imaginary-ships))

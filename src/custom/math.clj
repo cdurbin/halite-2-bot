@@ -1,7 +1,8 @@
 (ns custom.math
   "Custom math functions."
   (:require
-   [hlt.math :as hlt-math]))
+   [hlt.math :as hlt-math]
+   [hlt.utils :refer [log]]))
 
 (def infinity 99999999)
 
@@ -30,11 +31,32 @@
     {:x (+ x x-magnitude)
      :y (+ y y-magnitude)}))
 
+(defn final-position-radians
+  "Returns the final position based on an angle and magnitude."
+  [x y thrust angle]
+  (let [x-magnitude (* thrust (Math/cos angle))
+        y-magnitude (* thrust (Math/sin angle))]
+    {:x (+ x x-magnitude)
+     :y (+ y y-magnitude)}))
+
 (defn all-positions-start-to-end
   "Returns multiple positions (one for each integer) from starting spot to ending spot."
   [x y thrust angle]
   (for [n (range 1 (inc thrust) 1)]
-    (final-position x y n angle)))
+    (hlt-math/map->Position (final-position x y n angle))))
+
+(defn all-positions-start-to-end-new
+  "Returns multiple positions (one for each integer) from starting spot to ending spot."
+  [x y thrust angle]
+  (into {}
+        (for [n (range 1 (inc thrust) 1)]
+          [n (hlt-math/map->Position (final-position x y n angle))])))
+
+(defn all-positions-start-to-end-radians
+  "Returns multiple positions (one for each integer) from starting spot to ending spot."
+  [x y thrust angle]
+  (for [n (range 1 (inc thrust) 1)]
+    (hlt-math/map->Position (final-position-radians x y n angle))))
 
 (defn orient-away
   "Returns the opposite direction angle from `from` to `to` in radians."
@@ -47,8 +69,13 @@
 (defn get-point
   "Returns the point that is distance away at the provided angle from the current point."
   [pos distance angle]
+  ; (log "Am I crazy"
+  ;      "Pos" pos
+  ;      "Distance" distance
+  ;      "Angle" angle)
   (let [x (+ (hlt-math/get-x pos) (* distance (Math/cos angle)))
         y (+ (hlt-math/get-y pos) (* distance (Math/sin angle)))]
+    ; (log "Returning" (hlt-math/->Position x y))
     (hlt-math/->Position x y)))
 
 (defn get-point-between
@@ -116,9 +143,42 @@
 ;                                                     entity)]
 ;              (<= closest-distance fudged-radius))))))))
 
+(defn calculate-end-positions
+  "Returns a ship in its end position based on thrust for this turn."
+  [{:keys [ship thrust angle]}]
+  (let [x (get-in ship [:pos :x])
+        y (get-in ship [:pos :y])
+        positions (all-positions-start-to-end-new x y thrust angle)]
+    (map (fn [[k v]]
+           (assoc ship :pos v :turn k))
+         positions)))
+
+(defn get-in-turn-segments
+  "Get all the mid-turn start and end positions."
+  [{:keys [ship thrust angle]}]
+  (let [x (get-in ship [:pos :x])
+        y (get-in ship [:pos :y])
+        positions (all-positions-start-to-end-radians x y thrust angle)]
+    (reduce (fn [old-map new-value]
+              ; (println "OLD " old-map)
+              (let [max-key (apply max (keys old-map))
+                    start (get-in old-map [max-key :end])]
+                ; (println "Max" max-key)
+                ; (println "Start" start)
+                (merge old-map {(inc max-key)
+                                {:start start
+                                 :end new-value}})))
+            {0
+             {:end (:pos ship)}}
+            positions)))
+
+
+
+
 (comment
  (range 1 (+ 0.2 7) 2)
  (all-positions-start-to-end 10 3 7 15)
+ (get-in-turn-segments {:ship {:pos {:x 10 :y 3}} :thrust 7 :angle 15})
  (final-position 10 3 7 15)
  (final-position 10 3 7 0)
  (final-position 10 3 7 360))
