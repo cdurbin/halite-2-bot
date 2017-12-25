@@ -44,9 +44,9 @@
 
 (defn new-entities-between
   "More efficient entities-between"
-  [a b obstacles]
+  [a b obstacles planet-point]
   (let [filter-fn #(math/segment-circle-intersects? a b % slightly-smaller-fudge-factor)
-        filter-fn-planets #(math/segment-circle-intersects? a b % planet-fudge-factor)]
+        filter-fn-planets #(math/segment-circle-intersects? a planet-point % planet-fudge-factor)]
     (concat (filter filter-fn-planets (vals *planets*))
             (filter filter-fn obstacles))))
 
@@ -65,6 +65,7 @@
   "Returns the angular-step and max thrust for each potential navigation iteration."
   (for [iterations (range 1 6)
         thrust [7 6 4 2]
+        ; thrust [7]
         ; thrust [7 6 5 4 3 2 1]
         angular-step (range 30)
         opposite (range 2)
@@ -106,10 +107,12 @@
                       angular-step max-thrust buffer subtype avoid-attack]
                :as opts}]
    (let [distance (math/distance-between ship goal)
+         planet-compare-distance (min distance 17)
          first-angle (math/orient-towards ship goal)
          compare-ships (remove (fn [[k v]]
                                   (or (= (:id ship) (:id v))
                                       (= (:id goal) k)))
+                                      ; (not= *player-id* (:owner-id v))))
                                *ships*)
          obstacles (figure-out-potential-obstacles ship (vals compare-ships))
          ; obstacles (figure-out-potential-obstacles ship (remove #(or (= (:id ship) (:id %))
@@ -130,10 +133,12 @@
            (if (nil? max-thrust)
              (e/thrust-move ship 0 first-angle)
              (let [angle (+ first-angle angular-step)
-                   point (custom-math/get-point ship (min max-thrust thrust) angle)]
+                   point (custom-math/get-point ship (min max-thrust thrust) angle)
+                   planet-compare-point (custom-math/get-point ship planet-compare-distance angle)]
                (if (or (not (valid-point? point))
                        (and avoid-attack (not (unreachable? point other-ships)))
-                       (and avoid-obstacles (first (new-entities-between ship point obstacles))))
+                       (and avoid-obstacles (first (new-entities-between ship point obstacles
+                                                                         planet-compare-point))))
                  (recur (rest iterations))
                  (assoc (e/thrust-move ship (min max-thrust thrust) angle) :subtype subtype))))))))))
 
@@ -202,7 +207,8 @@
   ([ship goal avoid-attack?]
    (navigate-to ship goal
                 (merge default-navigation-opts {
-                                                :buffer 4.9
+                                                ; :buffer 4.9
+                                                :buffer 3.5
                                                 ; :buffer 3.5
                                                 :subtype :attack
                                                 :avoid-attack avoid-attack?}))))
@@ -306,13 +312,16 @@
         ;; Try to prevent sending my ship in to die
         distance (if advantage?
                    (/ (* 2 distance) 3)
-                   0)
+                   (/ (* 1 distance) 10))
         midpoint (custom-math/get-point friendly-ship distance angle)]
     ; (if (and (not advantage?) (< distance 7))
     ;   (navigate-to ship (custom-math/get-point friendly-ship 7 angle)
     ;                (merge default-navigation-opts {:buffer 0.0 :subtype :suicide}))
-    (navigate-to ship midpoint (merge default-navigation-opts {:buffer 1.1
-                                                               :subtype :defend}))))
+    (if advantage?
+      (navigate-to-attack-ship ship enemy-ship)
+      (navigate-to ship midpoint (merge default-navigation-opts {:buffer 0.0
+                                                                 :subtype :defend
+                                                                 :avoid-attack true})))))
 
 (defn navigate-to-dock
   "Returns a thrust move which will navigate this ship to the requested
