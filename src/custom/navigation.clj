@@ -11,7 +11,7 @@
 
 (def default-navigation-opts
   (assoc hlt-navigation/default-navigation-opts
-         :max-corrections 360 :buffer 0 :avoid-attack true))
+         :max-corrections 270 :buffer 0 :avoid-attack true))
 
 (def reverse-nagivation-opts
   (assoc default-navigation-opts :angular-step (/ Math/PI -180.0)))
@@ -106,6 +106,7 @@
 (defn not-guaranteed-safe?
   "Returns true if we're less than 5 away from a ship."
   [ship ships]
+  (some? (first (filter #(<= (math/distance-between ship %) 7) ships)))
   (some? (first (filter #(<= (math/distance-between ship %) 8) ships))))
 
 ; (defn midturn-collisions
@@ -323,9 +324,9 @@
                         avoid-attack
                         false)
          thrust (int (min (- distance buffer) max-thrust))]
-     (log "My ship is " ship)
-     (log "My goal is " goal)
-     (log "My distance to go is " distance)
+     ; (log "My ship is " ship)
+     ; (log "My goal is " goal)
+     ; (log "My distance to go is " distance)
      (if (< distance buffer)
        (for [single-ship (:swarm ship)]
          (assoc (e/thrust-move single-ship 0 first-angle)
@@ -467,16 +468,17 @@
         ;; Try to prevent sending my ship in to die
         distance (if advantage?
                    (/ (* 2 distance) 3)
-                   (/ (* 1 distance) 10))
+                   0)
+                   ; (/ (* 1 distance) 10)
         midpoint (custom-math/get-point friendly-ship distance angle)]
     ; (if (and (not advantage?) (< distance 7))
     ;   (navigate-to ship (custom-math/get-point friendly-ship 7 angle)
     ;                (merge default-navigation-opts {:buffer 0.0 :subtype :suicide}))
-    (if advantage?
-      (navigate-to-attack-ship ship enemy-ship)
-      (navigate-to ship midpoint (merge default-navigation-opts {:buffer 0.0
-                                                                 :subtype :defend
-                                                                 :avoid-attack true})))))
+    ; (if advantage?
+    ;   (navigate-to-attack-ship ship enemy-ship)
+    (navigate-to ship midpoint (merge default-navigation-opts {:buffer 0.0
+                                                               :subtype :defend
+                                                               :avoid-attack true}))))
 
 (defn navigate-to-dock
   "Returns a thrust move which will navigate this ship to the requested
@@ -485,9 +487,9 @@
   it cannot find a suitable path."
   [ship planet]
   (let [docking-point (math/closest-point ship planet hlt-navigation/docking-distance)]
-    (navigate-to ship docking-point (assoc default-navigation-opts :subtype :dock))))
+    (navigate-to-fast ship docking-point (assoc default-navigation-opts :subtype :dock))))
 
-(def too-close-distance 0.3)
+(def too-close-distance 1.0)
 
 (defn too-close-to-planet
   "Returns true if the point is < than 3 units away from a planet."
@@ -524,8 +526,8 @@
     (loop [angle orig-angle
            iteration 0]
       (let [planet (custom-math/get-point ship e/max-ship-speed angle)]
-        (if (and (or not-safe (unreachable? planet ships)))
-                 ;(not (too-close-to-planet planet orig-planet)))
+        (if (and (or not-safe (unreachable? planet ships))
+                 (not (too-close-to-planet planet orig-planet)))
           (navigate-to ship planet (merge default-navigation-opts {:buffer 0.0
                                                                    :max-thrust e/max-ship-speed
                                                                    :subtype :retreat3}))
@@ -551,8 +553,8 @@
     (loop [angle orig-angle
            iteration 0]
       (let [planet (custom-math/get-point ship e/max-ship-speed angle)]
-        (if (and (or not-safe (unreachable? planet ships)))
-                 ; (not (too-close-to-planet planet orig-planet)))
+        (if (and (or not-safe (unreachable? planet ships))
+                 (not (too-close-to-planet planet orig-planet)))
           (navigate-swarm-to ship planet (merge default-navigation-opts {:buffer 0.0
                                                                          :max-thrust e/max-ship-speed
                                                                          :subtype :swarm-retreat3}))

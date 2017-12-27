@@ -213,8 +213,10 @@
     (or (and (zero? max-other-count)
              (zero? (count closeby-docked)))
         (and
-          (> my-count max-other-count)
-          (let [close-distance 30
+          (>= my-count max-other-count)
+          ; (> my-count max-other-count)
+          ; (let [close-distance 30])
+          (let [close-distance 13
                 filter-fn (fn [ship]
                             (and (= :undocked (-> ship :docking :status))
                                  (< (math/distance-between ship planet) (+ close-distance (:radius planet)))))
@@ -232,8 +234,9 @@
                 my-count (if (and (< *num-ships* 5) (pos? max-other-count))
                            (dec my-count)
                            my-count)]
-            (> (+ my-count (* 0.125 my-docked-count))
-               (+ max-other-count (* 0.125 other-docked-count))))))))
+            ; (> (+ my-count (* 0.125 my-docked-count)))
+            (>= (+ my-count (* 0.125 my-docked-count))
+                (+ max-other-count (* 0.125 other-docked-count))))))))
 
 (defn alone?
   "Returns true if I'm the only fighter nearby."
@@ -248,10 +251,10 @@
              (filter #(= *player-id* (:owner-id %))
                      (vals *ships*))))))
 
-; (def advantage-range (* 2 (+ e/max-ship-speed e/ship-radius e/weapon-radius)))
+(def advantage-range (* 2 (+ e/max-ship-speed e/ship-radius e/weapon-radius)))
 ; (def advantage-range (* 2 (+ e/max-ship-speed e/weapon-radius)))
 ; (def advantage-range (* 1.1 (+ e/max-ship-speed e/ship-radius e/weapon-radius)))
-(def advantage-range (+ e/max-ship-speed e/weapon-radius))
+; (def advantage-range (+ e/max-ship-speed e/weapon-radius))
 
 (defn have-advantage?
   "Returns true if I have more fighters at a given position than the enemy."
