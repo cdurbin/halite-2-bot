@@ -6,6 +6,7 @@
    [hlt.utils :refer [log]]
    [hlt.navigation :as hlt-navigation]
    [hlt.game-map :refer [*planets* *ships* *player-id* *map-size*]]
+   [custom.game-map :refer [*num-ships*]]
    [hlt.math :as math :refer [get-x get-y]]))
 
 (def default-navigation-opts
@@ -105,7 +106,7 @@
 (defn not-guaranteed-safe?
   "Returns true if we're less than 5 away from a ship."
   [ship ships]
-  (some? (first (filter #(<= (math/distance-between ship %) 6) ships))))
+  (some? (first (filter #(<= (math/distance-between ship %) 8) ships))))
 
 ; (defn midturn-collisions
 ;   "Returns all of the midturn collisions that are possible.
@@ -134,16 +135,18 @@
                ; _ (log "Location" location)
                collisions (ship-entities-between (:start location) (:end location)
                                                  ; (filter #(= turn (:turn %))
-                                                 ;         midturn-ships)
-                                                 (filter #(<= (- turn 4)
+                                                 ;         midturn-ships))]
+                                                 (filter #(<= (- turn 1)
                                                               (:turn %)
-                                                              (+ turn 4))
+                                                              (+ turn 1))
                                                  ; ; (filter #(= turn (get % :turn 1))
                                                          midturn-ships))]
          :when (seq collisions)]
      collisions)))
 
-(defn navigate-to
+(def planet-compare-distance 27)
+
+(defn navigate-to-precise
   "Returns a thrust move that moves the ship to the provided goal. The
   goal is treated as a point, i.e. the thrust move attempts to move
   the ship to the center of the goal. Use navigate-to-dock to compute
@@ -151,12 +154,11 @@
   closest-point yourself to find a suitable point. This function
   returns nil if it cannot find a suitable path."
   ([ship goal]
-   (navigate-to ship goal default-navigation-opts))
+   (navigate-to-precise ship goal default-navigation-opts))
   ([ship goal {:keys [max-corrections avoid-obstacles
                       angular-step max-thrust buffer subtype avoid-attack]
                :as opts}]
    (let [distance (math/distance-between ship goal)
-         planet-compare-distance (min distance 17)
          first-angle (math/orient-towards ship goal)
          ;          compare-ships (remove (fn [[k v]]
          ;                                   (or (= (:id ship) (:id v))
@@ -236,53 +238,64 @@
                   ;                                          planet-compare-point))))
                   (assoc (e/thrust-move ship (min max-thrust thrust) angle) :subtype subtype)))))))))))
 
-; (defn navigate-to
-;   "Returns a thrust move that moves the ship to the provided goal. The
-;   goal is treated as a point, i.e. the thrust move attempts to move
-;   the ship to the center of the goal. Use navigate-to-dock to compute
-;   a thrust move that does not collide with entities, or use
-;   closest-point yourself to find a suitable point. This function
-;   returns nil if it cannot find a suitable path."
-;   ([ship goal]
-;    (navigate-to ship goal default-navigation-opts))
-;   ([ship goal {:keys [max-corrections avoid-obstacles
-;                       angular-step max-thrust buffer subtype avoid-attack]
-;                :as opts}]
-;    (let [distance (math/distance-between ship goal)
-;          planet-compare-distance (min distance 17)
-;          first-angle (math/orient-towards ship goal)
-;          compare-ships (remove (fn [[k v]]
-;                                   (or (= (:id ship) (:id v))
-;                                       (= (:id goal) k)))
-;                                       ; (not= *player-id* (:owner-id v))))
-;                                *ships*)
-;          obstacles (figure-out-potential-obstacles ship (vals compare-ships))
-;          ; obstacles (figure-out-potential-obstacles ship (remove #(or (= (:id ship) (:id %))
-;          ;                                                             (= (:id goal) (:id %)))
-;          ;                                                        (vals *ships*)))
-;          other-ships (when avoid-attack
-;                        (remove #(or (= *player-id* (:owner-id %))
-;                                     (not= (:undocked (-> % :docking :status))))
-;                                obstacles))
-;          avoid-attack (if (and avoid-attack (not (not-guaranteed-safe? ship other-ships)))
-;                         avoid-attack
-;                         false)
-;          thrust (int (min (- distance buffer) max-thrust))]
-;      (if (< distance buffer)
-;        (e/thrust-move ship 0 first-angle)
-;        (loop [iterations (rest all-navigation-iterations)]
-;          (let [{:keys [max-thrust angular-step]} (first iterations)]
-;            (if (nil? max-thrust)
-;              (e/thrust-move ship 0 first-angle)
-;              (let [angle (+ first-angle angular-step)
-;                    point (custom-math/get-point ship (min max-thrust thrust) angle)
-;                    planet-compare-point (custom-math/get-point ship planet-compare-distance angle)]
-;                (if (or (not (valid-point? point))
-;                        (and avoid-attack (not (unreachable? point other-ships)))
-;                        (and avoid-obstacles (first (new-entities-between ship point obstacles
-;                                                                          planet-compare-point))))
-;                  recur (rest iterations)
-;                  (assoc (e/thrust-move ship (min max-thrust thrust) angle) :subtype subtype))))))))))
+(defn navigate-to-fast
+  "Returns a thrust move that moves the ship to the provided goal. The
+  goal is treated as a point, i.e. the thrust move attempts to move
+  the ship to the center of the goal. Use navigate-to-dock to compute
+  a thrust move that does not collide with entities, or use
+  closest-point yourself to find a suitable point. This function
+  returns nil if it cannot find a suitable path."
+  ([ship goal]
+   (navigate-to-fast ship goal default-navigation-opts))
+  ([ship goal {:keys [max-corrections avoid-obstacles
+                      angular-step max-thrust buffer subtype avoid-attack]
+               :as opts}]
+   (let [distance (math/distance-between ship goal)
+         first-angle (math/orient-towards ship goal)
+         compare-ships (remove (fn [[k v]]
+                                  (or (= (:id ship) (:id v))
+                                      (= (:id goal) k)))
+                                      ; (not= *player-id* (:owner-id v))))
+                               *ships*)
+         obstacles (figure-out-potential-obstacles ship (vals compare-ships))
+         ; obstacles (figure-out-potential-obstacles ship (remove #(or (= (:id ship) (:id %))
+         ;                                                             (= (:id goal) (:id %)))
+         ;                                                        (vals *ships*)))
+         other-ships (when avoid-attack
+                       (remove #(or (= *player-id* (:owner-id %))
+                                    (not= (:undocked (-> % :docking :status))))
+                               obstacles))
+         avoid-attack (if (and avoid-attack (not (not-guaranteed-safe? ship other-ships)))
+                        avoid-attack
+                        false)
+         thrust (int (min (- distance buffer) max-thrust))]
+     (if (< distance buffer)
+       (e/thrust-move ship 0 first-angle)
+       (loop [iterations (rest all-navigation-iterations)]
+         (let [{:keys [max-thrust angular-step]} (first iterations)]
+           (if (nil? max-thrust)
+             (e/thrust-move ship 0 first-angle)
+             (let [angle (+ first-angle angular-step)
+                   point (custom-math/get-point ship (min max-thrust thrust) angle)
+                   planet-compare-point (custom-math/get-point ship planet-compare-distance angle)]
+               (if (or (not (valid-point? point))
+                       (and avoid-attack (not (unreachable? point other-ships)))
+                       (and avoid-obstacles (first (new-entities-between ship point obstacles
+                                                                         planet-compare-point))))
+                 (recur (rest iterations))
+                 (assoc (e/thrust-move ship (min max-thrust thrust) angle) :subtype subtype))))))))))
+
+(defn navigate-to
+  "Determines which navigation to perform."
+  ([ship goal]
+   (navigate-to ship goal default-navigation-opts))
+  ([ship goal {:keys [max-corrections avoid-obstacles
+                      angular-step max-thrust buffer subtype avoid-attack]
+               :as opts}]
+   (if (> *num-ships* 85)
+     (navigate-to-fast ship goal opts)
+     (navigate-to-precise ship goal opts))))
+
 
 (defn navigate-swarm-to
   "Returns a thrust move that moves the ship to the provided goal. The
@@ -410,7 +423,7 @@
            iteration 0]
       (let [goal (custom-math/get-point ship e/max-ship-speed angle)]
         (if (or not-safe (unreachable? goal ships))
-          (navigate-swarm-to ship goal (merge default-navigation-opts {:buffer 1.1
+          (navigate-swarm-to ship goal (merge default-navigation-opts {:buffer 1.01
                                                                        :max-thrust e/max-ship-speed
                                                                        :subtype :swarm-retreat}))
           (if (<= iteration retreat-iterations)
@@ -424,7 +437,7 @@
   `docking-distance` units above the planet's surface. Returns nil if
   it cannot find a suitable path."
   [ship friendly-ship]
-  (navigate-to ship friendly-ship (merge default-navigation-opts {:buffer 1.1
+  (navigate-to ship friendly-ship (merge default-navigation-opts {:buffer 1.01
                                                                   :subtype :swarm-friendly})))
                                                                   ; :max-corrections 10})))
 
@@ -439,7 +452,7 @@
   `docking-distance` units above the planet's surface. Returns nil if
   it cannot find a suitable path."
   [ship friendly-ship]
-  (navigate-to ship friendly-ship (merge default-navigation-opts {:buffer 1.1
+  (navigate-to ship friendly-ship (merge default-navigation-opts {:buffer 1.01
                                                                   :subtype :friendly2})))
                                                                   ; :max-corrections 10})))
 

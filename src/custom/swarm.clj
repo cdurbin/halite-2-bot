@@ -15,7 +15,7 @@
 ; (def swarm-eligible-distance-apart 5)
 ; (def swarm-eligible-distance-apart 2.5)
 (def swarm-eligible-distance-apart 3)
-(def how-close-to-swarm 1.1)
+(def how-close-to-swarm 1.01)
 ; (def max-swarm-range 1.5)
 
 (defn- get-ship-distances
