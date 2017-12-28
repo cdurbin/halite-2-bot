@@ -10,7 +10,6 @@
    [hlt.math :as math]
    [hlt.utils :refer [log]]))
 
-
 ; (def max-ships-in-swarm 3)
 ; (def swarm-eligible-distance-apart 5)
 ; (def swarm-eligible-distance-apart 2.5)
@@ -124,6 +123,7 @@
                              :when move]
                          (do (map/change-ship-positions! move)
                              move))]
+        (map/update-fighters enemy-ship (count swarm-spot-distances))
         (concat [first-move] next-moves)))))
 
 (defn move-swarm-to-retreat
@@ -161,7 +161,8 @@
     (let [swarm-spot-distances (get-best-swarm-spot swarm enemy-ship)]
       (if (or (= custom-math/infinity retreat-range)
               (> (math/distance-between swarm enemy-ship) retreat-range)
-              (swarm-advantage? swarm (-> swarm-spot-distances first :point)))
+              ; (swarm-advantage? swarm (-> swarm-spot-distances first :point))
+              (map/have-advantage? enemy-ship))
         (move-swarm-to-attack swarm enemy-ship swarm-spot-distances)
         (move-swarm-to-retreat swarm enemy-ship swarm-spot-distances)))))
 

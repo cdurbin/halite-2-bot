@@ -55,6 +55,7 @@
   [a b obstacles planet-point]
   (let [filter-fn #(math/segment-circle-intersects? a b % slightly-smaller-fudge-factor)
         filter-fn-planets #(math/segment-circle-intersects? a planet-point % planet-fudge-factor)]
+        ; filter-fn-planets #(math/segment-circle-intersects? a b % planet-fudge-factor)]
     (concat (filter filter-fn-planets (vals *planets*))
             (filter filter-fn obstacles))))
 
@@ -196,7 +197,7 @@
              (e/thrust-move ship 0 first-angle)
              (let [angle (+ first-angle angular-step)
                    point (custom-math/get-point ship (min max-thrust thrust) angle)
-                   planet-compare-point (custom-math/get-point ship planet-compare-distance angle)
+                   planet-compare-point (custom-math/get-point ship (min distance planet-compare-distance) angle)
                    midturn-locations (custom-math/get-in-turn-segments
                                       {:ship ship :thrust (min max-thrust thrust)
                                        :angle angle})]
@@ -487,7 +488,8 @@
   it cannot find a suitable path."
   [ship planet]
   (let [docking-point (math/closest-point ship planet hlt-navigation/docking-distance)]
-    (navigate-to-fast ship docking-point (assoc default-navigation-opts :subtype :dock))))
+    (navigate-to ship docking-point (assoc default-navigation-opts :subtype :dock))))
+    ; (navigate-to-fast ship docking-point (assoc default-navigation-opts :subtype :dock))))
 
 (def too-close-distance 1.0)
 

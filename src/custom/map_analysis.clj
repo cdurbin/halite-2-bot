@@ -215,8 +215,8 @@
         (and
           (>= my-count max-other-count)
           ; (> my-count max-other-count)
-          ; (let [close-distance 30])
-          (let [close-distance 13
+          (let [close-distance 30
+          ; (let [close-distance 13
                 filter-fn (fn [ship]
                             (and (= :undocked (-> ship :docking :status))
                                  (< (math/distance-between ship planet) (+ close-distance (:radius planet)))))
@@ -586,3 +586,32 @@
       (when (last imaginary-ships)
         ; (log "Last imaginary-ship is:" (last imaginary-ships))
         (set! *ships* (assoc *ships* (:id ship) (last imaginary-ships)))))))
+
+(defn update-fighters
+  "Updates fighter ships so I don't send too many to the same place."
+  ([enemy-ship]
+   (update-fighters enemy-ship 1))
+  ([enemy-ship num-fighters]
+   (let [fighter? (= :undocked (-> enemy-ship :docking :status))
+         attack-count (+ num-fighters (get enemy-ship :attack-count 0))
+         remove? (>= attack-count 4)]
+     (if fighter?
+       (if remove?
+         (set! *pesky-fighters* (dissoc *pesky-fighters* (:id enemy-ship)))
+         (set! *pesky-fighters* (assoc-in *pesky-fighters* [(:id enemy-ship) :attack-count] attack-count)))
+       (if remove?
+         (set! *docked-enemies* (dissoc *docked-enemies* (:id enemy-ship)))
+         (set! *docked-enemies* (assoc-in *docked-enemies* [(:id enemy-ship) :attack-count] attack-count)))))))
+
+(def close-fighter-distance 55)
+
+(defn safe-to-dock?
+  "Returns true if I have a defender nearby."
+  [ship]
+  (let [all-fighters (filter #(and (= :undocked (-> % :docking :status))
+                                   (not= (:id ship) (:id %)))
+                             (vals *ships*))
+        closest-fighter (nearest-entity ship all-fighters)]
+    (or (nil? closest-fighter)
+        (= *player-id* (:owner-id closest-fighter))
+        (> (math/distance-between ship closest-fighter) close-fighter-distance))))
