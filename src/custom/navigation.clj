@@ -11,7 +11,7 @@
 
 (def default-navigation-opts
   (assoc hlt-navigation/default-navigation-opts
-         :max-corrections 270 :buffer 0 :avoid-attack true))
+         :max-corrections 2 :buffer 0 :avoid-attack true))
 
 (def reverse-nagivation-opts
   (assoc default-navigation-opts :angular-step (/ Math/PI -180.0)))
@@ -79,7 +79,7 @@
 (def all-navigation-iterations
   "Returns the angular-step and max thrust for each potential navigation iteration."
   (for [iterations (range 1 6)
-        thrust [7 6 4 2]
+        thrust [7 6 4 2 1]
         ; thrust [7]
         ; thrust [7 6 5 4 3 2 1]
         angular-step (range 30)
@@ -107,7 +107,7 @@
 (defn not-guaranteed-safe?
   "Returns true if we're less than 5 away from a ship."
   [ship ships]
-  (some? (first (filter #(<= (math/distance-between ship %) 7) ships)))
+  ; (some? (first (filter #(<= (math/distance-between ship %) 7) ships)))
   (some? (first (filter #(<= (math/distance-between ship %) 8) ships))))
 
 ; (defn midturn-collisions
@@ -136,12 +136,11 @@
                ; _ (log "Turn " turn)
                ; _ (log "Location" location)
                collisions (ship-entities-between (:start location) (:end location)
-                                                 ; (filter #(= turn (:turn %))
-                                                 ;         midturn-ships))]
+                                                 ; (filter #(= (inc turn) (:turn %))
+                                                 ;         midturn-ships)
                                                  (filter #(<= (- turn 1)
                                                               (:turn %)
                                                               (+ turn 1))
-                                                 ; ; (filter #(= turn (get % :turn 1))
                                                          midturn-ships))]
          :when (seq collisions)]
      collisions)))
@@ -180,21 +179,21 @@
          midturn-ships (remove (fn [[k v]]
                                  (integer? k))
                                all-obstacles)
-         ; _ (log "MT SHIPS: " midturn-ships)
+         ; _ (when (= 6 (:id ship)) (log "MT SHIPS: " midturn-ships))
          other-ships (when avoid-attack
                        (remove #(or (= *player-id* (:owner-id %))
                                     (not= (:undocked (-> % :docking :status))))
-                               all-obstacles))
-         avoid-attack (if (and avoid-attack (not (not-guaranteed-safe? ship (vals other-ships))))
+                               (vals all-obstacles)))
+         avoid-attack (if (and avoid-attack (not (not-guaranteed-safe? ship other-ships)))
                         avoid-attack
                         false)
          thrust (int (min (- distance buffer) max-thrust))]
      (if (< distance buffer)
-       (e/thrust-move ship 0 first-angle)
+       (assoc (e/thrust-move ship 0 first-angle) :subtype subtype :reason "Precise - distance is less than buffer.")
        (loop [iterations (rest all-navigation-iterations)]
          (let [{:keys [max-thrust angular-step]} (first iterations)]
            (if (nil? max-thrust)
-             (e/thrust-move ship 0 first-angle)
+             (assoc (e/thrust-move ship 0 first-angle) :subtype subtype :reason "Precise - ran out of moves.")
              (let [angle (+ first-angle angular-step)
                    point (custom-math/get-point ship (min max-thrust thrust) angle)
                    planet-compare-point (custom-math/get-point ship (min distance planet-compare-distance) angle)
@@ -222,8 +221,9 @@
                ; (log "Midturn locations" midturn-locations)
                ; (log "Midturn collisions" (midturn-collisions midturn-locations
                ;                                               (vals midturn-ships)))
+
                (if (or (not (valid-point? point))
-                       (and avoid-attack (not (unreachable? point (vals other-ships))))
+                       (and avoid-attack (not (unreachable? point other-ships)))
                        (and avoid-obstacles
                             (or (first (new-entities-between ship point (vals final-ships-to-compare)
                                                              planet-compare-point))
@@ -272,11 +272,11 @@
                         false)
          thrust (int (min (- distance buffer) max-thrust))]
      (if (< distance buffer)
-       (e/thrust-move ship 0 first-angle)
+       (assoc (e/thrust-move ship 0 first-angle) :subtype subtype :reason "Fast - within buffer.")
        (loop [iterations (rest all-navigation-iterations)]
          (let [{:keys [max-thrust angular-step]} (first iterations)]
            (if (nil? max-thrust)
-             (e/thrust-move ship 0 first-angle)
+             (assoc (e/thrust-move ship 0 first-angle) :subtype subtype :reason "Fast - ran out of possibilities.")
              (let [angle (+ first-angle angular-step)
                    point (custom-math/get-point ship (min max-thrust thrust) angle)
                    planet-compare-point (custom-math/get-point ship planet-compare-distance angle)]
@@ -299,58 +299,58 @@
      (navigate-to-precise ship goal opts))))
 
 
-(defn navigate-swarm-to
-  "Returns a thrust move that moves the ship to the provided goal. The
-  goal is treated as a point, i.e. the thrust move attempts to move
-  the ship to the center of the goal. Use navigate-to-dock to compute
-  a thrust move that does not collide with entities, or use
-  closest-point yourself to find a suitable point. This function
-  returns nil if it cannot find a suitable path."
-  ([ship goal]
-   (navigate-to ship goal default-navigation-opts))
-  ([ship goal {:keys [max-corrections avoid-obstacles
-                      angular-step max-thrust buffer subtype avoid-attack]
-               :as opts}]
-   (let [distance (math/distance-between ship goal)
-         first-angle (math/orient-towards ship goal)
-         ids (map :id (:swarm ship))
-         obstacles (figure-out-potential-obstacles ship (remove #(or (some (set [(:id %)]) ids)
-                                                                     (= (:id goal) (:id %)))
-                                                                (vals *ships*)))
-         other-ships (when avoid-attack
-                       (remove #(or (= *player-id* (:owner-id %))
-                                    (not= (:undocked (-> % :docking :status))))
-                               obstacles))
-         avoid-attack (if (and avoid-attack (unreachable? ship other-ships))
-                        avoid-attack
-                        false)
-         thrust (int (min (- distance buffer) max-thrust))]
-     ; (log "My ship is " ship)
-     ; (log "My goal is " goal)
-     ; (log "My distance to go is " distance)
-     (if (< distance buffer)
-       (for [single-ship (:swarm ship)]
-         (assoc (e/thrust-move single-ship 0 first-angle)
-                :subtype subtype))
-       (loop [iterations (rest all-navigation-iterations)]
-         (let [{:keys [max-thrust angular-step]} (first iterations)]
-           (if (nil? max-thrust)
-             (for [single-ship (:swarm ship)]
-               (assoc (e/thrust-move single-ship 0 first-angle)
-                      :subtype subtype))
-             (let [angle (+ first-angle angular-step)
-                   point (custom-math/get-point ship (min max-thrust thrust) angle)]
-               (if (or (not (valid-point? point))
-                       (and avoid-attack (not (unreachable? point other-ships)))
-                       (and avoid-obstacles (first (swarm-entities-between ship point obstacles))))
-                 (recur (rest iterations))
-                 ;; One move for each ship in the swarm
-                 (for [single-ship (:swarm ship)
-                       :let [single-angle (math/orient-towards single-ship point)
-                             single-thrust (min max-thrust (int (math/distance-between single-ship
-                                                                                       point)))]]
-                   (assoc (e/thrust-move single-ship (min max-thrust single-thrust) single-angle)
-                          :subtype subtype)))))))))))
+; (defn navigate-swarm-to
+;   "Returns a thrust move that moves the ship to the provided goal. The
+;   goal is treated as a point, i.e. the thrust move attempts to move
+;   the ship to the center of the goal. Use navigate-to-dock to compute
+;   a thrust move that does not collide with entities, or use
+;   closest-point yourself to find a suitable point. This function
+;   returns nil if it cannot find a suitable path."
+;   ([ship goal]
+;    (navigate-to ship goal default-navigation-opts))
+;   ([ship goal {:keys [max-corrections avoid-obstacles
+;                       angular-step max-thrust buffer subtype avoid-attack]
+;                :as opts}]
+;    (let [distance (math/distance-between ship goal)
+;          first-angle (math/orient-towards ship goal)
+;          ids (map :id (:swarm ship))
+;          obstacles (figure-out-potential-obstacles ship (remove #(or (some (set [(:id %)]) ids)
+;                                                                      (= (:id goal) (:id %)))
+;                                                                 (vals *ships*)))
+;          other-ships (when avoid-attack
+;                        (remove #(or (= *player-id* (:owner-id %))
+;                                     (not= (:undocked (-> % :docking :status))))
+;                                obstacles))
+;          avoid-attack (if (and avoid-attack (unreachable? ship other-ships))
+;                         avoid-attack
+;                         false)
+;          thrust (int (min (- distance buffer) max-thrust))]
+;      ; (log "My ship is " ship)
+;      ; (log "My goal is " goal)
+;      ; (log "My distance to go is " distance)
+;      (if (< distance buffer)
+;        (for [single-ship (:swarm ship)]
+;          (assoc (e/thrust-move single-ship 0 first-angle)
+;                 :subtype subtype))
+;        (loop [iterations (rest all-navigation-iterations)]
+;          (let [{:keys [max-thrust angular-step]} (first iterations)]
+;            (if (nil? max-thrust)
+;              (for [single-ship (:swarm ship)]
+;                (assoc (e/thrust-move single-ship 0 first-angle)
+;                       :subtype subtype))
+;              (let [angle (+ first-angle angular-step)
+;                    point (custom-math/get-point ship (min max-thrust thrust) angle)]
+;                (if (or (not (valid-point? point))
+;                        (and avoid-attack (not (unreachable? point other-ships)))
+;                        (and avoid-obstacles (first (swarm-entities-between ship point obstacles))))
+;                  (recur (rest iterations))
+;                  ;; One move for each ship in the swarm
+;                  (for [single-ship (:swarm ship)
+;                        :let [single-angle (math/orient-towards single-ship point)
+;                              single-thrust (min max-thrust (int (math/distance-between single-ship
+;                                                                                        point)))]]
+;                    (assoc (e/thrust-move single-ship (min max-thrust single-thrust) single-angle)
+;                           :subtype subtype)))))))))))
 
 (defn navigate-to-specific-point
   "Navigate to a specific point"
@@ -371,13 +371,13 @@
                                                 :avoid-attack avoid-attack?}))))
                                                 ; :avoid-attack false}))))
 
-(defn navigate-swarm-to-attack-ship
-  "Navigate to with a buffer to not crash into ship."
-  [ship goal]
-  (navigate-swarm-to ship goal
-                     (merge default-navigation-opts {:buffer 3.5
-                                                     :subtype :swarm-attack
-                                                     :avoid-attack false})))
+; (defn navigate-swarm-to-attack-ship
+;   "Navigate to with a buffer to not crash into ship."
+;   [ship goal]
+;   (navigate-swarm-to ship goal
+;                      (merge default-navigation-opts {:buffer 3.5
+;                                                      :subtype :swarm-attack
+;                                                      :avoid-attack false})))
 
 (defn navigate-to-attack-docked-ship
   "Navigate to with a buffer to not crash into ship."
@@ -413,24 +413,24 @@
             (recur (mod (+ retreat-angular-step angle) 360)
                    (inc iteration))))))))
 
-(defn navigate-swarm-to-retreat-ship
-  "Attempt to retreat and pull the ships away from my planets. Pick four points and make sure
-  I cannot be attacked from them."
-  [ship goal]
-  (let [ships (remove #(or (= *player-id* (:owner-id %))
-                           (not= :undocked (-> % :docking :status)))
-                      (vals *ships*))
-        not-safe (not-guaranteed-safe? ship ships)]
-    (loop [angle (custom-math/orient-away ship goal)
-           iteration 0]
-      (let [goal (custom-math/get-point ship e/max-ship-speed angle)]
-        (if (or not-safe (unreachable? goal ships))
-          (navigate-swarm-to ship goal (merge default-navigation-opts {:buffer 1.01
-                                                                       :max-thrust e/max-ship-speed
-                                                                       :subtype :swarm-retreat}))
-          (if (<= iteration retreat-iterations)
-            (recur (mod (+ retreat-angular-step angle) 360)
-                   (inc iteration))))))))
+; (defn navigate-swarm-to-retreat-ship
+;   "Attempt to retreat and pull the ships away from my planets. Pick four points and make sure
+;   I cannot be attacked from them."
+;   [ship goal]
+;   (let [ships (remove #(or (= *player-id* (:owner-id %))
+;                            (not= :undocked (-> % :docking :status)))
+;                       (vals *ships*))
+;         not-safe (not-guaranteed-safe? ship ships)]
+;     (loop [angle (custom-math/orient-away ship goal)
+;            iteration 0]
+;       (let [goal (custom-math/get-point ship e/max-ship-speed angle)]
+;         (if (or not-safe (unreachable? goal ships))
+;           (navigate-swarm-to ship goal (merge default-navigation-opts {:buffer 1.01
+;                                                                        :max-thrust e/max-ship-speed
+;                                                                        :subtype :swarm-retreat}))
+;           (if (<= iteration retreat-iterations)
+;             (recur (mod (+ retreat-angular-step angle) 360)
+;                    (inc iteration))))))))
 
 
 (defn navigate-to-swarm-ship
@@ -488,6 +488,8 @@
   it cannot find a suitable path."
   [ship planet]
   (let [docking-point (math/closest-point ship planet hlt-navigation/docking-distance)]
+    ; (log "Trying to navigate to docking point" docking-point "for ship " (:id ship))
+    ; (log "Distance to docking point" (math/distance-between ship docking-point))
     (navigate-to ship docking-point (assoc default-navigation-opts :subtype :dock))))
     ; (navigate-to-fast ship docking-point (assoc default-navigation-opts :subtype :dock))))
 
@@ -540,32 +542,32 @@
               (recur angle
                      (inc iteration)))))))))
 
-(defn navigate-swarm-to-retreat
-  "Attempt to retreat and pull the ships away from my planets and towards their own.
-  I cannot be attacked from them."
-  [ship planet]
-  (let [ships (remove #(or (= *player-id* (:owner-id %))
-                           (not= :undocked (-> % :docking :status)))
-                      (vals *ships*))
-        orig-planet planet
-        not-safe (not-guaranteed-safe? ship ships)
-        orig-angle (if not-safe
-                     (custom-math/orient-away ship (nearest-entity ship ships))
-                     (math/orient-towards ship planet))]
-    (loop [angle orig-angle
-           iteration 0]
-      (let [planet (custom-math/get-point ship e/max-ship-speed angle)]
-        (if (and (or not-safe (unreachable? planet ships))
-                 (not (too-close-to-planet planet orig-planet)))
-          (navigate-swarm-to ship planet (merge default-navigation-opts {:buffer 0.0
-                                                                         :max-thrust e/max-ship-speed
-                                                                         :subtype :swarm-retreat3}))
-          (when (<= iteration retreat-iterations)
-            (let [angle (if (even? iteration)
-                          (mod (+ (* retreat-angular-step (int (/ iteration 2))) orig-angle) 360)
-                          (mod (+ (* retreat-angular-step (int (/ (inc iteration) 2)) -1) orig-angle) 360))]
-              (recur angle
-                     (inc iteration)))))))))
+; (defn navigate-swarm-to-retreat
+;   "Attempt to retreat and pull the ships away from my planets and towards their own.
+;   I cannot be attacked from them."
+;   [ship planet]
+;   (let [ships (remove #(or (= *player-id* (:owner-id %))
+;                            (not= :undocked (-> % :docking :status)))
+;                       (vals *ships*))
+;         orig-planet planet
+;         not-safe (not-guaranteed-safe? ship ships)
+;         orig-angle (if not-safe
+;                      (custom-math/orient-away ship (nearest-entity ship ships))
+;                      (math/orient-towards ship planet))]
+;     (loop [angle orig-angle
+;            iteration 0]
+;       (let [planet (custom-math/get-point ship e/max-ship-speed angle)]
+;         (if (and (or not-safe (unreachable? planet ships))
+;                  (not (too-close-to-planet planet orig-planet)))
+;           (navigate-swarm-to ship planet (merge default-navigation-opts {:buffer 0.0
+;                                                                          :max-thrust e/max-ship-speed
+;                                                                          :subtype :swarm-retreat3}))
+;           (when (<= iteration retreat-iterations)
+;             (let [angle (if (even? iteration)
+;                           (mod (+ (* retreat-angular-step (int (/ iteration 2))) orig-angle) 360)
+;                           (mod (+ (* retreat-angular-step (int (/ (inc iteration) 2)) -1) orig-angle) 360))]
+;               (recur angle
+;                      (inc iteration)))))))))
 
 (defn closest-position
   "Returns closest position from the current position to a collection of positions."

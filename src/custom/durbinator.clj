@@ -274,11 +274,13 @@
 
 (defn attack-unprotected-enemy-ships
   "Returns moves to attack the unprotected enemy ships"
-  [moving-ships]
+  [moving-ships {:keys [start-ms]}]
   (let [ship-attacks (unprotected-enemy-ships moving-ships)]
     ; (log "unprotected enemy ships are:" ship-attacks)
     (doall
      (for [[ship enemy-ship] ship-attacks
+           :let [times-up? (> (- (System/currentTimeMillis) start-ms) 1550)]
+           :when (not times-up?)
            :let [move (navigation/navigate-to-attack-docked-ship
                        ; ship enemy-ship true)]
                        ship enemy-ship (> (math/distance-between ship enemy-ship) 21.1))]
@@ -337,7 +339,7 @@
 
 (defn defend-vulnerable-ships
   "Returns moves to defend vulnerable ships."
-  [moving-ships]
+  [moving-ships {:keys [start-ms]}]
   (let [potential-ships (filter #(and (= *player-id* (:owner-id %))
                                       (not (some (set [(:id %)]) moving-ships)))
                                 (vals *ships*))
@@ -346,6 +348,8 @@
     (doall
      (for [[defender ship enemy] vulnerable-ships
            ; :let [advantage? (map/have-advantage? (custom-math/get-point-between ship enemy 0.8))
+           :let [times-up? (> (- (System/currentTimeMillis) start-ms) 1550)]
+           :when (not times-up?)
            :let [advantage? (map/have-advantage? enemy)
                  move (get-reachable-attack-spot-move ship)
                  move (if move
@@ -557,11 +561,13 @@
 
 (defn get-swarm-moves
   "Returns the swarm moves."
-  [ships]
+  [{:keys [start-ms]} ships]
   (let [retreat-range (get-retreat-range *num-ships*)
         ; enemy-ships (filter #(not= *player-id* (:owner-id %)) (vals *ships*))
         swarms (swarm/get-swarms ships)
         moves (for [single-swarm swarms
+                    :let [times-up? (> (- (System/currentTimeMillis) start-ms) 1550)]
+                    :when (not times-up?)
                     :let [enemy-ships (concat (vals *docked-enemies*) (vals *pesky-fighters*))
                           swarm-moves (when (seq enemy-ships)
                                         (swarm/get-swarm-move single-swarm enemy-ships retreat-range
@@ -595,14 +601,7 @@
                          planets))]
             (when (and nearest-planet
                        (some #{(:id nearest-planet)} (keys *safe-planets*))
-                       ; No fighters close to taking me
-                       (let [all-fighters (filter #(and (= :undocked (-> ship :docking :status))
-                                                        (not= (:id ship) (:id %)))
-                                                  (vals *ships*))
-                             closest-fighter (map/nearest-entity ship all-fighters)]
-                         (or (nil? closest-fighter)
-                             (= *player-id* (:owner-id closest-fighter))
-                             (> (math/distance-between ship closest-fighter) 55))))
+                       (map/safe-to-dock? ship))
               (move-ship-to-planet! ship nearest-planet))))))))
 
 (defn compute-planet-only-move
@@ -646,10 +645,10 @@
         ships-in-order (map/sort-ships-by-distance (vals (get *owner-ships* *player-id*)))
         runaway-moves (run-to-corner-moves (reverse ships-in-order))
         moving-ships (map #(get-in % [:ship :id]) runaway-moves)
-        defend-moves (defend-vulnerable-ships moving-ships)
+        defend-moves (defend-vulnerable-ships moving-ships custom-map-info)
         moving-ships (map #(get-in % [:ship :id]) (concat defend-moves runaway-moves))
 
-        attack-moves (attack-unprotected-enemy-ships moving-ships)
+        attack-moves (attack-unprotected-enemy-ships moving-ships custom-map-info)
         moving-ships (map #(get-in % [:ship :id]) (concat runaway-moves attack-moves defend-moves))
         ; potential-ships (filter #(and (= :undocked (-> % :docking :status))
         ;                               (not (some (set [(:id %)]) moving-ships)))
@@ -664,6 +663,14 @@
         more-planet-moves (get-planet-only-moves ships-in-order (assoc custom-map-info :moving-ships moving-ships))
         moving-ships (map #(get-in % [:ship :id]) (concat runaway-moves attack-moves defend-moves more-planet-moves best-planet-moves swarm-moves))
 
+        ; potential-ships (filter #(and (= :undocked (-> % :docking :status))
+        ;                               (not (some (set [(:id %)]) moving-ships)))
+        ;                         ships-in-order)
+        ; swarm-moves (if (> *num-ships* 3)
+        ;               (get-swarm-moves custom-map-info potential-ships)
+        ;               (get-swarm-moves custom-map-info potential-ships))
+        ; moving-ships (map #(get-in % [:ship :id]) (concat runaway-moves swarm-moves defend-moves attack-moves best-planet-moves more-planet-moves))
+
         my-fighters (map/get-fighters *player-id* moving-ships)
         assigned-fighter-to-targets (map/fighters-to-targets my-fighters)
         main-moves (get-fighter-moves custom-map-info assigned-fighter-to-targets)
@@ -674,13 +681,16 @@
                                 ships-in-order)
         ; _ (log "potential ships: " potential-ships)
         swarm-moves (if (> *num-ships* 3)
-                      (get-swarm-moves potential-ships)
-                      (get-swarm-moves potential-ships))
+                      (get-swarm-moves custom-map-info potential-ships)
+                      (get-swarm-moves custom-map-info potential-ships))
                       ; [])
         moving-ships (map #(get-in % [:ship :id]) (concat runaway-moves swarm-moves defend-moves attack-moves main-moves best-planet-moves more-planet-moves))
         fallback-moves (get-main-moves ships-in-order (assoc custom-map-info :moving-ships moving-ships))
         all-moves (concat runaway-moves defend-moves attack-moves main-moves fallback-moves best-planet-moves swarm-moves more-planet-moves)
         friendly-moves (recalculate-friendly-moves (filter #(= :friendly (:subtype %)) all-moves) custom-map-info)
+
+        ; _ (log "All moves" (pretty-log all-moves))
+        ; _ (log "Friendly moves" (pretty-log friendly-moves))
         all-moves (remove #(= :friendly (:subtype %)) all-moves)
         all-moves (remove #(= 0 (:thrust %)) all-moves)]
         ; main-moves (remove #(= :friendly (:subtype %)) main-moves)

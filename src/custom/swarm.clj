@@ -65,46 +65,56 @@
                          {:ship ship :distance distance :point point})]
     (sort-by :distance ship-distances)))
 
-(defn base-swarm-moves
-  "Used for swarms for both attacking and retreating."
-  [swarm target navigation-fn retreat? swarm-spot-distances]
-  (let [swarm-spot-distances (if retreat?
-                               (reverse swarm-spot-distances)
-                               swarm-spot-distances)
-        ship (-> swarm-spot-distances first :ship)
+(defn get-first-swarm-move
+  "Returns the first swarm move to make."
+  [navigation-fn swarm-spot-distances]
+  (let [ship (-> swarm-spot-distances first :ship)
         orig-point (-> swarm-spot-distances last :point)
         angle (math/orient-towards ship orig-point)
         point (custom-math/get-point ship e/max-ship-speed angle)
         point (custom-math/get-point-between point orig-point 0.1)
         first-move (navigation-fn ship (assoc point :radius 0))]
     (when (and first-move (pos? (:thrust first-move)))
-      (map/change-ship-positions! first-move)
-      (let [updated-ship (get *ships* (:id ship))
-            swarm-point updated-ship
-            ; swarm-point (custom-math/get-point ship (:thrust first-move) (:angle first-move))
-            ; _ (log "Swarming to " swarm-point)
-            next-moves (for [next-ship (map :ship swarm-spot-distances)
-                             :when (not= (:id ship) (:id next-ship))
-                             ; :let [move (navigation/navigate-to next-ship swarm-point)]
-                             :let [
-                                   ; _ (log "Next ship is" next-ship)
-                                   move (navigation/navigate-to-swarm-ship
-                                         ; next-ship (assoc swarm-point :radius 0)
-                                         next-ship swarm-point)]
-                             :when move]
-                         (do (map/change-ship-positions! move)
-                             move))]
-        (concat [first-move] next-moves)))))
+      (map/change-ship-positions! first-move))
+    first-move))
+
+(defn return-all-swarm-moves
+  "Returns all of the swarm moves to make."
+  [first-move swarm-spot-distances]
+  (let [ship (:ship first-move)
+        updated-ship (get *ships* (:id ship))
+        swarm-point updated-ship
+        ; _ (log "Swarming to " swarm-point)
+        next-moves (for [next-ship (map :ship swarm-spot-distances)
+                         :when (not= (:id ship) (:id next-ship))
+                         :let [
+                               ; _ (log "Next ship is" next-ship)
+                               move (navigation/navigate-to-swarm-ship
+                                     next-ship swarm-point)]
+                         :when move]
+                     (do (map/change-ship-positions! move)
+                         move))]
+    (concat [first-move] next-moves)))
+
+(defn base-swarm-moves
+  "Used for swarms for both attacking and retreating."
+  [swarm target navigation-fn retreat? swarm-spot-distances]
+  (let [first-move (get-first-swarm-move navigation-fn swarm-spot-distances)]
+    (when (and first-move (pos? (:thrust first-move)))
+      (return-all-swarm-moves first-move swarm-spot-distances))))
 
 (defn move-swarm-to-attack
   "Returns moves for the swarm to attack the enemy ship."
   [swarm enemy-ship swarm-spot-distances]
   (let [ship (-> swarm-spot-distances first :ship)
         orig-point (-> swarm-spot-distances last :point)
+        distance (math/distance-between ship (-> swarm-spot-distances first :point))
         angle (math/orient-towards ship orig-point)
         point (custom-math/get-point ship e/max-ship-speed angle)
         point (custom-math/get-point-between point orig-point 0.1)
-        first-move (navigation/navigate-to-specific-point ship (assoc point :radius 0))]
+        first-move (if (> distance 10)
+                     (navigation/navigate-to-specific-point ship (assoc point :radius 0))
+                     (navigation/navigate-to-attack-ship ship enemy-ship))]
     (when (and first-move (pos? (:thrust first-move)))
       (map/change-ship-positions! first-move)
       (let [updated-ship (get *ships* (:id ship))
