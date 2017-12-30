@@ -45,7 +45,6 @@
   (for [n (range 1 (inc thrust) 1)]
     (hlt-math/map->Position (final-position x y n angle))))
 
-
 ;; Need 7 different distances, 1/7th of the total thrust, 2/7th, ...
 (defn all-positions-start-to-end-new
   "Returns multiple positions (one for each integer) from starting spot to ending spot."

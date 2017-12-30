@@ -232,16 +232,43 @@
   "How far away we look for unprotected ships."
   56)
 
+; (defn- find-unprotected-ships
+;   "Helper function."
+;   [potential-ships assigned-ships]
+;   (for [enemy-ship (vals *docked-enemies*)
+;         ; :let [no-help (empty? (filter #(and (= (:owner-id enemy-ship (:owner-id %)))
+;         ;                                     (<= (math/distance-between % enemy-ship) 7))
+;         ;                               potential-ships))]
+;         ; :let [no-help (navigation/unreachable? enemy-ship (filter #(= (:owner-id enemy-ship)
+;         ;                                                               (:owner-id %))
+;         ;                                                           potential-ships))]
+;         ; :when no-help
+;         :let [closest-ship (map/nearest-entity enemy-ship
+;                                                (remove #(or (= (:id enemy-ship) (:id %))
+;                                                             (not= *player-id* (:id %))
+;                                                             (some (set [%]) @assigned-ships))
+;                                                        potential-ships))]
+;         :when (and closest-ship
+;                    (= *player-id* (:owner-id closest-ship))
+;                    (not (some #{closest-ship} @assigned-ships)))
+;         :let [distance (math/distance-between enemy-ship closest-ship)]
+;         :when (< distance unprotected-distance)]
+;     (do
+;       (swap! assigned-ships conj closest-ship)
+;       {:ship closest-ship
+;        :enemy-ship enemy-ship
+;        :distance distance})))
+
 (defn- find-unprotected-ships
   "Helper function."
   [potential-ships assigned-ships]
   (for [enemy-ship (vals *docked-enemies*)
-        ; :let [no-help (empty? (filter #(and (= (:owner-id enemy-ship (:owner-id %)))
-        ;                                     (<= (math/distance-between % enemy-ship) 7))
-        ;                               potential-ships))]
-        :let [no-help (navigation/unreachable? enemy-ship (filter #(= (:owner-id enemy-ship)
-                                                                      (:owner-id %))
-                                                                  potential-ships))]
+        :let [no-help (nil? (second (filter #(and (= (:owner-id enemy-ship (:owner-id %)))
+                                                  (<= (math/distance-between % enemy-ship) 5))
+                                            potential-ships)))]
+        ; :let [no-help (navigation/unreachable? enemy-ship (filter #(= (:owner-id enemy-ship)
+        ;                                                               (:owner-id %))
+        ;                                                           potential-ships))]
         :when no-help
         :let [closest-ship (map/nearest-entity enemy-ship
                                                (remove #(or (= (:id enemy-ship) (:id %))
@@ -288,7 +315,8 @@
            :when (not times-up?)
            :let [move (navigation/navigate-to-attack-docked-ship
                        ; ship enemy-ship true)]
-                       ship enemy-ship (> (math/distance-between ship enemy-ship) 21.1))]
+                       ; ship enemy-ship (> (math/distance-between ship enemy-ship) 21.1)
+                       ship enemy-ship (> (math/distance-between ship enemy-ship) 12))]
            :when move]
        (do (map/change-ship-positions! move)
            move)))))
@@ -335,7 +363,7 @@
                                             (vals *planets*)))]
     (when (and (> *num-players* 2)
                ;; Less than 10 percent of the total ships and no more than 4 neutral planets
-               (<= neutral-planet-count 4)
+               (<= neutral-planet-count 7)
                (< (count my-ships) (* 0.1 (count (vals *ships*)))))
       (let [moves (for [ship (take 10 my-undocked-ships)
                         :when ship]
@@ -351,7 +379,8 @@
   (let [potential-ships (filter #(and (= *player-id* (:owner-id %))
                                       (not (some (set [(:id %)]) moving-ships)))
                                 (vals *ships*))
-        max-defenders (* *num-ships* (/ 4 7))
+        max-defenders (* *num-ships* (/ 1 2))
+        ; max-defenders (* *num-ships* (/ 4 7))
         vulnerable-ships (take max-defenders (get-vulnerable-ships potential-ships))]
     (doall
      (for [[defender ship enemy] vulnerable-ships

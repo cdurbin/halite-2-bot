@@ -40,7 +40,7 @@
           all-ships))
 
 (def slightly-smaller-fudge-factor 0.6)
-; (def slightly-smaller-fudge-factor 0.7)
+(def midturn-fudge-factor 0.71)
 (def planet-fudge-factor 0.6)
 (def swarm-fudge-factor 1.8)
 
@@ -62,7 +62,7 @@
 (defn ship-entities-between
   "Ship entities between."
   [a b obstacles]
-  (let [filter-fn #(math/segment-circle-intersects? a b % slightly-smaller-fudge-factor)]
+  (let [filter-fn #(math/segment-circle-intersects? a b % midturn-fudge-factor)]
     (filter filter-fn obstacles)))
 
 (defn swarm-entities-between
@@ -78,8 +78,8 @@
 
 (def all-navigation-iterations
   "Returns the angular-step and max thrust for each potential navigation iteration."
-  (for [iterations (range 1 6)
-        thrust [7 6 4 2 1]
+  (for [iterations (range 1 7)
+        thrust [7 6 4 2]
         ; thrust [7]
         ; thrust [7 6 5 4 3 2 1]
         angular-step (range 30)
@@ -138,9 +138,10 @@
                collisions (ship-entities-between (:start location) (:end location)
                                                  ; (filter #(= (inc turn) (:turn %))
                                                  ;         midturn-ships)
-                                                 (filter #(<= (- turn 1)
-                                                              (:turn %)
-                                                              (+ turn 1))
+                                                 ; (filter #(<= (- turn 0)
+                                                 ;              (:turn %)
+                                                 ;              (+ turn 0)))
+                                                 (filter #(= turn (:turn %))
                                                          midturn-ships))]
          :when (seq collisions)]
      collisions)))
@@ -294,7 +295,8 @@
   ([ship goal {:keys [max-corrections avoid-obstacles
                       angular-step max-thrust buffer subtype avoid-attack]
                :as opts}]
-   (if (> *num-ships* 85)
+   ; (if (> *num-ships* 1)
+   (if (> *num-ships* 65)
      (navigate-to-fast ship goal opts)
      (navigate-to-precise ship goal opts))))
 
