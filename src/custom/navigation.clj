@@ -486,11 +486,10 @@
   planet for docking. The ship will attempt to get to
   `docking-distance` units above the planet's surface. Returns nil if
   it cannot find a suitable path."
-  [ship planet]
-  (let [docking-point (math/closest-point ship planet hlt-navigation/docking-distance)]
+  [ship planet docking-point]
     ; (log "Trying to navigate to docking point" docking-point "for ship " (:id ship))
     ; (log "Distance to docking point" (math/distance-between ship docking-point))
-    (navigate-to ship docking-point (assoc default-navigation-opts :subtype :dock))))
+  (navigate-to ship docking-point (assoc default-navigation-opts :subtype :dock)))
     ; (navigate-to-fast ship docking-point (assoc default-navigation-opts :subtype :dock))))
 
 (def too-close-distance 1.0)

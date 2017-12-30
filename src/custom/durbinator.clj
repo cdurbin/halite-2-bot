@@ -8,6 +8,7 @@
    [custom.navigation :as navigation]
    [custom.swarm :as swarm]
    [custom.utils :as utils :refer [defn-timed pretty-log]]
+   [custom.center-planet :as center-planet]
    [hlt.entity :as e]
    [hlt.game-map :refer [*player-id* *map-size* *bot-name* *ships* *planets* *owner-ships*]]
    [hlt.math :as math]
@@ -19,15 +20,19 @@
 (def all-out-attack
   (atom 0))
 
+(def close-to-dock-point 1)
+
 (defn move-ship-to-planet!
   "Moves the ship to the given planet. Side effect to update the planet to reduce the number of
   available docking spots by one."
   [ship planet]
   ; (log "Trying to move to planet" planet "from ship" ship)
-  (let [move (if (e/within-docking-range? ship planet)
+  (let [docking-point (center-planet/get-best-docking-point ship planet)
+        move (if (and (e/within-docking-range? ship planet)
+                      (< (math/distance-between ship docking-point) close-to-dock-point))
                (do (set! *ships* (assoc-in *ships* [(:id ship) :docking :status] :custom-docking))
                    (e/dock-move ship planet))
-               (navigation/navigate-to-dock ship planet))]
+               (navigation/navigate-to-dock ship planet docking-point))]
     (when (and move (or (pos? (get move :thrust 0))
                         (= :dock (:type move))))
       (let [upd-planet (update-in planet [:docking :ships] conj ship)]
@@ -343,7 +348,7 @@
   (let [potential-ships (filter #(and (= *player-id* (:owner-id %))
                                       (not (some (set [(:id %)]) moving-ships)))
                                 (vals *ships*))
-        max-defenders (* *num-ships* (/ 4 7))
+        max-defenders (* *num-ships* (/ 3 7))
         vulnerable-ships (take max-defenders (get-vulnerable-ships potential-ships))]
     (doall
      (for [[defender ship enemy] vulnerable-ships
@@ -397,7 +402,7 @@
 (defn-timed starting-game-strategy!
   "Function called at beginning of game before starting."
   []
-  (let [four-center-planets (map/find-four-center-planets)
+  (let [four-center-planets (center-planet/find-four-center-planets)
         closet-planet-docking-spots-by-owner
         (into {}
               (for [owner-id (keys *owner-ships*)
@@ -413,6 +418,7 @@
     (log "Avoiding" four-center-planets)
     (when (> *num-players* 2)
       (reset! map/avoid-planets (map :id four-center-planets)))
+    (reset! center-planet/center-planets (map :id four-center-planets))
     (doseq [[owner {:keys [pos distance]}] enemy-positions]
       (let [distance-to-pos (math/distance-between my-ship pos)
             num-turns-to-planet (Math/ceil (/ (- distance e/dock-radius) e/max-ship-speed))
@@ -514,37 +520,35 @@
           (map/change-ship-positions! move)
           move))))
 
+(defn return-planet-move
+  "Returns a move to move towards the nearest planet."
+  [planet moving-ships]
+  (let [potential-ships (filter #(and (= :undocked (-> % :docking :status))
+                                      (= *player-id* (:owner-id %))
+                                      (not (some (set [(:id %)]) moving-ships)))
+                                (vals *ships*))
+        docking-spot (when (and planet (center-planet/center-planet? planet))
+                       (center-planet/get-best-docking-point nil planet))
+        closest-ship (when docking-spot
+                       (map/nearest-entity (assoc docking-spot :radius 0) potential-ships)
+                       (map/nearest-entity planet potential-ships))]
+    (when (and closest-ship
+               (map/safe-to-dock? closest-ship))
+      (when-let [move (move-ship-to-planet! closest-ship planet)]
+        (do (map/change-ship-positions! move)
+            move)))))
+
 (defn get-best-planet-moves
   "Returns moves towards the best planet."
   [planet moving-ships]
-  (if (and
-             (not= 2 *num-players*)
-             (<= @all-out-attack 0)
-             (<= *num-ships* 3)
-             planet
-             (some #{(:id planet)} (keys *safe-planets*)))
-
-    (let [potential-ships (filter #(and (= :undocked (-> % :docking :status))
-                                        (= *player-id* (:owner-id %))
-                                        (not (some (set [(:id %)]) moving-ships)))
-                                  (vals *ships*))
-          closest-ship (map/nearest-entity planet potential-ships)]
-      (when (and closest-ship
-                 (map/safe-to-dock? closest-ship))
-        (let [move (move-ship-to-planet! closest-ship planet)]
-          (do (map/change-ship-positions! move)
-              move))))
+  (if (and (not= 2 *num-players*)
+           (<= @all-out-attack 0)
+           (<= *num-ships* 3)
+           planet
+           (some #{(:id planet)} (keys *safe-planets*)))
+    (return-planet-move planet moving-ships)
     (when (and planet (> *num-ships* 20))
-      (let [potential-ships (filter #(and (= :undocked (-> % :docking :status))
-                                          (= *player-id* (:owner-id %))
-                                          (not (some (set [(:id %)]) moving-ships)))
-                                    (vals *ships*))
-            closest-ship (map/nearest-entity planet potential-ships)]
-        (when (and closest-ship
-                   (map/safe-to-dock? closest-ship))
-          (let [move (move-ship-to-planet! closest-ship planet)]
-            (do (map/change-ship-positions! move)
-                move)))))))
+      (return-planet-move planet moving-ships))))
 
 (defn get-moves-and-moving-ships
   "TODO Returns moves and moving ships - make it easier to reorder."

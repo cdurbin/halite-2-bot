@@ -5,6 +5,7 @@
                             *num-players*]]
    [custom.math :as custom-math :refer [infinity]]
    [custom.utils :as utils :refer [pretty-log]]
+   [custom.center-planet :as center-planet]
    [hlt.entity :as e]
    [hlt.game-map :refer [*player-id* *ships* *planets* *owner-ships* *map-size*]]
    [hlt.math :as math]
@@ -472,17 +473,6 @@
         sorted-list (sort (utils/compare-by :dock-spots utils/desc) planets-and-dock-spots)]
     (log "Best planet" (first sorted-list))
     (:planet (first sorted-list))))
-
-(defn find-four-center-planets
-  "Returns the four-center-planets"
-  []
-  (let [[max-x max-y] *map-size*
-        midpoint (math/->Position (/ max-x 2) (/ max-y 2))
-        planet-distances (for [planet (vals *planets*)
-                               :let [distance (math/distance-between planet midpoint)]]
-                           {:planet planet
-                            :distance distance})]
-    (map :planet (take 4 (sort (utils/compare-by :distance utils/asc) planet-distances)))))
 
 (defn dockable-planets
   "Returns the planets I could dock at."
