@@ -334,8 +334,8 @@
         neutral-planet-count (count (filter #(nil? (:owner-id %))
                                             (vals *planets*)))]
     (when (and (> *num-players* 2)
-               ;; Less than 10 percent of the total ships and no more than 2 neutral planets
-               (<= neutral-planet-count 2)
+               ;; Less than 10 percent of the total ships and no more than 4 neutral planets
+               (<= neutral-planet-count 4)
                (< (count my-ships) (* 0.1 (count (vals *ships*)))))
       (let [moves (for [ship (take 10 my-undocked-ships)
                         :when ship]
