@@ -532,7 +532,7 @@
                                 (vals *ships*))
         docking-spot (when (and planet (center-planet/center-planet? planet))
                        (center-planet/get-best-docking-point nil planet))
-        closest-ship (when docking-spot
+        closest-ship (if docking-spot
                        (map/nearest-entity (assoc docking-spot :radius 0) potential-ships)
                        (map/nearest-entity planet potential-ships))]
     (when (and closest-ship
