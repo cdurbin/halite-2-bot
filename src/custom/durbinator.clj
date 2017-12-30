@@ -330,9 +330,12 @@
   [my-ships]
   (let [my-undocked-ships (filter #(and (= *player-id* (:owner-id %))
                                         (= :undocked (-> % :docking :status)))
-                                  my-ships)]
+                                  my-ships)
+        neutral-planet-count (count (filter #(nil? (:owner-id %))
+                                            (vals *planets*)))]
     (when (and (> *num-players* 2)
-               ;; Less than 10 percent of the total ships
+               ;; Less than 10 percent of the total ships and no more than 2 neutral planets
+               (<= neutral-planet-count 2)
                (< (count my-ships) (* 0.1 (count (vals *ships*)))))
       (let [moves (for [ship (take 10 my-undocked-ships)
                         :when ship]
@@ -348,7 +351,7 @@
   (let [potential-ships (filter #(and (= *player-id* (:owner-id %))
                                       (not (some (set [(:id %)]) moving-ships)))
                                 (vals *ships*))
-        max-defenders (* *num-ships* (/ 3 7))
+        max-defenders (* *num-ships* (/ 4 7))
         vulnerable-ships (take max-defenders (get-vulnerable-ships potential-ships))]
     (doall
      (for [[defender ship enemy] vulnerable-ships
@@ -417,8 +420,8 @@
         my-ship (first (vals (get *owner-ships* *player-id*)))]
     (log "Avoiding" four-center-planets)
     (when (> *num-players* 2)
-      (reset! map/avoid-planets (map :id four-center-planets)))
-    (reset! center-planet/center-planets (map :id four-center-planets))
+      (reset! map/avoid-planets (map :id four-center-planets))
+      (reset! center-planet/center-planets (map :id four-center-planets)))
     (doseq [[owner {:keys [pos distance]}] enemy-positions]
       (let [distance-to-pos (math/distance-between my-ship pos)
             num-turns-to-planet (Math/ceil (/ (- distance e/dock-radius) e/max-ship-speed))
