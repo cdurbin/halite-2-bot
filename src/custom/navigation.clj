@@ -138,10 +138,10 @@
                collisions (ship-entities-between (:start location) (:end location)
                                                  ; (filter #(= (inc turn) (:turn %))
                                                  ;         midturn-ships)
-                                                 ; (filter #(<= (- turn 0)
-                                                 ;              (:turn %)
-                                                 ;              (+ turn 0)))
-                                                 (filter #(= turn (:turn %))
+                                                 (filter #(<= (- turn 1)
+                                                              (:turn %)
+                                                              (+ turn 1))
+                                                 ; (filter #(= turn (:turn %))
                                                          midturn-ships))]
          :when (seq collisions)]
      collisions)))
@@ -296,7 +296,7 @@
                       angular-step max-thrust buffer subtype avoid-attack]
                :as opts}]
    ; (if (> *num-ships* 1)
-   (if (> *num-ships* 65)
+   (if (> *num-ships* 25)
      (navigate-to-fast ship goal opts)
      (navigate-to-precise ship goal opts))))
 
@@ -470,8 +470,10 @@
         distance (math/distance-between friendly-ship enemy-ship)
         ;; Try to prevent sending my ship in to die
         distance (if advantage?
-                   (/ (* 2 distance) 3)
-                   0)
+                   ; (/ (* 2 distance) 3
+                   (max 3 (- distance 3))
+                   3)
+                   ; (min 3 (- distance 3)))
                    ; (/ (* 1 distance) 10)
         midpoint (custom-math/get-point friendly-ship distance angle)]
     ; (if (and (not advantage?) (< distance 7))

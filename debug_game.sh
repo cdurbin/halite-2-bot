@@ -65,5 +65,14 @@ lein uberjar
 #./halite -s 1443690297 -d "240 160" "java -jar target/MyBot.jar" "java -jar jars/V66.jar"
 #./halite -s 1752103491 -d "240 160" "java -jar target/MyBot.jar" "java -jar jars/V66.jar"
 
-./halite -s 2387399552 -d "240 160" "java -jar target/MyBot.jar" "java -jar jars/V66.jar"
+#./halite -s 2387399552 -d "240 160" "java -jar target/MyBot.jar" "java -jar jars/V66.jar"
+#./halite -s 3651122599 -d "240 160" "java -jar target/MyBot.jar" "java -jar jars/V66.jar"
+
+## Why do I crash immediately?
+#./halite -s 2031675933 -d "240 160" "java -jar target/MyBot.jar" "java -jar jars/V66.jar"
+
+##
+./halite -s 2297016498 -d "240 160" "java -jar target/MyBot.jar" "java -jar jars/V66.jar"
+
+
 mv *.hlt hlts/
