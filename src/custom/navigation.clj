@@ -184,7 +184,7 @@
          ; _ (when (= 6 (:id ship)) (log "MT SHIPS: " midturn-ships))
          other-ships (when avoid-attack
                        (remove #(or (= *player-id* (:owner-id %))
-                                    (not= (:undocked (-> % :docking :status))))
+                                    (not= :undocked (-> % :docking :status)))
                                (vals all-obstacles)))
          avoid-attack (if (and avoid-attack (not (not-guaranteed-safe? ship other-ships)))
                         avoid-attack
@@ -267,7 +267,7 @@
          ;                                                        (vals *ships*)))
          other-ships (when avoid-attack
                        (remove #(or (= *player-id* (:owner-id %))
-                                    (not= (:undocked (-> % :docking :status))))
+                                    (not= :undocked (-> % :docking :status)))
                                obstacles))
          avoid-attack (if (and avoid-attack (not (not-guaranteed-safe? ship other-ships)))
                         avoid-attack
@@ -297,7 +297,7 @@
                       angular-step max-thrust buffer subtype avoid-attack]
                :as opts}]
    ; (if (> *num-ships* 1)
-   (if (> *num-ships* 25)
+   (if (> *num-ships* 50)
      (navigate-to-fast ship goal opts)
      (navigate-to-precise ship goal opts))))
 
@@ -322,7 +322,7 @@
 ;                                                                 (vals *ships*)))
 ;          other-ships (when avoid-attack
 ;                        (remove #(or (= *player-id* (:owner-id %))
-;                                     (not= (:undocked (-> % :docking :status))))
+;                                     (not= :undocked (-> % :docking :status))))
 ;                                obstacles))
 ;          avoid-attack (if (and avoid-attack (unreachable? ship other-ships))
 ;                         avoid-attack
