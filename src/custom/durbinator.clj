@@ -91,7 +91,7 @@
 
 ; (def tag-team-range 5)
 (def tag-team-range 9)
-(def retreat-range 21.1)
+(def retreat-range 24.1)
 
 (def retreat-range-early 60)
 
@@ -395,7 +395,8 @@
 (defn defend-vulnerable-ships
   "Returns moves to defend vulnerable ships."
   [moving-ships {:keys [start-ms]}]
-  (let [potential-ships (filter #(and (= *player-id* (:owner-id %))
+  (let [enemy-fighters (vals *pesky-fighters*)
+        potential-ships (filter #(and (= *player-id* (:owner-id %))
                                       (not (some (set [(:id %)]) moving-ships)))
                                 (vals *ships*))
         max-defenders (* *num-ships* (/ 1 2))
@@ -407,12 +408,13 @@
            :let [times-up? (> (- (System/currentTimeMillis) start-ms) 1550)]
            :when (not times-up?)
            ; :let [advantage? (map/have-advantage? enemy)]
-           :let [distance (math/distance-between ship enemy)
-                 advantage? (map/have-advantage? (custom-math/get-closest-point-towards-target ship enemy (- distance 3)))
+           :let [closest-enemy (map/nearest-entity ship enemy-fighters)
+                 distance (math/distance-between ship closest-enemy)
+                 advantage? (map/have-advantage? (custom-math/get-closest-point-towards-target ship closest-enemy (- distance 3)))
                  move (get-reachable-attack-spot-move ship)
                  move (if move
                         move
-                        (navigation/navigate-to-defend-ship defender ship enemy advantage?))]
+                        (navigation/navigate-to-defend-ship defender ship closest-enemy advantage?))]
            :when move]
        (do (map/change-ship-positions! move)
            move)))))

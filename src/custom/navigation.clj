@@ -225,14 +225,14 @@
                ;                                               (vals midturn-ships)))
 
                (if (or (not (valid-point? point))
-                       (and avoid-attack (not (unreachable? point other-ships)))
                        (and avoid-obstacles
                             (or (first (new-entities-between ship point (vals final-ships-to-compare)
                                                              planet-compare-point))
                                 ; (first (new-entities-between ship point (vals midturn-ships)
                                 ;                              planet-compare-point))
                                 (first (midturn-collisions midturn-locations
-                                                           (vals midturn-ships))))))
+                                                           (vals midturn-ships)))))
+                       (and avoid-attack (not (unreachable? point other-ships))))
                  (recur (rest iterations))
                  (do
                   ; (when (seq (new-entities-between ship point (vals midturn-ships)
@@ -283,9 +283,9 @@
                    point (custom-math/get-point ship (min max-thrust thrust) angle)
                    planet-compare-point (custom-math/get-point ship planet-compare-distance angle)]
                (if (or (not (valid-point? point))
-                       (and avoid-attack (not (unreachable? point other-ships)))
                        (and avoid-obstacles (first (new-entities-between ship point obstacles
-                                                                         planet-compare-point))))
+                                                                         planet-compare-point)))
+                       (and avoid-attack (not (unreachable? point other-ships))))
                  (recur (rest iterations))
                  (assoc (e/thrust-move ship (min max-thrust thrust) angle) :subtype subtype))))))))))
 
