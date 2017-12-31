@@ -117,7 +117,8 @@
           (move-ship-to-attack ship enemy-ship)
           ; (let [attack? (map/have-advantage? (custom-math/get-point-between ship enemy-ship 0.8))]
           ; (let [attack? (map/have-advantage? enemy-ship)]
-          (let [attack? (map/have-advantage? (custom-math/get-closest-point-towards-target ship enemy-ship (min 7 (- distance 3))))]
+          ; (let [attack? (map/have-advantage? (custom-math/get-closest-point-towards-target ship enemy-ship (min 7 (- distance 3))))])
+          (let [attack? (map/have-advantage? (custom-math/get-closest-point-towards-target ship enemy-ship (- distance 5)))]
 
           ; (let [attack? false]
             (if attack?
@@ -138,7 +139,8 @@
           (move-ship-to-attack ship enemy-ship)
           ; (let [attack? (map/have-advantage? (custom-math/get-point-between ship enemy-ship 0.8))]
           ; (let [attack? (map/have-advantage? enemy-ship)])
-          (let [attack? (map/have-advantage? (custom-math/get-closest-point-towards-target ship enemy-ship (min 7 (- distance 3))))]
+          ; (let [attack? (map/have-advantage? (custom-math/get-closest-point-towards-target ship enemy-ship (min 7 (- distance 3))))])
+          (let [attack? (map/have-advantage? (custom-math/get-closest-point-towards-target ship enemy-ship (- distance 5)))]
 
           ; (let [attack? false]
             (if attack?
