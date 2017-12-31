@@ -78,8 +78,9 @@
 
 (def all-navigation-iterations
   "Returns the angular-step and max thrust for each potential navigation iteration."
-  (for [iterations (range 1 7)
-        thrust [7 6 4 2]
+  (for [iterations (range 1 6)
+        ; thrust [7 6 4 2]
+        thrust [7 6 4 2 1]
         ; thrust [7]
         ; thrust [7 6 5 4 3 2 1]
         angular-step (range 30)
@@ -471,8 +472,8 @@
         ;; Try to prevent sending my ship in to die
         distance (if advantage?
                    ; (/ (* 2 distance) 3
-                   (max 3 (- distance 3))
-                   3)
+                   (max 2 (- distance 5))
+                   2)
                    ; (min 3 (- distance 3)))
                    ; (/ (* 1 distance) 10)
         midpoint (custom-math/get-point friendly-ship distance angle)]
