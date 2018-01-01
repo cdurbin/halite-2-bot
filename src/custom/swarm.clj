@@ -144,24 +144,24 @@
       (base-swarm-moves swarm closest-enemy-planet navigation/navigate-to-retreat true swarm-spot-distances)
       (base-swarm-moves swarm enemy-ship navigation/navigate-to-retreat-ship true swarm-spot-distances))))
 
-(def swarm-advantage-distance 12)
-
-(defn swarm-advantage?
-  "Returns true if we our swarm has the advantage at the position"
-  [swarm position]
-  (let [filter-fn (fn [ship]
-                    (and (= :undocked (-> ship :docking :status))
-                         (< (math/distance-between ship position) swarm-advantage-distance)))
-        ships (for [[k v] *ships*
-                    :when (integer? k)]
-                v)
-        nearby-fighters (filter filter-fn ships)
-        my-fighter-count (count (filter #(= *player-id* (:owner-id %))
-                                        nearby-fighters))
-        enemy-count (- (count nearby-fighters) my-fighter-count)]
-    (or (zero? enemy-count)
-        (and (> my-fighter-count 1)
-             (> my-fighter-count enemy-count)))))
+; (def swarm-advantage-distance 12)
+;
+; (defn swarm-advantage?
+;   "Returns true if we our swarm has the advantage at the position"
+;   [swarm position]
+;   (let [filter-fn (fn [ship]
+;                     (and (= :undocked (-> ship :docking :status))
+;                          (< (math/distance-between ship position) swarm-advantage-distance)))
+;         ships (for [[k v] *ships*
+;                     :when (integer? k)]
+;                 v)
+;         nearby-fighters (filter filter-fn ships)
+;         my-fighter-count (count (filter #(= *player-id* (:owner-id %))
+;                                         nearby-fighters))
+;         enemy-count (- (count nearby-fighters) my-fighter-count)]
+;     (or (zero? enemy-count)
+;         (and (> my-fighter-count 1)
+;              (> my-fighter-count enemy-count)))))
 
 (defn get-swarm-move
   "Returns the move for a swarm ship. Retreat range of infinity means don't retreat."
@@ -173,8 +173,8 @@
               (> (math/distance-between swarm enemy-ship) retreat-range)
               ; (swarm-advantage? swarm (-> swarm-spot-distances first :point))
               (map/have-advantage? enemy-ship))
-        (move-swarm-to-attack swarm enemy-ship swarm-spot-distances)
-        (move-swarm-to-retreat swarm enemy-ship swarm-spot-distances)))))
+        (move-swarm-to-attack swarm enemy-ship swarm-spot-distances)))))
+        ; (move-swarm-to-retreat swarm enemy-ship swarm-spot-distances)))))
 
 (defn get-swarms
   "Returns a collection of ship swarms."
