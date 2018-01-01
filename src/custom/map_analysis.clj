@@ -258,22 +258,56 @@
 ; (def advantage-range (* 1.1 (+ e/max-ship-speed e/ship-radius e/weapon-radius)))
 ; (def advantage-range (+ e/max-ship-speed e/weapon-radius))
 
+; (defn have-advantage?
+;   "Returns true if I have more fighters at a given position than the enemy."
+;   [position]
+;   (let [filter-fn (fn [ship]
+;                     (and (= :undocked (-> ship :docking :status))
+;                          (< (math/distance-between ship position) advantage-range)))
+;         ships (for [[k v] *ships*
+;                     :when (integer? k)]
+;                 v)
+;         nearby-fighters (filter filter-fn ships)
+;         my-fighter-count (count (filter #(= *player-id* (:owner-id %))
+;                                         nearby-fighters))
+;         enemy-count (- (count nearby-fighters) my-fighter-count)]
+;     (or (zero? enemy-count)
+;         (and (> my-fighter-count 1)
+;              (> my-fighter-count enemy-count)))))
+
+(def friendly-distance-moved 5)
+(def max-speed-distance (+ e/max-ship-speed e/weapon-radius))
+(def planet-fudge-factor 0.6)
+
+(defn can-attack-spot?
+  "Returns whether a ship can reach the spot (tries to take into account planets)."
+  [ship point]
+  (let [closest-attack-point (math/closest-point ship (assoc point :radius 0) 5.0)
+        filter-fn-planets #(math/segment-circle-intersects? ship closest-attack-point % planet-fudge-factor)]
+    (empty? (filter filter-fn-planets (vals *planets*)))))
+
 (defn have-advantage?
-  "Returns true if I have more fighters at a given position than the enemy."
-  [position]
+  "Returns true if the place I'm going looks to be good."
+  [point]
   (let [filter-fn (fn [ship]
                     (and (= :undocked (-> ship :docking :status))
-                         (< (math/distance-between ship position) advantage-range)))
+                         (< (math/distance-between ship point) advantage-range)))
         ships (for [[k v] *ships*
                     :when (integer? k)]
                 v)
         nearby-fighters (filter filter-fn ships)
-        my-fighter-count (count (filter #(= *player-id* (:owner-id %))
-                                        nearby-fighters))
-        enemy-count (- (count nearby-fighters) my-fighter-count)]
-    (or (zero? enemy-count)
-        (and (> my-fighter-count 1)
-             (> my-fighter-count enemy-count)))))
+        final-enemy-ships (filter #(and (not= *player-id* (:owner-id %))
+                                        (< (math/distance-between point %) max-speed-distance)
+                                        (can-attack-spot? % point))
+                                  nearby-fighters)
+        final-my-ships (filter #(and (= *player-id* (:owner-id %))
+                                     (if (= 7 (:turn %))
+                                        (< (math/distance-between point %) friendly-distance-moved)
+                                        (and (< (math/distance-between point %) max-speed-distance)
+                                             (can-attack-spot? % point))))
+                               nearby-fighters)]
+    (or (empty? final-enemy-ships)
+        (> (count final-my-ships) (count final-enemy-ships)))))
 
 (defn get-pesky-fighters-new
   "Fighters near my planets or neutral planets."
