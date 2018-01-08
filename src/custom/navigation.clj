@@ -77,19 +77,36 @@
 (comment
   (count all-navigation-iterations))
 
+; (def all-navigation-iterations
+;   "Returns the angular-step and max thrust for each potential navigation iteration."
+;   (for [iterations (range 1 6)
+;         ; thrust [7 6 4 2]
+;         thrust [7 6 4 2 1]
+;         ; thrust [7]
+;         ; thrust [7 6 5 4 3 2 1]
+;         angular-step (range 30)
+;         opposite (range 2)
+;         ; :let [angular-step (* 2 (/ Math/PI 180.0) angular-step)]
+;         :let [angular-step (* 1 (/ Math/PI 180.0) angular-step)]]
+;     {:max-thrust thrust
+;      :angular-step (if (zero? opposite) (* -1 iterations angular-step) (* iterations angular-step))}))
+
 (def all-navigation-iterations
   "Returns the angular-step and max thrust for each potential navigation iteration."
-  (for [iterations (range 1 6)
+  (for [iterations (range 0 4.1)
         ; thrust [7 6 4 2]
         thrust [7 6 4 2 1]
         ; thrust [7]
         ; thrust [7 6 5 4 3 2 1]
-        angular-step (range 30)
+        angle-slice (range 30)
         opposite (range 2)
         ; :let [angular-step (* 2 (/ Math/PI 180.0) angular-step)]
-        :let [angular-step (* 1 (/ Math/PI 180.0) angular-step)]]
+        :let [angular-step (* (/ Math/PI 180.0)
+                              (+ angle-slice (* iterations 30)))]]
     {:max-thrust thrust
-     :angular-step (if (zero? opposite) (* -1 iterations angular-step) (* iterations angular-step))}))
+     :angular-step (if (zero? opposite)
+                     (* -1 angular-step)
+                     angular-step)}))
 
 (def safe-radius
   "How far away a spot is guaranteed to be safe."
