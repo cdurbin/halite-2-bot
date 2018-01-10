@@ -182,4 +182,9 @@
  (get-in-turn-segments {:ship {:pos {:x 10 :y 3}} :thrust 7 :angle 15})
  (final-position 10 3 7 15)
  (final-position 10 3 7 0)
- (final-position 10 3 7 360))
+ (final-position 10 3 7 360)
+ (let [x1 96.729
+       y1 86.596
+       x2 99.782
+       y2 81.113]
+   (hlt-math/distance-between (hlt-math/->Position x1 y1) (hlt-math/->Position x2 y2))))

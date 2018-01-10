@@ -39,5 +39,5 @@
     (let [
           ; _ (log "Yes this is a center planet" (:id planet))
           center (get-center-point *map-size*)]
-      (math/closest-point center planet hlt-navigation/docking-distance))
-    (math/closest-point ship planet hlt-navigation/docking-distance)))
+      (math/closest-point center planet 0))
+    (math/closest-point ship planet 0)))
