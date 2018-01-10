@@ -113,11 +113,22 @@
 (defn move-to-nearest-enemy-ship-or-target
   "Moves the ship to the nearest enemy ship."
   [ship enemy-ships target]
-  (when-let [enemy-ship (map/nearest-enemy-not-decoy ship enemy-ships)]
-    (move-ship-to-attack ship enemy-ship)))
-              ; (if (map/alone? ship enemy-ship *player-id* tag-team-range false)
-              ;   (move-ship-to-retreat ship enemy-ship)
-              ;   (navigation/navigate-to-retreat ship target)))))))))
+  (let [nearest-docked-enemy-ship (map/nearest-enemy-not-decoy
+                                   ship (filter #(not= :undocked (-> % :docking :status))
+                                                enemy-ships))
+        enemy-ship (map/nearest-enemy-not-decoy ship enemy-ships)]
+    (when enemy-ship
+      (if (> *num-ships* 3)
+        (move-ship-to-attack ship (or nearest-docked-enemy-ship enemy-ship))
+        (let [distance (math/distance-between ship enemy-ship)]
+          (if (> distance (get-retreat-range *num-ships*))
+            (move-ship-to-attack ship enemy-ship)
+            (let [attack? (map/have-advantage? (custom-math/get-closest-point-towards-target ship enemy-ship (- distance 5)))]
+              (if attack?
+                (move-ship-to-attack ship enemy-ship)
+                (if (map/alone? ship enemy-ship *player-id* tag-team-range false)
+                  (move-ship-to-retreat ship enemy-ship)
+                  (navigation/navigate-to-retreat ship target))))))))))
 
 ; (defn move-to-nearest-enemy-ship-or-target
 ;   "Moves the ship to the nearest enemy ship."
@@ -142,11 +153,41 @@
 ;               ;   (move-ship-to-retreat ship enemy-ship)
 ;               ;   (navigation/navigate-to-retreat ship target)))))))))
 
+; (defn move-to-nearest-enemy-ship
+;   "Moves the ship to the nearest enemy ship."
+;   [ship enemy-ships]
+;   (when-let [enemy-ship (map/nearest-enemy-not-decoy ship enemy-ships)]
+;     (if (> *num-ships* 3)
+;       (move-ship-to-attack ship enemy-ship)
+;       (let [distance (math/distance-between ship enemy-ship)]
+;         (if (> distance (get-retreat-range *num-ships*))
+;           (move-ship-to-attack ship enemy-ship)
+;           (let [attack? (map/have-advantage? (custom-math/get-closest-point-towards-target ship enemy-ship (- distance 5)))]
+;             (if attack?
+;               (move-ship-to-attack ship enemy-ship)
+;               (if (map/alone? ship enemy-ship *player-id* tag-team-range false)
+;                 (move-ship-to-retreat ship enemy-ship)
+;                 (move-ship-to-retreat-for-real ship enemy-ship)))))))))
+
 (defn move-to-nearest-enemy-ship
   "Moves the ship to the nearest enemy ship."
   [ship enemy-ships]
-  (when-let [enemy-ship (map/nearest-enemy-not-decoy ship enemy-ships)]
-    (move-ship-to-attack ship enemy-ship)))
+  (let [nearest-docked-enemy-ship (map/nearest-enemy-not-decoy
+                                   ship (filter #(not= :undocked (-> % :docking :status))
+                                                enemy-ships))
+        enemy-ship (map/nearest-enemy-not-decoy ship enemy-ships)]
+    (when enemy-ship
+      (if (> *num-ships* 3)
+        (move-ship-to-attack ship (or nearest-docked-enemy-ship enemy-ship))
+        (let [distance (math/distance-between ship enemy-ship)]
+          (if (> distance (get-retreat-range *num-ships*))
+            (move-ship-to-attack ship enemy-ship)
+            (let [attack? (map/have-advantage? (custom-math/get-closest-point-towards-target ship enemy-ship (- distance 5)))]
+              (if attack?
+                (move-ship-to-attack ship enemy-ship)
+                (if (map/alone? ship enemy-ship *player-id* tag-team-range false)
+                  (move-ship-to-retreat ship enemy-ship)
+                  (move-ship-to-retreat-for-real ship enemy-ship))))))))))
 
 ; (defn move-to-nearest-enemy-ship
 ;   "Moves the ship to the nearest enemy ship."
