@@ -26,8 +26,20 @@
     (and (< 0.5 x (dec max-x))
          (< 0.5 y (dec max-y)))))
 
+; (def potential-obstacle-distance
+;   (+ e/max-ship-speed 2.2 0.6))
+
 (def potential-obstacle-distance
-  (+ e/max-ship-speed 2.2 0.6))
+  (+ e/max-ship-speed 1.001))
+
+(def potential-attack-distance
+  (+ (* 2 e/max-ship-speed) 6.0))
+  ; (+ e/max-ship-speed 2.2 0.6))
+
+(defn figure-out-potential-attacks
+  "TODO: Note planets I should look further out, but ships this is fine."
+  [ship all-ships]
+  (filter #(<= (math/distance-between ship %) potential-attack-distance) all-ships))
 
 (defn figure-out-potential-obstacles
   "TODO: Note planets I should look further out, but ships this is fine."
@@ -93,7 +105,8 @@
 
 (def all-navigation-iterations
   "Returns the angular-step and max thrust for each potential navigation iteration."
-  (for [iterations (range 0 4.1)
+  ; (for [iterations (range 0 4.1)])
+  (for [iterations (range 0 5.1)
         ; thrust [7 6 4 2]
         thrust [7 6 4 2 1]
         ; thrust [7]
@@ -110,8 +123,10 @@
 
 (def safe-radius
   "How far away a spot is guaranteed to be safe."
+  13.01)
   ; (+ e/max-ship-speed (* 2 e/ship-radius) e/weapon-radius 0.6)
-  (+ e/max-ship-speed (* 2 e/ship-radius) e/weapon-radius 0.6))
+  ; (+ e/max-ship-speed (* 2 e/ship-radius) e/weapon-radius 0.6)
+  ; (+ e/max-ship-speed (* 2 e/ship-radius) e/weapon-radius 0.6))
   ; (+ e/max-ship-speed (* 2 e/weapon-radius) (* 2 e/ship-radius)))
   ; (+ e/max-ship-speed (* 2 e/ship-radius) e/weapon-radius))
 
@@ -128,7 +143,7 @@
 (defn not-guaranteed-safe?
   "Returns true if we're less than 5 away from a ship."
   [ship ships]
-  (some? (first (filter #(<= (math/distance-between ship %) 8) ships))))
+  (some? (first (filter #(<= (math/distance-between ship %) 6.0) ships))))
   ; (some? (first (filter #(<= (math/distance-between ship %) 5.1) ships))))
 
 ; (defn midturn-collisions
@@ -195,6 +210,35 @@
     (first (filter #(< (math/distance-between position %) close-corner-distance)
                   (map (fn [point] (assoc point :radius 0)) [ne nw se sw])))))
 
+(def friendly-distance-moved 6)
+(def max-speed-distance (+ e/max-ship-speed e/weapon-radius 1.0))
+
+(defn can-attack-spot?
+  "Returns whether a ship can reach the spot (tries to take into account planets)."
+  [ship point]
+  (let [closest-attack-point (math/closest-point ship (assoc point :radius 0) 6)
+        filter-fn-planets #(math/segment-circle-intersects? ship closest-attack-point % planet-fudge-factor)]
+    (empty? (filter filter-fn-planets (vals *planets*)))))
+
+(defn good-spot?
+  "Returns true if the place I'm going looks to be good."
+  [point my-ships enemy-ships]
+  (let [final-enemy-ships (filter #(and (< (math/distance-between point %) max-speed-distance)
+                                        (can-attack-spot? % point))
+                                  (filter #(= :undocked (-> % :docking :status))
+                                          enemy-ships))]
+    ; (log "Good-spot:" point "My ships" my-ships "Their orig ships:" enemy-ships
+    ;      "Their final ships:" (count final-enemy-ships))
+    (or (empty? final-enemy-ships)
+        (let [final-my-ships (filter #(if (or (= 7 (:turn %))
+                                              (not= :undocked (-> % :docking :status)))
+                                        (< (math/distance-between point %) friendly-distance-moved)
+                                        (and (< (math/distance-between point %) max-speed-distance)
+                                             (can-attack-spot? % point)))
+                                     my-ships)]
+          ; (log "Good-spot:" point "My ships" (count final-my-ships) "Their ships:" (count final-enemy-ships))
+          (> (count final-my-ships) (count final-enemy-ships))))))
+
 (defn navigate-to-precise
   "Returns a thrust move that moves the ship to the provided goal. The
   goal is treated as a point, i.e. the thrust move attempts to move
@@ -228,14 +272,29 @@
                                  (integer? k))
                                all-obstacles)
          ; _ (when (= 6 (:id ship)) (log "MT SHIPS: " midturn-ships))
-         other-ships (when avoid-attack
-                       (remove #(or (= *player-id* (:owner-id %))
-                                    (not= :undocked (-> % :docking :status)))
-                               (vals all-obstacles)))
-         avoid-attack (if (and avoid-attack (not (not-guaranteed-safe? ship other-ships)))
-                        avoid-attack
-                        false)
-         thrust (int (min (- distance buffer) max-thrust))]
+         my-ships (vals (filter (fn [[k v]]
+                                  (and (integer? k)
+                                       (= *player-id* (:owner-id v))))
+                                potential-ships))
+         other-ships (figure-out-potential-attacks ship
+                                                   (filter #(not= *player-id* (:owner-id %))
+                                                           (vals potential-ships)))
+         ; ship-attack-obstacles (figure-out-potential-attacks ship
+         ;                                                     (filter #(not= *player-id* (:owner-id %))
+         ;                                                             (vals potential-ships)))
+         ; other-ships (when avoid-attack
+         ;               (remove #(or (= *player-id* (:owner-id %))
+         ;                            (not= :undocked (-> % :docking :status)))
+         ;                       (vals all-obstacles)))
+         thrust (int (min (- distance buffer) max-thrust))
+         first-spot (custom-math/get-point ship thrust first-angle)
+         ; avoid-attack (not (good-spot? first-spot my-ships other-ships))
+         avoid-attack (if (good-spot? first-spot my-ships other-ships)
+                         false
+                         (not (not-guaranteed-safe? ship other-ships)))]
+         ; avoid-attack (if (and avoid-attack (not (not-guaranteed-safe? ship other-ships)))
+         ;                avoid-attack
+         ;                false)
      (if (< distance buffer)
        (assoc (e/thrust-move ship 0 first-angle) :subtype subtype :reason "Precise - distance is less than buffer.")
        (loop [iterations (rest all-navigation-iterations)]
@@ -312,14 +371,27 @@
          ; obstacles (figure-out-potential-obstacles ship (remove #(or (= (:id ship) (:id %))
          ;                                                             (= (:id goal) (:id %)))
          ;                                                        (vals *ships*)))
-         other-ships (when avoid-attack
-                       (remove #(or (= *player-id* (:owner-id %))
-                                    (not= :undocked (-> % :docking :status)))
-                               obstacles))
-         avoid-attack (if (and avoid-attack (not (not-guaranteed-safe? ship other-ships)))
-                        avoid-attack
-                        false)
-         thrust (int (min (- distance buffer) max-thrust))]
+         my-ships (vals (filter (fn [[k v]]
+                                  (and (integer? k)
+                                       (= *player-id* (:owner-id v))))
+                                compare-ships))
+         other-ships (figure-out-potential-attacks ship
+                                                   (filter #(not= *player-id* (:owner-id %))
+                                                           (vals compare-ships)))
+         ; other-ships (when avoid-attack
+         ;               (remove #(or (= *player-id* (:owner-id %))
+         ;                            (not= :undocked (-> % :docking :status)))
+         ;                       obstacles))
+         thrust (int (min (- distance buffer) max-thrust))
+         first-spot (custom-math/get-point ship thrust first-angle)
+         avoid-attack (if (good-spot? first-spot my-ships other-ships)
+                        false
+                        (not (not-guaranteed-safe? ship other-ships)))]
+
+
+         ; avoid-attack (if (and avoid-attack (not (not-guaranteed-safe? ship other-ships)))
+         ;                avoid-attack
+         ;                false)
      (if (< distance buffer)
        (assoc (e/thrust-move ship 0 first-angle) :subtype subtype :reason "Fast - within buffer.")
        (loop [iterations (rest all-navigation-iterations)]

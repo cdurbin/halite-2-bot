@@ -347,8 +347,9 @@
                                 my-ships)
         my-fighter-ships (filter #(= :undocked (-> % :docking :status))
                                 my-ships)
-        vulnerable-distance 42
+        ; vulnerable-distance 75
         ; vulnerable-distance 49
+        vulnerable-distance 42
         potential-issues (for [enemy-ship (vals *pesky-fighters*)
                                :let [nearest-docked-ship (map/nearest-entity enemy-ship my-docked-ships)]
                                :when nearest-docked-ship
@@ -408,9 +409,14 @@
            :let [times-up? (> (- (System/currentTimeMillis) start-ms) 1550)]
            :when (not times-up?)
            ; :let [advantage? (map/have-advantage? enemy)]
-           :let [closest-enemy (map/nearest-entity ship enemy-fighters)
+           :let [
+                 ; closest-enemy enemy
+                 closest-enemy (map/nearest-entity ship enemy-fighters)
                  distance (math/distance-between ship closest-enemy)
-                 advantage? (map/have-advantage? (custom-math/get-closest-point-towards-target ship closest-enemy (- distance 3)))
+                 ; advantage? false
+                 ; advantage? true
+                 advantage? (or (> distance 25)
+                                (map/have-advantage? (custom-math/get-closest-point-towards-target ship closest-enemy (- distance 3))))
                  move (get-reachable-attack-spot-move ship)
                  move (if move
                         move

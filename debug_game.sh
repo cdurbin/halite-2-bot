@@ -1,5 +1,6 @@
 #!/bin/sh
 
+rm *.log
 lein uberjar
 #./halite -d "240 160" "java -jar target/MyBot.jar" "java -jar jars/Sample.jar"
 #./halite -d "240 160" "java -jar target/MyBot.jar" "java -jar jars/Durbinator-v1.0.jar"
@@ -75,6 +76,9 @@ lein uberjar
 #./halite -s 2297016498 -d "240 160" "java -jar target/MyBot.jar" "java -jar jars/V66.jar"
 
 ## Even
-./halite -s 3808204358 -d "240 160" "java -jar target/MyBot.jar" "java -jar jars/V66.jar"
+#./halite -s 3808204358 -d "240 160" "java -jar target/MyBot.jar" "java -jar jars/V66.jar"
 
+#./halite -s 1054815491 -d "240 160" "java -jar target/MyBot.jar" "java -jar jars/V66.jar"
+#./halite -s 3719647738 -d "240 160" "java -jar target/MyBot.jar" "java -jar jars/V66.jar"
+./halite -s 810797258 -d "240 160" "java -jar target/MyBot.jar" "java -jar jars/V66.jar"
 mv *.hlt hlts/

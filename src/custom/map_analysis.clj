@@ -275,14 +275,14 @@
 ;         (and (> my-fighter-count 1)
 ;              (> my-fighter-count enemy-count)))))
 
-(def friendly-distance-moved 5)
-(def max-speed-distance (+ e/max-ship-speed e/weapon-radius))
+(def friendly-distance-moved 6)
+(def max-speed-distance (+ e/max-ship-speed e/weapon-radius 1.0))
 (def planet-fudge-factor 0.6)
 
 (defn can-attack-spot?
   "Returns whether a ship can reach the spot (tries to take into account planets)."
   [ship point]
-  (let [closest-attack-point (math/closest-point ship (assoc point :radius 0) 5.0)
+  (let [closest-attack-point (math/closest-point ship (assoc point :radius 0) 6.0)
         filter-fn-planets #(math/segment-circle-intersects? ship closest-attack-point % planet-fudge-factor)]
     (empty? (filter filter-fn-planets (vals *planets*)))))
 
