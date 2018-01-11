@@ -195,6 +195,13 @@
   "Have the most fighters (non docking) surrounding the planet."
   [planet]
   (let [
+        ;; Do some trickery here - consider a "planet" as the closest point to my closest ship
+        nearest-ship (nearest-entity planet (filter #(and (= *player-id* (:owner-id %))
+                                                          (= :undocked (-> % :docking :status)))
+                                                    (vals *ships*)))
+        planet (if nearest-ship
+                 (assoc (math/closest-point nearest-ship planet) :radius 0)
+                 planet)
         close-distance 60
         filter-fn (fn [ship]
                     (and (= :undocked (-> ship :docking :status))
