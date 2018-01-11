@@ -620,13 +620,14 @@
    (let [fighter? (= :undocked (-> enemy-ship :docking :status))
          attack-count (+ num-fighters (get enemy-ship :attack-count 0))
          remove? (>= attack-count 4)]
-     (if fighter?
+     ; (if fighter?)
+     (when fighter?
        (if remove?
          (set! *pesky-fighters* (dissoc *pesky-fighters* (:id enemy-ship)))
-         (set! *pesky-fighters* (assoc-in *pesky-fighters* [(:id enemy-ship) :attack-count] attack-count)))
-       (if remove?
-         (set! *docked-enemies* (dissoc *docked-enemies* (:id enemy-ship)))
-         (set! *docked-enemies* (assoc-in *docked-enemies* [(:id enemy-ship) :attack-count] attack-count)))))))
+         (set! *pesky-fighters* (assoc-in *pesky-fighters* [(:id enemy-ship) :attack-count] attack-count)))))))
+       ; (if remove?
+       ;   (set! *docked-enemies* (dissoc *docked-enemies* (:id enemy-ship)))
+       ;   (set! *docked-enemies* (assoc-in *docked-enemies* [(:id enemy-ship) :attack-count] attack-count)))))))
 
 (def close-fighter-distance 55)
 

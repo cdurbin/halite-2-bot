@@ -40,7 +40,10 @@
 (defn figure-out-potential-attacks
   "TODO: Note planets I should look further out, but ships this is fine."
   [ship all-ships]
-  (filter #(<= (math/distance-between ship %) potential-attack-distance) all-ships))
+  (filter #(and (not= *player-id* (:owner-id %))
+                (= :undocked (-> % :docking :status))
+                (<= (math/distance-between ship %) potential-attack-distance))
+          all-ships))
 
 (defn figure-out-potential-obstacles
   "TODO: Note planets I should look further out, but ships this is fine."
@@ -89,6 +92,20 @@
         filter-fn-planets #(math/segment-circle-intersects? a b % swarm-fudge-factor)]
     (concat (filter filter-fn-planets (vals *planets*))
             (filter filter-fn obstacles))))
+
+(defn nearest-entity
+  "Returns the closest other entity to the passed in entity."
+  [entity other-entities]
+  ; (log "Called with entity" entity "Other entities" other-entities)
+  (:nearest-entity
+   (reduce (fn [{:keys [min-distance nearest-entity]} other-entity]
+             (let [distance (- (math/distance-between entity other-entity)
+                               (:radius other-entity))]
+               (if (< distance min-distance)
+                 {:min-distance distance :nearest-entity other-entity}
+                 {:min-distance min-distance :nearest-entity nearest-entity})))
+           {:min-distance infinity}
+           other-entities)))
 
 (comment
   (count all-navigation-iterations))
@@ -214,7 +231,7 @@
     (first (filter #(< (math/distance-between position %) close-corner-distance)
                   (map (fn [point] (assoc point :radius 0)) [ne nw se sw])))))
 
-(def friendly-distance-moved 6)
+(def friendly-distance-moved 2.5)
 (def max-speed-distance (+ e/max-ship-speed e/weapon-radius 1.5))
 
 (defn can-attack-spot?
@@ -228,9 +245,11 @@
   "Returns true if the place I'm going looks to be good."
   [point my-ships enemy-ships]
   (let [final-enemy-ships (filter #(and (< (math/distance-between point %) max-speed-distance)
-                                        (can-attack-spot? % point))
-                                  (filter #(= :undocked (-> % :docking :status))
-                                          enemy-ships))]
+                                        (or (can-attack-spot? % point)
+                                            (< (math/distance-between point %) (/ max-speed-distance 2))))
+
+                                  ; (filter #(= :undocked (-> % :docking :status))
+                                  enemy-ships)]
     ; (log "Good-spot:" point "My ships" my-ships "Their orig ships:" enemy-ships
     ;      "Their final ships:" (count final-enemy-ships))
     (or (empty? final-enemy-ships)
@@ -241,7 +260,18 @@
                                              (can-attack-spot? % point)))
                                      my-ships)]
           ; (log "Good-spot:" point "My ships" (count final-my-ships) "Their ships:" (count final-enemy-ships))
-          (> (count final-my-ships) (count final-enemy-ships))))))
+          (>= (count final-my-ships) (count final-enemy-ships))))))
+
+(defn get-angle-to-run
+  "Returns the angle to run away from an enemy."
+  [ship enemies]
+  (when-let [closest-enemy (nearest-entity ship enemies)]
+    (custom-math/orient-away ship closest-enemy)))
+
+(defn navigate-to-friendly-ship-later
+  "Return a fake move to be processed later."
+  [ship]
+  (assoc (e/thrust-move ship 0 0) :subtype :friendly))
 
 (defn navigate-to-precise
   "Returns a thrust move that moves the ship to the provided goal. The
@@ -284,9 +314,7 @@
                                   (and (integer? k)
                                        (= *player-id* (:owner-id v))))
                                 potential-ships))
-         other-ships (figure-out-potential-attacks ship
-                                                   (filter #(not= *player-id* (:owner-id %))
-                                                           (vals potential-ships)))
+         other-ships (figure-out-potential-attacks ship (vals potential-ships))
          ; ship-attack-obstacles (figure-out-potential-attacks ship
          ;                                                     (filter #(not= *player-id* (:owner-id %))
          ;                                                             (vals potential-ships)))
@@ -309,7 +337,10 @@
          avoid-attack (if good-spot
                          false
                          guaranteed-safe)
-         ; _ (log "Avoid attack for: " (:id ship) "is" avoid-attack)
+         first-angle (if (and (not good-spot) (not guaranteed-safe))
+                       (or (get-angle-to-run ship other-ships) first-angle)
+                       first-angle)
+         _ (log "Avoid attack for: " (:id ship) "is" avoid-attack "good spot" good-spot "guaranteed-safe" guaranteed-safe)
          navigation-iterations (if (< thrust 7)
                                  (filter #(<= (:max-thrust %) thrust)
                                          all-navigation-iterations)
@@ -318,62 +349,64 @@
          ; avoid-attack (if (and avoid-attack (not (not-guaranteed-safe? ship other-ships)))
          ;                avoid-attack
          ;                false)
-     (if (< thrust buffer)
-       (assoc (e/thrust-move ship 0 first-angle) :subtype subtype :reason "Precise - distance is less than buffer.")
-       (loop [iterations (rest navigation-iterations)]
-         (let [{:keys [max-thrust angular-step]} (first iterations)]
-           (if (nil? max-thrust)
-             (assoc (e/thrust-move ship 0 first-angle) :subtype subtype :reason "Precise - ran out of moves.")
-             (let [angle (+ first-angle angular-step)
-                   ; point (custom-math/get-point ship (min max-thrust thrust) angle)
-                   point (custom-math/get-point ship max-thrust angle)
-                   planet-compare-point (custom-math/get-point ship (min max-thrust planet-compare-distance) angle)
-                   midturn-locations (custom-math/get-in-turn-segments
-                                      {:ship ship :thrust max-thrust
-                                       :angle angle})]
-                   ; _ (log "Starting point" (:pos ship)
-                   ;        "Final point" point
-                   ;        "Angle" angle
-                   ;        "and last location" (last midturn-locations)
-                   ;        "all locations" midturn-locations)]
-                   ; _ (when (and (empty? (new-entities-between ship point (vals final-ships-to-compare)
-                   ;                                            planet-compare-point))
-                   ;              (seq (new-entities-between ship point (vals midturn-ships)
-                   ;                                         planet-compare-point))
-                   ;              (empty? (midturn-collisions midturn-locations
-                   ;                                          (vals midturn-ships))))
-                   ;     (log "WARNING: Collision for ship" (pretty-log ship)
-                   ;          (pretty-log (new-entities-between ship point (vals midturn-ships)
-                   ;                                            planet-compare-point))))]
+     (if (and (not= :friendly2) (not good-spot))
+       (navigate-to-friendly-ship-later ship)
+       (if (< thrust buffer)
+         (assoc (e/thrust-move ship 0 first-angle) :subtype subtype :reason "Precise - distance is less than buffer.")
+         (loop [iterations (rest navigation-iterations)]
+           (let [{:keys [max-thrust angular-step]} (first iterations)]
+             (if (nil? max-thrust)
+               (assoc (e/thrust-move ship 0 first-angle) :subtype subtype :reason "Precise - ran out of moves.")
+               (let [angle (+ first-angle angular-step)
+                     ; point (custom-math/get-point ship (min max-thrust thrust) angle)
+                     point (custom-math/get-point ship max-thrust angle)
+                     planet-compare-point (custom-math/get-point ship (min max-thrust planet-compare-distance) angle)
+                     midturn-locations (custom-math/get-in-turn-segments
+                                        {:ship ship :thrust max-thrust
+                                         :angle angle})]
+                     ; _ (log "Starting point" (:pos ship)
+                     ;        "Final point" point
+                     ;        "Angle" angle
+                     ;        "and last location" (last midturn-locations)
+                     ;        "all locations" midturn-locations)]
+                     ; _ (when (and (empty? (new-entities-between ship point (vals final-ships-to-compare)
+                     ;                                            planet-compare-point))
+                     ;              (seq (new-entities-between ship point (vals midturn-ships)
+                     ;                                         planet-compare-point))
+                     ;              (empty? (midturn-collisions midturn-locations
+                     ;                                          (vals midturn-ships))))
+                     ;     (log "WARNING: Collision for ship" (pretty-log ship)
+                     ;          (pretty-log (new-entities-between ship point (vals midturn-ships)
+                     ;                                            planet-compare-point))))]
 
-                   ; midturn-locations (custom-math/calculate-end-positions
-                   ;                    {:ship ship :thrust (min max-thrust thrust)
-                   ;                     :angle angle})]
-               ; (log "Midturn locations" midturn-locations)
-               ; (log "Midturn collisions" (midturn-collisions midturn-locations
-               ;                                               (vals midturn-ships)))
+                     ; midturn-locations (custom-math/calculate-end-positions
+                     ;                    {:ship ship :thrust (min max-thrust thrust)
+                     ;                     :angle angle})]
+                 ; (log "Midturn locations" midturn-locations)
+                 ; (log "Midturn collisions" (midturn-collisions midturn-locations
+                 ;                                               (vals midturn-ships)))
 
-               (if (or (not (valid-point? point))
-                       (and avoid-obstacles
-                            (or (first (new-entities-between ship point (vals final-ships-to-compare)
-                                                             planet-compare-point))
-                                ; (first (new-entities-between ship point (vals midturn-ships)
-                                ;                              planet-compare-point))
-                                (first (midturn-collisions midturn-locations
-                                                           (vals midturn-ships)))))
-                       ; (and avoid-attack (not (unreachable? point other-ships)))
-                       (and avoid-attack (not (good-spot? point my-ships other-ships)))
-                       (and avoid-corner (too-close-to-corner? point)))
-                 (recur (rest iterations))
-                 (do
-                  ; (when (seq (new-entities-between ship point (vals midturn-ships)
-                  ;                                  planet-compare-point))
-                  ;   (log "WARNING: Collision for ship" (pretty-log ship)
-                  ;        (pretty-log (new-entities-between ship point (vals midturn-ships)
-                  ;                                          planet-compare-point))))
-                  ; (log "I decided position: " point "was a good spot for ship " (:id ship))
-                  ; (log "The enemies I could potentially look for included:" other-ships)
-                  (assoc (e/thrust-move ship max-thrust angle) :subtype subtype)))))))))))
+                 (if (or (not (valid-point? point))
+                         (and avoid-obstacles
+                              (or (first (new-entities-between ship point (vals final-ships-to-compare)
+                                                               planet-compare-point))
+                                  ; (first (new-entities-between ship point (vals midturn-ships)
+                                  ;                              planet-compare-point))
+                                  (first (midturn-collisions midturn-locations
+                                                             (vals midturn-ships)))))
+                         ; (and avoid-attack (not (unreachable? point other-ships)))
+                         (and avoid-attack (not (good-spot? point my-ships other-ships)))
+                         (and avoid-corner (too-close-to-corner? point)))
+                   (recur (rest iterations))
+                   (do
+                    ; (when (seq (new-entities-between ship point (vals midturn-ships)
+                    ;                                  planet-compare-point))
+                    ;   (log "WARNING: Collision for ship" (pretty-log ship)
+                    ;        (pretty-log (new-entities-between ship point (vals midturn-ships)
+                    ;                                          planet-compare-point))))
+                    (log "I decided position: " point "was a good spot for ship " (:id ship))
+                    (log "The enemies I could potentially look for included:" other-ships)
+                    (assoc (e/thrust-move ship max-thrust angle) :subtype subtype))))))))))))
 
 (defn navigate-to-fast
   "Returns a thrust move that moves the ship to the provided goal. The
@@ -404,9 +437,7 @@
                                   (and (integer? k)
                                        (= *player-id* (:owner-id v))))
                                 compare-ships))
-         other-ships (figure-out-potential-attacks ship
-                                                   (filter #(not= *player-id* (:owner-id %))
-                                                           (vals compare-ships)))
+         other-ships (figure-out-potential-attacks ship (vals compare-ships))
          ; other-ships (when avoid-attack
          ;               (remove #(or (= *player-id* (:owner-id %))
          ;                            (not= :undocked (-> % :docking :status)))
@@ -419,9 +450,9 @@
          thrust (if (not good-spot)
                   7
                   thrust)
-         ; first-angle (if (and (not good-spot) (not guaranteed-safe))
-         ;               (let [closest-fighter]
-         ;                 (nearest-entity)))
+         first-angle (if (and (not good-spot) (not guaranteed-safe))
+                       (or (get-angle-to-run ship other-ships) first-angle)
+                       first-angle)
          avoid-attack (if good-spot
                          false
                          guaranteed-safe)
@@ -429,23 +460,25 @@
                                  (filter #(<= (:max-thrust %) thrust)
                                          all-navigation-iterations)
                                  all-navigation-iterations)]
-     (if (< thrust buffer)
-       (assoc (e/thrust-move ship 0 first-angle) :subtype subtype :reason "Fast - within buffer.")
-       (loop [iterations (rest navigation-iterations)]
-         (let [{:keys [max-thrust angular-step]} (first iterations)]
-           (if (nil? max-thrust)
-             (assoc (e/thrust-move ship 0 first-angle) :subtype subtype :reason "Fast - ran out of possibilities.")
-             (let [angle (+ first-angle angular-step)
-                   point (custom-math/get-point ship max-thrust angle)
-                   planet-compare-point (custom-math/get-point ship (min max-thrust planet-compare-distance) angle)]
-               (if (or (not (valid-point? point))
-                       (and avoid-obstacles (first (new-entities-between ship point obstacles
-                                                                         planet-compare-point)))
-                       ; (and avoid-attack (not (unreachable? point other-ships)))
-                       (and avoid-attack (not (good-spot? point my-ships other-ships)))
-                       (and avoid-corner (too-close-to-corner? point)))
-                 (recur (rest iterations))
-                 (assoc (e/thrust-move ship max-thrust angle) :subtype subtype))))))))))
+     (if (and (not= :friendly2) (not good-spot))
+       (navigate-to-friendly-ship-later ship)
+       (if (< thrust buffer)
+         (assoc (e/thrust-move ship 0 first-angle) :subtype subtype :reason "Fast - within buffer.")
+         (loop [iterations (rest navigation-iterations)]
+           (let [{:keys [max-thrust angular-step]} (first iterations)]
+             (if (nil? max-thrust)
+               (assoc (e/thrust-move ship 0 first-angle) :subtype subtype :reason "Fast - ran out of possibilities.")
+               (let [angle (+ first-angle angular-step)
+                     point (custom-math/get-point ship max-thrust angle)
+                     planet-compare-point (custom-math/get-point ship (min max-thrust planet-compare-distance) angle)]
+                 (if (or (not (valid-point? point))
+                         (and avoid-obstacles (first (new-entities-between ship point obstacles
+                                                                           planet-compare-point)))
+                         ; (and avoid-attack (not (unreachable? point other-ships)))
+                         (and avoid-attack (not (good-spot? point my-ships other-ships)))
+                         (and avoid-corner (too-close-to-corner? point)))
+                   (recur (rest iterations))
+                   (assoc (e/thrust-move ship max-thrust angle) :subtype subtype)))))))))))
 
 (defn navigate-to
   "Determines which navigation to perform."
@@ -606,11 +639,6 @@
                                                                   :subtype :swarm-friendly})))
                                                                   ; :max-corrections 10})))
 
-(defn navigate-to-friendly-ship-later
-  "Return a fake move to be processed later."
-  [ship friendly-ship]
-  (assoc (e/thrust-move ship 0 0) :subtype :friendly))
-
 (defn navigate-to-friendly-ship
   "Returns a thrust move which will navigate this ship to the requested
   planet for docking. The ship will attempt to get to
@@ -665,30 +693,17 @@
   (let [distance-from-planet (- (math/distance-between position planet) (:radius planet))]
     (< distance-from-planet too-close-distance)))
 
-(defn nearest-entity
-  "Returns the closest other entity to the passed in entity."
-  [entity other-entities]
-  ; (log "Called with entity" entity "Other entities" other-entities)
-  (:nearest-entity
-   (reduce (fn [{:keys [min-distance nearest-entity]} other-entity]
-             (let [distance (- (math/distance-between entity other-entity)
-                               (:radius other-entity))]
-               (if (< distance min-distance)
-                 {:min-distance distance :nearest-entity other-entity}
-                 {:min-distance min-distance :nearest-entity nearest-entity})))
-           {:min-distance infinity}
-           other-entities)))
-
 (defn navigate-to-retreat
   "Attempt to retreat and pull the ships away from my planets and towards their own.
   I cannot be attacked from them."
   ([ship planet]
    (navigate-to-retreat ship planet true))
   ([ship planet avoid-corner]
-   (log "Navigate to retreat")
+   ; (log "Navigate to retreat")
    (navigate-to ship planet (merge default-navigation-opts {:buffer 0.0
                                                             :max-thrust e/max-ship-speed
-                                                            :subtype :retreat3
+                                                            ; :subtype :retreat3
+                                                            :subtype :friendly2
                                                             :avoid-corner avoid-corner}))))
 
 ; (defn navigate-to-retreat

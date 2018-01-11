@@ -48,6 +48,8 @@
 
 (defn -main
   [& args]
+  (when (= "log-stuff" (first args))
+    (reset! utils/log-stuff true))
   (initialize-game
    (durbinator/starting-game-strategy!)
    (io/send-done-initialized)

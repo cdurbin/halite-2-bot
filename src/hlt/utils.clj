@@ -3,9 +3,12 @@
 
 (def ^:dynamic *logger* nil)
 
+(def log-stuff (atom false))
+
 (defn log
   "Logs the arguments to the log file, as if printed by println.
   Multiple arguments are separated by spaces."
   [& args]
-  (binding [*out* *logger*]
-    (apply println args)))
+  (when @log-stuff
+    (binding [*out* *logger*]
+      (apply println args))))
