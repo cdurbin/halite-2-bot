@@ -389,19 +389,24 @@
 (defn attack-unprotected-enemy-ships
   "Returns moves to attack the unprotected enemy ships"
   [moving-ships {:keys [start-ms]}]
-  (let [ship-attacks (unprotected-enemy-ships moving-ships)]
-    ; (log "unprotected enemy ships are:" ship-attacks)
-    (doall
-     (for [[ship enemy-ship] ship-attacks
-           :let [times-up? (> (- (System/currentTimeMillis) start-ms) 1550)]
-           :when (not times-up?)
-           :let [move (navigation/navigate-to-attack-docked-ship
-                       ship enemy-ship true)]
-                       ; ship enemy-ship (> (math/distance-between ship enemy-ship) 21.1)
-                       ; ship enemy-ship (> (math/distance-between ship enemy-ship) 12))]
-           :when move]
-       (do (map/change-ship-positions! move)
-           move)))))
+  [])
+
+; (defn attack-unprotected-enemy-ships
+;   "Returns moves to attack the unprotected enemy ships"
+;   [moving-ships {:keys [start-ms]}]
+;   (let [ship-attacks (unprotected-enemy-ships moving-ships)]
+;     ; (log "unprotected enemy ships are:" ship-attacks)
+;     (doall
+;      (for [[ship enemy-ship] ship-attacks
+;            :let [times-up? (> (- (System/currentTimeMillis) start-ms) 1550)]
+;            :when (not times-up?)
+;            :let [move (navigation/navigate-to-attack-docked-ship
+;                        ship enemy-ship true)]
+;                        ; ship enemy-ship (> (math/distance-between ship enemy-ship) 21.1)
+;                        ; ship enemy-ship (> (math/distance-between ship enemy-ship) 12))]
+;            :when move]
+;        (do (map/change-ship-positions! move)
+;            move)))))
 
 (defn get-vulnerable-ships
   "Returns a list of vulnerable ships."
