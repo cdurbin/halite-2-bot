@@ -225,7 +225,7 @@
 (defn compute-move-closest-planet*
   "Picks the move for the ship based on proximity to planets and fighters near planets."
   [{:keys [start-ms]} ship]
-  (let [times-up? (> (- (System/currentTimeMillis) *start-ms*) 1550)]
+  (let [times-up? (> (- (System/currentTimeMillis) *start-ms*) 1850)]
     (if (or times-up?
             (not= :undocked (-> ship :docking :status)))
       nil

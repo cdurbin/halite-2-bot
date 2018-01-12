@@ -14,9 +14,8 @@
 
 (defmacro with-updated-map
   [& body]
-  `(let [start-ms# (System/currentTimeMillis)
-         m# (io/read-map)]
-     (binding [*start-ms* start-ms#
+  `(let [m# (io/read-map)]
+     (binding [*start-ms* 0
                *owner-ships* (:owner-ships m#)
                *ships* (:ships m#)
                *planets* (:planets m#)
@@ -58,6 +57,7 @@
    (doseq [turn (iterate inc 1)]
      (with-updated-map
       (do
+        (set! *start-ms* (System/currentTimeMillis))
         (log "==== Turn" turn)
         (let [moves (get-moves-for-turn-fn turn)]
           ; (log "Moves" moves)
