@@ -779,7 +779,15 @@
         ships-in-order (map/sort-ships-by-distance (vals (get *owner-ships* *player-id*)))
         runaway-moves (run-to-corner-moves (reverse ships-in-order))
         moving-ships (map #(get-in % [:ship :id]) runaway-moves)
-        defend-moves (defend-vulnerable-ships moving-ships custom-map-info)
+        ; skip-defense? true
+        pct-ships-to-skip-defense (if (> *num-players* 2)
+                                    0.4
+                                    0.5)
+        skip-defense? (and (> *num-ships* 50)
+                           (> *num-ships* (* pct-ships-to-skip-defense (count (vals *ships*)))))
+        defend-moves (if skip-defense?
+                       []
+                       (defend-vulnerable-ships moving-ships custom-map-info))
         moving-ships (map #(get-in % [:ship :id]) (concat defend-moves runaway-moves))
 
         attack-moves (attack-unprotected-enemy-ships moving-ships custom-map-info)
