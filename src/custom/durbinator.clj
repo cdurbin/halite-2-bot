@@ -660,7 +660,7 @@
         docking-spot (when (and planet (center-planet/center-planet? planet))
                        (center-planet/get-best-docking-point nil planet))
         closest-ship (if docking-spot
-                       (map/nearest-entity (assoc docking-spot :radius 0) potential-ships)
+                       (map/nearest-entity (assoc docking-spot :radius 0.0) potential-ships)
                        (map/nearest-entity planet potential-ships))]
     (when (and closest-ship
                (map/safe-to-dock? closest-ship))
@@ -846,3 +846,6 @@
     (concat all-moves friendly-moves)))
     ; all-moves))
     ; (concat runaway-moves defend-moves attack-moves main-moves fallback-moves friendly-moves best-planet-moves swarm-moves more-planet-moves)))
+
+
+;; (import 'net.jafama.FastMath)

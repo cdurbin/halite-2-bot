@@ -90,7 +90,7 @@
   "Returns the smallest distance to any POI."
   [ship points-of-interest]
   (reduce (fn [min-distance poi]
-            (let [distance (- (math/distance-between ship poi) (get poi :radius 0))]
+            (let [distance (- (math/distance-between ship poi) (get poi :radius 0.0))]
               (if (< distance min-distance)
                 distance
                 min-distance)))
@@ -200,7 +200,7 @@
                                                           (= :undocked (-> % :docking :status)))
                                                     (vals *ships*)))
         planet (if nearest-ship
-                 (assoc (math/closest-point nearest-ship planet) :radius 0)
+                 (assoc (math/closest-point nearest-ship planet) :radius 0.0)
                  planet)
         close-distance 60
         filter-fn (fn [ship]
@@ -289,7 +289,7 @@
 (defn can-attack-spot?
   "Returns whether a ship can reach the spot (tries to take into account planets)."
   [ship point]
-  (let [closest-attack-point (math/closest-point ship (assoc point :radius 0) 6.0)
+  (let [closest-attack-point (math/closest-point ship (assoc point :radius 0.0) 6.0)
         filter-fn-planets #(math/segment-circle-intersects? ship closest-attack-point % planet-fudge-factor)]
     (empty? (filter filter-fn-planets (vals *planets*)))))
 

@@ -73,7 +73,7 @@
         angle (math/orient-towards ship orig-point)
         point (custom-math/get-point ship e/max-ship-speed angle)
         point (custom-math/get-point-between point orig-point 0.1)
-        first-move (navigation-fn ship (assoc point :radius 0))]
+        first-move (navigation-fn ship (assoc point :radius 0.0))]
     (when (and first-move (pos? (:thrust first-move)))
       (map/change-ship-positions! first-move))
     first-move))
@@ -113,7 +113,7 @@
         point (custom-math/get-point ship e/max-ship-speed angle)
         point (custom-math/get-point-between point orig-point 0.1)
         first-move (if (> distance 10)
-                     (navigation/navigate-to-specific-point ship (assoc point :radius 0))
+                     (navigation/navigate-to-specific-point ship (assoc point :radius 0.0))
                      (navigation/navigate-to-attack-ship ship enemy-ship))]
     (when (and first-move (pos? (:thrust first-move)))
       (map/change-ship-positions! first-move)

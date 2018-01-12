@@ -229,7 +229,7 @@
         se (math/->Position (dec max-x) (dec max-y))
         sw (math/->Position 0.1 (dec max-y))]
     (first (filter #(< (math/distance-between position %) close-corner-distance)
-                  (map (fn [point] (assoc point :radius 0)) [ne nw se sw])))))
+                  (map (fn [point] (assoc point :radius 0.0)) [ne nw se sw])))))
 
 (def friendly-distance-moved 2.5)
 (def max-speed-distance (+ e/max-ship-speed e/weapon-radius 1.5))
@@ -237,7 +237,7 @@
 (defn can-attack-spot?
   "Returns whether a ship can reach the spot (tries to take into account planets)."
   [ship point]
-  (let [closest-attack-point (math/closest-point ship (assoc point :radius 0) 6)
+  (let [closest-attack-point (math/closest-point ship (assoc point :radius 0.0) 6)
         filter-fn-planets #(math/segment-circle-intersects? ship closest-attack-point % planet-fudge-factor)]
     (empty? (filter filter-fn-planets (vals *planets*)))))
 
@@ -777,5 +777,5 @@
         nw (math/->Position 0.1 0.1)
         se (math/->Position (dec max-x) (dec max-y))
         sw (math/->Position 0.1 (dec max-y))]
-    (navigate-to-retreat position (assoc (closest-position position [ne nw se sw]) :radius 0)
+    (navigate-to-retreat position (assoc (closest-position position [ne nw se sw]) :radius 0.0)
                          false)))

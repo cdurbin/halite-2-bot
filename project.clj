@@ -2,7 +2,9 @@
   :description "FIXME: My halite bot"
   :url "http://example.com/FIXME"
   :license {:name "All Rights Reserved"}
-  :dependencies [[org.clojure/clojure "1.8.0"]]
+  :dependencies [[org.clojure/clojure "1.8.0"]
+                 [net.jafama/jafama "2.1.0"]
+                 [primitive-math "0.1.6"]]
   :main ^:skip-aot hlt.runner
   :target-path "target/"
   :uberjar-name "MyBot.jar"

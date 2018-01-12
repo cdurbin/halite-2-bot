@@ -2,12 +2,13 @@
   "Namespace for utility functions."
   (:require
    [clojure.pprint :as pretty]
-   [hlt.utils :refer [log]]))
+   [hlt.utils :refer [log log-stuff]]))
 
 (defn pretty-log
   "Pretty logging"
   [obj]
-  (with-out-str (pretty/pprint obj)))
+  (when @log-stuff
+    (with-out-str (pretty/pprint obj))))
 
 (def asc
   "Sort in ascending order"

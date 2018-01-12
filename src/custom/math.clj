@@ -2,93 +2,98 @@
   "Custom math functions."
   (:require
    [hlt.math :as hlt-math]
-   [hlt.utils :refer [log]]))
+   [hlt.utils :refer [log]]
+   [primitive-math :as p])
+  (:import net.jafama.FastMath)
+  (:import hlt.math.Positionable))
 
-(def infinity 99999999)
+; (primitive-math/use-primitive-operators)
+
+(def infinity 99999999.0)
 
 (defn deg->rad
   "Translates degrees to radians."
-  [deg]
-  (Math/toRadians deg))
+  [^double deg]
+  (FastMath/toRadians deg))
 
 (defn between
   "Returns whether the given angle is between two angles"
-  [plus-angle minus-point-angle compare-angle]
-  (let [upd-plus-angle (if (> minus-point-angle plus-angle)
-                         (+ 360 plus-angle)
+  [^double plus-angle ^double minus-point-angle ^double compare-angle]
+  (let [upd-plus-angle (if (p/> minus-point-angle plus-angle)
+                         (p/+ 360 plus-angle)
                          plus-angle)
-        upd-compare-angle (if (>= upd-plus-angle 360)
-                            (+ 360 compare-angle)
+        upd-compare-angle (if (p/>= upd-plus-angle 360)
+                            (p/+ 360 compare-angle)
                             compare-angle)]
     (<= minus-point-angle upd-compare-angle upd-plus-angle)))
 
 (defn final-position
   "Returns the final position based on an angle and magnitude."
-  [x y thrust angle]
+  [^double x ^double y ^double thrust ^double angle]
   (let [angle-rad (deg->rad angle)
-        x-magnitude (* thrust (Math/cos angle-rad))
-        y-magnitude (* thrust (Math/sin angle-rad))]
-    {:x (+ x x-magnitude)
-     :y (+ y y-magnitude)}))
+        x-magnitude (p/* thrust (FastMath/cos angle-rad))
+        y-magnitude (p/* thrust (FastMath/sin angle-rad))]
+    {:x (p/+ x x-magnitude)
+     :y (p/+ y y-magnitude)}))
 
 (defn final-position-radians
   "Returns the final position based on an angle and magnitude."
-  [x y thrust angle]
-  (let [x-magnitude (* thrust (Math/cos angle))
-        y-magnitude (* thrust (Math/sin angle))]
-    {:x (+ x x-magnitude)
-     :y (+ y y-magnitude)}))
+  [^double x ^double y ^double thrust ^double angle]
+  (let [x-magnitude (p/* thrust (FastMath/cos angle))
+        y-magnitude (p/* thrust (FastMath/sin angle))]
+    {:x (p/+ x x-magnitude)
+     :y (p/+ y y-magnitude)}))
 
 (defn all-positions-start-to-end
   "Returns multiple positions (one for each integer) from starting spot to ending spot."
-  [x y thrust angle]
+  [^double x ^double y ^double thrust ^double angle]
   (for [n (range 1 (inc thrust) 1)]
     (hlt-math/map->Position (final-position x y n angle))))
 
 ;; Need 7 different distances, 1/7th of the total thrust, 2/7th, ...
 (defn all-positions-start-to-end-new
   "Returns multiple positions (one for each integer) from starting spot to ending spot."
-  [x y thrust angle]
+  [^double x ^double y ^double thrust ^double angle]
   (into {}
         (for [n (range 1 7.1)]
-          [n (hlt-math/map->Position (final-position x y (* n (/ thrust 7)) angle))])))
+          [n (hlt-math/map->Position (final-position x y (p/* (double n) (/ thrust 7.0)) angle))])))
 
 (defn all-positions-start-to-end-radians
   "Returns multiple positions (one for each integer) from starting spot to ending spot."
-  [x y thrust angle]
+  [^double x ^double y ^double thrust ^double angle]
   (for [n (range 1 7.1)]
-    (hlt-math/map->Position (final-position-radians x y (* n (/ thrust 7)) angle))))
+    (hlt-math/map->Position (final-position-radians x y (p/* (double n) (/ thrust 7.0)) angle))))
 
 (defn orient-away
   "Returns the opposite direction angle from `from` to `to` in radians."
-  [from to]
-  (let [dx (- (hlt-math/get-x to) (hlt-math/get-x from))
-        dy (- (hlt-math/get-y to) (hlt-math/get-y from))]
-    (+ (Math/atan2 dy dx)
+  [^Positionable from ^Positionable to]
+  (let [dx (p/- (hlt-math/get-x to) (hlt-math/get-x from))
+        dy (p/- (hlt-math/get-y to) (hlt-math/get-y from))]
+    (p/+ (FastMath/atan2 dy dx)
        Math/PI)))
 
 (defn get-point
   "Returns the point that is distance away at the provided angle from the current point."
-  [pos distance angle]
+  [^Positionable pos ^double distance ^double angle]
   ; (log "Am I crazy"
   ;      "Pos" pos
   ;      "Distance" distance
   ;      "Angle" angle)
-  (let [x (+ (hlt-math/get-x pos) (* distance (Math/cos angle)))
-        y (+ (hlt-math/get-y pos) (* distance (Math/sin angle)))]
+  (let [x (p/+ (hlt-math/get-x pos) (p/* distance (FastMath/cos angle)))
+        y (p/+ (hlt-math/get-y pos) (p/* distance (FastMath/sin angle)))]
     ; (log "Returning" (hlt-math/->Position x y))
     (hlt-math/->Position x y)))
 
 (defn get-point-between
   "Returns a point between the two positions at percent."
-  [start end multiplier]
+  [^Positionable start ^Positionable end ^double multiplier]
   (let [angle (hlt-math/orient-towards start end)
-        distance (* multiplier (hlt-math/distance-between start end))]
+        distance (p/* multiplier (hlt-math/distance-between start end))]
     (get-point start distance angle)))
 
 (defn get-closest-point-towards-target
   "Returns the closest point towards the target."
-  [start target distance]
+  [^Positionable start ^Positionable target ^double distance]
   (let [angle (hlt-math/orient-towards start target)]
     (get-point start distance angle)))
 
@@ -99,9 +104,9 @@
 ;         y1 (get-y p1)
 ;         x2 (get-x p2)
 ;         y2 (get-y p2)
-;         dx (- x2 x1)
-;         dy (- y2 y1)
-;         a (+ (square dx) (square dy))]
+;         dx (p/- x2 x1)
+;         dy (p/- y2 y1)
+;         a (p/+ (square dx) (square dy))]
 ;     {:a a :dx dx :dy dy}))
 ;
 ;
@@ -112,34 +117,34 @@
 ;   probability of hitting into them."
 ;   ([entity {:keys [a dx dy] :as params} (segment-circle-intersects? entity params 0.0)])
 ;   ([entity {:keys [a dx dy]} fudge-factor]
-;    ;; Parameterize the segment as start + t * (end - start),
+;    ;; Parameterize the segment as start p/+ t * (end - start),
 ;    ;; and substitute into the equation of a circle
 ;    ;; Solve for t
-;    (let [fudged-radius (+ (:radius entity) fudge-factor)
+;    (let [fudged-radius (p/+ (:radius entity) fudge-factor)
 ;          x1 (get-x p1)
 ;          y1 (get-y p1)
 ;          x2 (get-x p2)
 ;          y2 (get-y p2)
-;          dx (- x2 x1)
-;          dy (- y2 y1)
-;          a (+ (square dx) (square dy))
+;          dx (p/- x2 x1)
+;          dy (p/- y2 y1)
+;          a (p/+ (square dx) (square dy))
 ;
 ;          center-x (get-x entity)
 ;          center-y (get-y entity)
 ;
-;          b (* -2 (+ (square x1) (- (* x1 x2))
-;                     (- (* x1 center-x)) (* center-x x2)
-;                     (square y1) (- (* y1 y2))
-;                     (- (* y1 center-y)) (* center-y y2)))]
+;          b (p/* -2 (p/+ (square x1) (p/- (p/* x1 x2))
+;                     (p/- (p/* x1 center-x)) (p/* center-x x2)
+;                     (square y1) (p/- (p/* y1 y2))
+;                     (p/- (p/* y1 center-y)) (p/* center-y y2)))]
 ;      (if (== a 0.0)
 ;        ;; start == end
 ;        (<= (distance-between p1 entity) fudged-radius)
 ;        ;; time along segment when closest to the circle (vertex of the quadratic)
-;        (let [t (min (/ (- b) (* 2 a)) 1.0)]
+;        (let [t (min (/ (p/- b) (p/* 2 a)) 1.0)]
 ;          (if (< t 0)
 ;            false
-;            (let [closest-x (+ x1 (* dx t))
-;                  closest-y (+ y1 (* dy t))
+;            (let [closest-x (p/+ x1 (p/* dx t))
+;                  closest-y (p/+ y1 (p/* dy t))
 ;                  closest-distance (distance-between (->Position closest-x closest-y)
 ;                                                     entity)]
 ;              (<= closest-distance fudged-radius))))))))
@@ -173,11 +178,8 @@
              {:end (:pos ship)}}
             positions)))
 
-
-
-
 (comment
- (range 1 (+ 0.2 7) 2)
+ (range 1 (p/+ 0.2 7) 2)
  (all-positions-start-to-end 10 3 7 15)
  (get-in-turn-segments {:ship {:pos {:x 10 :y 3}} :thrust 7 :angle 15})
  (final-position 10 3 7 15)

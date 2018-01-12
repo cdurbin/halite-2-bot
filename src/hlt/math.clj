@@ -1,24 +1,28 @@
-(ns hlt.math)
+(ns hlt.math
+  ; (:require [primitive-math :as p])
+  (:import net.jafama.FastMath))
+
+; (primitive-math/use-primitive-operators)
 
 (defn rad->deg
   "Translates radians into degrees in the interval [0, 360)."
   [rad]
-  (let [deg-unclipped (Math/round (Math/toDegrees rad))]
+  (let [deg-unclipped (FastMath/round (FastMath/toDegrees rad))]
     ;; Clip to ensure value is in [0, 360), as required by the game engine.
     (int (mod deg-unclipped 360))))
 
 (defprotocol Positionable
   "Positionable is either a location in the game map, or an entity with a
   location in the game map."
-  (get-x [this] "Returns the center x-coordinate for this object")
-  (get-y [this] "Returns the center y-coordinate for this object"))
+  (^double get-x [this] "Returns the center x-coordinate for this object")
+  (^double get-y [this] "Returns the center y-coordinate for this object"))
 
-(defrecord Position [x y]
+(defrecord Position [^double x ^double y]
   Positionable
   (get-x [_] x)
   (get-y [_] y))
 
-(defn square [x]
+(defn square [^double x]
   (* x x))
 
 (defn distance-between
@@ -26,27 +30,27 @@
   [a b]
   (let [dx (- (get-x a) (get-x b))
         dy (- (get-y a) (get-y b))]
-    (Math/sqrt (+ (square dx)
-                  (square dy)))))
+    (FastMath/sqrt (+ (square dx)
+                      (square dy)))))
 
 (defn orient-towards
   "Returns the angle from `from` to `to` in radians."
   [from to]
   (let [dx (- (get-x to) (get-x from))
         dy (- (get-y to) (get-y from))]
-    (+ (Math/atan2 dy dx)
-       (* 2 Math/PI))))
+    (+ (FastMath/atan2 dy dx)
+       (* 2.0 FastMath/PI))))
 
 (defn closest-point
   "Returns the closest safe point from `point` towards `goal`. The
   closest safe point is on the radius of `goal` plus an optional
   distance, which can be used to avoid collisions."
   ([point goal] (closest-point point goal 0.0))
-  ([point goal safe-distance]
+  ([point goal ^double safe-distance]
    (let [radius (+ (:radius goal) safe-distance)
          angle (orient-towards goal point)
-         x (+ (get-x goal) (* radius (Math/cos angle)))
-         y (+ (get-y goal) (* radius (Math/sin angle)))]
+         x (+ (get-x goal) (* radius (FastMath/cos angle)))
+         y (+ (get-y goal) (* radius (FastMath/sin angle)))]
      (->Position x y))))
 
 (defn segment-circle-intersects?
@@ -71,16 +75,16 @@
          center-x (get-x entity)
          center-y (get-y entity)
 
-         b (* -2 (+ (square x1) (- (* x1 x2))
-                    (- (* x1 center-x)) (* center-x x2)
-                    (square y1) (- (* y1 y2))
-                    (- (* y1 center-y)) (* center-y y2)))]
+         b (* -2.0 (+ (square x1) (- (* x1 x2))
+                      (- (* x1 center-x)) (* center-x x2)
+                      (square y1) (- (* y1 y2))
+                      (- (* y1 center-y)) (* center-y y2)))]
      (if (== a 0.0)
        ;; start == end
        (<= (distance-between p1 entity) fudged-radius)
        ;; time along segment when closest to the circle (vertex of the quadratic)
-       (let [t (min (/ (- b) (* 2 a)) 1.0)]
-         (if (< t 0)
+       (let [t (min (/ (- b) (* 2.0 a)) 1.0)]
+         (if (< t 0.0)
            false
            (let [closest-x (+ x1 (* dx t))
                  closest-y (+ y1 (* dy t))
