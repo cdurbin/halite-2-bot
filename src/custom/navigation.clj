@@ -6,7 +6,7 @@
    [hlt.utils :refer [log]]
    [hlt.navigation :as hlt-navigation]
    [hlt.game-map :refer [*planets* *ships* *player-id* *map-size*]]
-   [custom.game-map :refer [*num-ships*]]
+   [custom.game-map :refer [*num-ships* *start-ms*]]
    [hlt.math :as math :refer [get-x get-y]]))
 
 (def default-navigation-opts
@@ -354,8 +354,10 @@
        (if (< thrust buffer)
          (assoc (e/thrust-move ship 0 first-angle) :subtype subtype :reason "Precise - distance is less than buffer.")
          (loop [iterations (rest navigation-iterations)]
-           (let [{:keys [max-thrust angular-step]} (first iterations)]
-             (if (nil? max-thrust)
+               ;; Timeout protection
+           (let [times-up? (> (- (System/currentTimeMillis) *start-ms*) 1750)
+                 {:keys [max-thrust angular-step]} (first iterations)]
+             (if (or times-up? (nil? max-thrust))
                (assoc (e/thrust-move ship 0 first-angle) :subtype subtype :reason "Precise - ran out of moves.")
                (let [angle (+ first-angle angular-step)
                      ; point (custom-math/get-point ship (min max-thrust thrust) angle)
@@ -465,8 +467,11 @@
        (if (< thrust buffer)
          (assoc (e/thrust-move ship 0 first-angle) :subtype subtype :reason "Fast - within buffer.")
          (loop [iterations (rest navigation-iterations)]
-           (let [{:keys [max-thrust angular-step]} (first iterations)]
-             (if (nil? max-thrust)
+           (let [
+                 ;; Timeout protection
+                 times-up? (> (- (System/currentTimeMillis) *start-ms*) 1750)
+                 {:keys [max-thrust angular-step]} (first iterations)]
+             (if (or times-up? (nil? max-thrust))
                (assoc (e/thrust-move ship 0 first-angle) :subtype subtype :reason "Fast - ran out of possibilities.")
                (let [angle (+ first-angle angular-step)
                      point (custom-math/get-point ship max-thrust angle)

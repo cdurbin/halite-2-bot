@@ -8,6 +8,7 @@
   :main ^:skip-aot hlt.runner
   :target-path "target/"
   :uberjar-name "MyBot.jar"
+  :jvm-opts ["-Dclojure.compiler.direct-linking=true"]
   :profiles {:uberjar {:aot :all}
              :dev {:dependencies [[org.clojure/tools.namespace "0.2.10"]
                                   ; [org.clojars.gjahad/debug-repl "0.3.3"]

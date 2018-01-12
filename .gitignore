@@ -8,5 +8,6 @@ jars/
 .lein-repl-history
 halite*
 hlts/
+bkup/
 .DS_Store
 scratch.clj

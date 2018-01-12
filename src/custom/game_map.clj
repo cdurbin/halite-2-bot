@@ -23,3 +23,7 @@
 (def ^:dynamic *attack-spots*
   "Locations to attack."
   nil)
+
+(def ^:dynamic *start-ms*
+  "Starting ms for the round to know when to time out."
+  0)

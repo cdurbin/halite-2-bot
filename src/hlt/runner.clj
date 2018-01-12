@@ -6,7 +6,7 @@
             [hlt.utils :as utils :refer [log]]
             [custom.durbinator :as durbinator]
             [custom.game-map :refer [*safe-planets* *docked-enemies* *pesky-fighters* *num-ships*
-                                     *num-players* *attack-spots*]]
+                                     *num-players* *attack-spots* *start-ms*]]
             [custom.utils :refer [defn-timed]])
 
   (:import (java.io PrintWriter))
@@ -14,8 +14,10 @@
 
 (defmacro with-updated-map
   [& body]
-  `(let [m# (io/read-map)]
-     (binding [*owner-ships* (:owner-ships m#)
+  `(let [start-ms# (System/currentTimeMillis)
+         m# (io/read-map)]
+     (binding [*start-ms* start-ms#
+               *owner-ships* (:owner-ships m#)
                *ships* (:ships m#)
                *planets* (:planets m#)
                *safe-planets* nil
