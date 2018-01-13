@@ -91,6 +91,10 @@ lein uberjar
 #./halite -s 582576686 -d "240 160" "java -jar target/MyBot.jar log-stuff" "java -jar jars/V101.jar"
 
 #./halite -s 2677457377 -d "240 160" "java -jar target/MyBot.jar log-stuff" "java -jar jars/V101.jar"
-./halite -s 3044646300 -d "240 160" "java -jar target/MyBot.jar log-stuff" "java -jar jars/V33.jar"
+#./halite -s 3044646300 -d "240 160" "java -jar target/MyBot.jar log-stuff" "java -jar jars/V33.jar"
 
+## TODO Check this one out frame 81 or 82 - why didn't I run?
+./halite -s 1919766103 -d "240 160" "java -jar target/MyBot.jar log-stuff" "java -jar jars/V33.jar"
+
+# replay-20180113-143256-0500--1919766103-240-160-503420.hlt
 mv *.hlt hlts/

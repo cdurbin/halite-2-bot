@@ -111,12 +111,24 @@
     retreat-range
     retreat-range-early))
 
+(defn find-docked-ships-without-an-army
+  "Returns docked ships that don't have a bunch of fighters nearby."
+  [ships]
+  (let [army-number 10
+        army-distance 15
+        docked-ships (filter #(not= :undocked (-> % :docking :status)) ships)
+        fighter-ships (filter #(= :undocked (-> % :docking :status)) ships)]
+    (for [ship docked-ships
+          :let [nearby-fighters (filter #(< (math/distance-between ship %) army-distance)
+                                        fighter-ships)]
+          :when (< (count nearby-fighters) army-number)]
+      ship)))
+
 (defn move-to-nearest-enemy-ship-or-target
   "Moves the ship to the nearest enemy ship."
   [ship enemy-ships target]
-  (let [nearest-docked-enemy-ship (map/nearest-enemy-not-decoy
-                                   ship (filter #(not= :undocked (-> % :docking :status))
-                                                enemy-ships))
+  (let [nearest-docked-enemy-ship (map/nearest-entity
+                                   ship (find-docked-ships-without-an-army enemy-ships))
         enemy-ship (map/nearest-enemy-not-decoy ship enemy-ships)]
     (when enemy-ship
       (if (> *num-ships* 3)
@@ -173,9 +185,8 @@
 (defn move-to-nearest-enemy-ship
   "Moves the ship to the nearest enemy ship."
   [ship enemy-ships]
-  (let [nearest-docked-enemy-ship (map/nearest-enemy-not-decoy
-                                   ship (filter #(not= :undocked (-> % :docking :status))
-                                                enemy-ships))
+  (let [nearest-docked-enemy-ship (map/nearest-entity
+                                   ship (find-docked-ships-without-an-army enemy-ships))
         enemy-ship (map/nearest-enemy-not-decoy ship enemy-ships)]
     (when enemy-ship
       (if (> *num-ships* 3)
