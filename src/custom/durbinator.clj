@@ -768,7 +768,7 @@
   []
   (if (= *num-players* 2)
     (map/closest-planet-to-my-planets)
-    (if (> *num-ships* 8)
+    (if (or (<= *num-ships* 5) (>= *num-ships* 8))
       (map/closest-planet-to-my-planets)
       (map/corner-planet))))
 
