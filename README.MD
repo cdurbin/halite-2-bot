@@ -113,3 +113,8 @@ map_height = 2 * base_size
   * [ ] Undock (only early in games - takes 5 turns to undock, so if I'm unprotected and units are < 42ish away).
   * [ ] Random 45 degree angle in either direction when fleeing
   * [ ] "Square up" against enemies (probably will never do, but the idea is put my ships in a line perpendicular to the enemy being targeted).
+
+## Testing
+  * [ ] Find maps where closest planet is not a good choice
+  * [ ] Find maps where I have a single ship go in and die and find out why
+  * [ ] Where I should attack better

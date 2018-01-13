@@ -88,5 +88,9 @@ lein uberjar
 #./halite -s 585114577 -d "240 160" "java -jar target/MyBot.jar" "java -jar jars/V101.jar"
 
 ## Stop running in to die
-./halite -s 582576686 -d "240 160" "java -jar target/MyBot.jar log-stuff" "java -jar jars/V101.jar"
+#./halite -s 582576686 -d "240 160" "java -jar target/MyBot.jar log-stuff" "java -jar jars/V101.jar"
+
+#./halite -s 2677457377 -d "240 160" "java -jar target/MyBot.jar log-stuff" "java -jar jars/V101.jar"
+./halite -s 3044646300 -d "240 160" "java -jar target/MyBot.jar log-stuff" "java -jar jars/V33.jar"
+
 mv *.hlt hlts/

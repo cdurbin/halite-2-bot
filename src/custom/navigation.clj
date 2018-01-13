@@ -164,7 +164,7 @@
 (defn not-guaranteed-safe?
   "Returns true if we're less than 5 away from a ship."
   [ship ships]
-  (some? (first (filter #(<= (math/distance-between ship %) 6.0) ships))))
+  (some? (first (filter #(<= (math/distance-between ship %) 6.5) ships))))
   ; (some? (first (filter #(<= (math/distance-between ship %) 5.1) ships))))
 
 ; (defn midturn-collisions
@@ -234,10 +234,12 @@
 (def friendly-distance-moved 2.5)
 (def max-speed-distance (+ e/max-ship-speed e/weapon-radius 1.5))
 
+(def planet-in-the-way-max-distance 10)
+
 (defn can-attack-spot?
   "Returns whether a ship can reach the spot (tries to take into account planets)."
   [ship point]
-  (let [closest-attack-point (math/closest-point ship (assoc point :radius 0.0) 6)
+  (let [closest-attack-point (math/closest-point ship (assoc point :radius 0.0) 6.0)
         filter-fn-planets #(math/segment-circle-intersects? ship closest-attack-point % planet-fudge-factor)]
     (empty? (filter filter-fn-planets (vals *planets*)))))
 
@@ -246,7 +248,8 @@
   [point my-ships enemy-ships]
   (let [final-enemy-ships (filter #(and (< (math/distance-between point %) max-speed-distance)
                                         (or (can-attack-spot? % point)
-                                            (< (math/distance-between point %) (/ max-speed-distance 2))))
+                                            (< (math/distance-between point %) planet-in-the-way-max-distance)))
+                                            ; (< (math/distance-between point %) (/ max-speed-distance 2))))
 
                                   ; (filter #(= :undocked (-> % :docking :status))
                                   enemy-ships)]
@@ -326,21 +329,17 @@
          first-spot (custom-math/get-point ship thrust first-angle)
          ; avoid-attack (not (good-spot? first-spot my-ships other-ships))
          good-spot (good-spot? first-spot my-ships other-ships)
-         guaranteed-safe (when-not good-spot
+         guaranteed-safe (if good-spot
+                           true
                            (not (not-guaranteed-safe? ship other-ships)))
          thrust (if (not good-spot)
                   7
                   thrust)
-         ; first-angle (if (and (not good-spot) (not guaranteed-safe))
-         ;               (let [closest-fighter]
-         ;                 (nearest-entity)))
-         avoid-attack (if good-spot
-                         false
-                         guaranteed-safe)
+         avoid-attack guaranteed-safe
          first-angle (if (and (not good-spot) (not guaranteed-safe))
                        (or (get-angle-to-run ship other-ships) first-angle)
                        first-angle)
-         _ (log "Avoid attack for: " (:id ship) "is" avoid-attack "good spot" good-spot "guaranteed-safe" guaranteed-safe)
+         _ (log "Avoid attack for:" (:id ship) "is" avoid-attack "good spot" good-spot "guaranteed-safe" guaranteed-safe "first spot" first-spot "thrust" thrust)
          navigation-iterations (if (< thrust 7)
                                  (filter #(<= (:max-thrust %) thrust)
                                          all-navigation-iterations)
@@ -361,6 +360,7 @@
                (assoc (e/thrust-move ship 0 first-angle) :subtype subtype :reason "Precise - ran out of moves.")
                (let [angle (+ first-angle angular-step)
                      ; point (custom-math/get-point ship (min max-thrust thrust) angle)
+                     ; _ (log "calculating point for ship: " ship "thrust " max-thrust "angle " angle)
                      point (custom-math/get-point ship max-thrust angle)
                      planet-compare-point (custom-math/get-point ship (min max-thrust planet-compare-distance) angle)
                      midturn-locations (custom-math/get-in-turn-segments
@@ -408,6 +408,7 @@
                     ;                                          planet-compare-point))))
                     (log "I decided position: " point "was a good spot for ship " (:id ship))
                     (log "The enemies I could potentially look for included:" other-ships)
+
                     (assoc (e/thrust-move ship max-thrust angle) :subtype subtype))))))))))))
 
 (defn navigate-to-fast
@@ -447,17 +448,16 @@
          thrust (int (min (- distance buffer) max-thrust))
          first-spot (custom-math/get-point ship thrust first-angle)
          good-spot (good-spot? first-spot my-ships other-ships)
-         guaranteed-safe (when-not good-spot
+         guaranteed-safe (if good-spot
+                           true
                            (not (not-guaranteed-safe? ship other-ships)))
          thrust (if (not good-spot)
                   7
                   thrust)
+         avoid-attack guaranteed-safe
          first-angle (if (and (not good-spot) (not guaranteed-safe))
                        (or (get-angle-to-run ship other-ships) first-angle)
                        first-angle)
-         avoid-attack (if good-spot
-                         false
-                         guaranteed-safe)
          navigation-iterations (if (< thrust 7)
                                  (filter #(<= (:max-thrust %) thrust)
                                          all-navigation-iterations)
@@ -593,6 +593,27 @@
 (def retreat-iterations 180)
 (def retreat-angular-step (/ Math/PI retreat-iterations))
 
+; (defn navigate-to-retreat-ship
+;   "Attempt to retreat and pull the ships away from my planets. Pick four points and make sure
+;   I cannot be attacked from them."
+;   [ship goal]
+;   (let [ships (remove #(or (= *player-id* (:owner-id %))
+;                            (not= :undocked (-> % :docking :status)))
+;                       (vals *ships*))
+;         not-safe (not-guaranteed-safe? ship ships)]
+;     (loop [angle (+ (* 33 (/ Math/PI 180.0)) (custom-math/orient-away ship goal))
+;            iteration 0]
+;       (let [goal (custom-math/get-point ship e/max-ship-speed angle)]
+;         (if (and (or not-safe (unreachable? goal ships))
+;                  (not (too-close-to-corner? goal))
+;                  (valid-point? goal))
+;           (navigate-to ship goal (merge default-navigation-opts {:buffer 0.0
+;                                                                  :max-thrust e/max-ship-speed
+;                                                                  :subtype :retreat-ship}))
+;           (if (<= iteration retreat-iterations)
+;             (recur (+ retreat-angular-step angle)
+;                    (inc iteration))))))))
+
 (defn navigate-to-retreat-ship
   "Attempt to retreat and pull the ships away from my planets. Pick four points and make sure
   I cannot be attacked from them."
@@ -600,19 +621,12 @@
   (let [ships (remove #(or (= *player-id* (:owner-id %))
                            (not= :undocked (-> % :docking :status)))
                       (vals *ships*))
-        not-safe (not-guaranteed-safe? ship ships)]
-    (loop [angle (+ (* 33 (/ Math/PI 180.0)) (custom-math/orient-away ship goal))
-           iteration 0]
-      (let [goal (custom-math/get-point ship e/max-ship-speed angle)]
-        (if (and (or not-safe (unreachable? goal ships))
-                 (not (too-close-to-corner? goal))
-                 (valid-point? goal))
-          (navigate-to ship goal (merge default-navigation-opts {:buffer 0.0
-                                                                 :max-thrust e/max-ship-speed
-                                                                 :subtype :retreat-ship}))
-          (if (<= iteration retreat-iterations)
-            (recur (+ retreat-angular-step angle)
-                   (inc iteration))))))))
+        not-safe (not-guaranteed-safe? ship ships)
+        angle (+ (* 33 (/ Math/PI 180.0)) (custom-math/orient-away ship goal))
+        goal (custom-math/get-point ship e/max-ship-speed angle)]
+    (navigate-to ship goal (merge default-navigation-opts {:buffer 0.0
+                                                           :max-thrust e/max-ship-speed
+                                                           :subtype :retreat-ship}))))
 
 ; (defn navigate-swarm-to-retreat-ship
 ;   "Attempt to retreat and pull the ships away from my planets. Pick four points and make sure

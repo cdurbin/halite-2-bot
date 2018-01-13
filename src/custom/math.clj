@@ -185,6 +185,31 @@
  (final-position 10 3 7 15)
  (final-position 10 3 7 0)
  (final-position 10 3 7 360)
+
+ (let [x1 134.8865401351546
+       y1 67.01943688572264
+       x2 142.12983616593337
+       y2 74.01132933316264]
+   (hlt-math/distance-between (hlt-math/->Position x1 y1) (hlt-math/->Position x2 y2)))
+
+ (let [x1 134.8865401351546
+       y1 67.01943688572264
+       x2 139.68899552356365
+       y2 76.5097762637728]
+   (hlt-math/distance-between (hlt-math/->Position x1 y1) (hlt-math/->Position x2 y2)))
+
+ (let [x1 134.8865401351546
+       y1 67.01943688572264
+       x2 142.12983616593337
+       y2 74.01132933316264]
+   (hlt-math/distance-between (hlt-math/->Position x1 y1) (hlt-math/->Position x2 y2)))
+
+ (let [x1 119.62252901433648
+       y1 77.32504943214845
+       x2 129.6999008500075
+       y2 79.80447730467958]
+   (hlt-math/distance-between (hlt-math/->Position x1 y1) (hlt-math/->Position x2 y2)))
+
  (let [x1 96.729
        y1 86.596
        x2 99.782

@@ -265,7 +265,7 @@
 (defn compute-move-best-planet*
   "Picks the move for the ship based on proximity to planets and fighters near planets."
   [{:keys [start-ms]} ship]
-  (let [times-up? (> (- (System/currentTimeMillis) *start-ms*) 1550)]
+  (let [times-up? (> (- (System/currentTimeMillis) *start-ms*) 1625)]
     (if (or times-up?
             (not= :undocked (-> ship :docking :status)))
       nil
@@ -399,7 +399,7 @@
       ; (log "unprotected enemy ships are:" ship-attacks)
       (doall
        (for [[ship enemy-ship] ship-attacks
-             :let [times-up? (> (- (System/currentTimeMillis) *start-ms*) 1550)]
+             :let [times-up? (> (- (System/currentTimeMillis) *start-ms*) 1625)]
              :when (not times-up?)
              :let [move (navigation/navigate-to-attack-docked-ship
                          ship enemy-ship true)]
@@ -476,7 +476,7 @@
     (doall
      (for [[defender ship enemy] vulnerable-ships
            ; :let [advantage? (map/have-advantage? (custom-math/get-point-between ship enemy 0.8))
-           :let [times-up? (> (- (System/currentTimeMillis) *start-ms*) 1550)]
+           :let [times-up? (> (- (System/currentTimeMillis) *start-ms*) 1625)]
            :when (not times-up?)
            ; :let [advantage? (map/have-advantage? enemy)]
            :let [
@@ -507,7 +507,7 @@
   ;                      (atom (mapv #(get-in % [:ship :id]) moves))
   ;                      (atom nil))]
     (for [move moves
-          :let [times-up? (> (- (System/currentTimeMillis) *start-ms*) 1550)]
+          :let [times-up? (> (- (System/currentTimeMillis) *start-ms*) 1625)]
           :when (not times-up?)
           :let [my-ships (map/get-my-real-ships)
                 ship (:ship move)
@@ -597,7 +597,7 @@
 (defn get-best-move
   "Returns the best move for the current ship and target planet."
   [start-ms ship target]
-  (let [times-up? (> (- (System/currentTimeMillis) *start-ms*) 1550)]
+  (let [times-up? (> (- (System/currentTimeMillis) *start-ms*) 1625)]
     (if (or times-up?
             (not= :undocked (-> ship :docking :status)))
       nil
@@ -701,7 +701,7 @@
         ; enemy-ships (filter #(not= *player-id* (:owner-id %)) (vals *ships*))
         swarms (swarm/get-swarms ships)
         moves (for [single-swarm swarms
-                    :let [times-up? (> (- (System/currentTimeMillis) *start-ms*) 1550)]
+                    :let [times-up? (> (- (System/currentTimeMillis) *start-ms*) 1625)]
                     :when (not times-up?)
                     :let [enemy-ships (concat (vals *docked-enemies*) (vals *pesky-fighters*))
                           swarm-moves (when (seq enemy-ships)
@@ -716,7 +716,7 @@
 (defn compute-planet-only-move*
   "Picks the move for the ship based on proximity to planets and fighters near planets."
   [{:keys [start-ms]} ship]
-  (let [times-up? (> (- (System/currentTimeMillis) *start-ms*) 1550)]
+  (let [times-up? (> (- (System/currentTimeMillis) *start-ms*) 1625)]
     (if (or times-up?
             (not= :undocked (-> ship :docking :status)))
       nil
@@ -805,7 +805,7 @@
         best-planet (get-best-planet)
         best-planet-move (get-best-planet-moves best-planet moving-ships)
         best-planet-moves (if (seq best-planet-move) (flatten [best-planet-move]) [])
-        
+
         moving-ships (map #(get-in % [:ship :id]) (concat runaway-moves attack-moves defend-moves more-planet-moves best-planet-moves swarm-moves))
         ; potential-ships (filter #(and (= :undocked (-> % :docking :status))
         ;                               (not (some (set [(:id %)]) moving-ships)))
