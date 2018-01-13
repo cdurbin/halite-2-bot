@@ -799,13 +799,14 @@
         ; swarm-moves (get-swarm-moves potential-ships)
         ; moving-ships (map #(get-in % [:ship :id]) runaway-moves swarm-moves defend-moves attack-moves)
         swarm-moves []
+        more-planet-moves (get-planet-only-moves ships-in-order (assoc custom-map-info :moving-ships moving-ships))
+        moving-ships (map #(get-in % [:ship :id]) (concat runaway-moves attack-moves defend-moves more-planet-moves swarm-moves))
+
         best-planet (get-best-planet)
         best-planet-move (get-best-planet-moves best-planet moving-ships)
         best-planet-moves (if (seq best-planet-move) (flatten [best-planet-move]) [])
-        moving-ships (map #(get-in % [:ship :id]) (concat runaway-moves attack-moves defend-moves best-planet-moves swarm-moves))
-        more-planet-moves (get-planet-only-moves ships-in-order (assoc custom-map-info :moving-ships moving-ships))
+        
         moving-ships (map #(get-in % [:ship :id]) (concat runaway-moves attack-moves defend-moves more-planet-moves best-planet-moves swarm-moves))
-
         ; potential-ships (filter #(and (= :undocked (-> % :docking :status))
         ;                               (not (some (set [(:id %)]) moving-ships)))
         ;                         ships-in-order)
