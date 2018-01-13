@@ -225,7 +225,7 @@
 (defn compute-move-closest-planet*
   "Picks the move for the ship based on proximity to planets and fighters near planets."
   [{:keys [start-ms]} ship]
-  (let [times-up? (> (- (System/currentTimeMillis) *start-ms*) 1850)]
+  (let [times-up? (> (- (System/currentTimeMillis) *start-ms*) 1625)]
     (if (or times-up?
             (not= :undocked (-> ship :docking :status)))
       nil
@@ -386,27 +386,28 @@
       (for [triple-map sorted-order]
         [(:ship triple-map) (:enemy-ship triple-map)]))))
 
-(defn attack-unprotected-enemy-ships
-  "Returns moves to attack the unprotected enemy ships"
-  [moving-ships {:keys [start-ms]}]
-  [])
-
 ; (defn attack-unprotected-enemy-ships
 ;   "Returns moves to attack the unprotected enemy ships"
 ;   [moving-ships {:keys [start-ms]}]
-;   (let [ship-attacks (unprotected-enemy-ships moving-ships)]
-;     ; (log "unprotected enemy ships are:" ship-attacks)
-;     (doall
-;      (for [[ship enemy-ship] ship-attacks
-;            :let [times-up? (> (- (System/currentTimeMillis) *start-ms*) 1550)]
-;            :when (not times-up?)
-;            :let [move (navigation/navigate-to-attack-docked-ship
-;                        ship enemy-ship true)]
-;                        ; ship enemy-ship (> (math/distance-between ship enemy-ship) 21.1)
-;                        ; ship enemy-ship (> (math/distance-between ship enemy-ship) 12))]
-;            :when move]
-;        (do (map/change-ship-positions! move)
-;            move)))))
+;   [])
+
+(defn attack-unprotected-enemy-ships
+  "Returns moves to attack the unprotected enemy ships"
+  [moving-ships {:keys [start-ms]}]
+  (if (< *num-ships* 6)
+    (let [ship-attacks (unprotected-enemy-ships moving-ships)]
+      ; (log "unprotected enemy ships are:" ship-attacks)
+      (doall
+       (for [[ship enemy-ship] ship-attacks
+             :let [times-up? (> (- (System/currentTimeMillis) *start-ms*) 1550)]
+             :when (not times-up?)
+             :let [move (navigation/navigate-to-attack-docked-ship
+                         ship enemy-ship true)]
+                         ; ship enemy-ship (> (math/distance-between ship enemy-ship) 21.1)
+                         ; ship enemy-ship (> (math/distance-between ship enemy-ship) 12))]
+             :when move]
+         (do (map/change-ship-positions! move)
+             move))))))
 
 (defn get-vulnerable-ships
   "Returns a list of vulnerable ships."

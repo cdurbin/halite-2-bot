@@ -355,7 +355,7 @@
          (assoc (e/thrust-move ship 0 first-angle) :subtype subtype :reason "Precise - distance is less than buffer.")
          (loop [iterations (rest navigation-iterations)]
                ;; Timeout protection
-           (let [times-up? (> (- (System/currentTimeMillis) *start-ms*) 1850)
+           (let [times-up? (> (- (System/currentTimeMillis) *start-ms*) 1625)
                  {:keys [max-thrust angular-step]} (first iterations)]
              (if (or times-up? (nil? max-thrust))
                (assoc (e/thrust-move ship 0 first-angle) :subtype subtype :reason "Precise - ran out of moves.")
@@ -469,7 +469,7 @@
          (loop [iterations (rest navigation-iterations)]
            (let [
                  ;; Timeout protection
-                 times-up? (> (- (System/currentTimeMillis) *start-ms*) 1850)
+                 times-up? (> (- (System/currentTimeMillis) *start-ms*) 1625)
                  {:keys [max-thrust angular-step]} (first iterations)]
              (if (or times-up? (nil? max-thrust))
                (assoc (e/thrust-move ship 0 first-angle) :subtype subtype :reason "Fast - ran out of possibilities.")
