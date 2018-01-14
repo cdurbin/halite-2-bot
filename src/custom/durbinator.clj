@@ -420,8 +420,14 @@
          (do (map/change-ship-positions! move)
              move))))))
 
+(defn create-undock-moves
+  "Create undock moves for the passed in ships."
+  [ships]
+  (log "Create undock moves for" ships)
+  (map e/undock-move ships))
+
 (defn get-vulnerable-ships
-  "Returns a list of vulnerable ships."
+  "Returns a list of vulnerable ships. This function does way too much - refactor this monstrosity."
   [my-ships]
   (let [my-docked-ships (remove #(= :undocked (-> % :docking :status))
                                 my-ships)
@@ -429,7 +435,7 @@
                                 my-ships)
         ; vulnerable-distance 75
         ; vulnerable-distance 49
-        vulnerable-distance 42
+        vulnerable-distance 45
         potential-issues (for [enemy-ship (vals *pesky-fighters*)
                                :let [nearest-docked-ship (map/nearest-entity enemy-ship my-docked-ships)]
                                :when nearest-docked-ship
@@ -439,19 +445,37 @@
                             ; :distance vulnerable-distance
                             :distance distance})
         sorted-issues (sort (utils/compare-by :distance utils/asc) potential-issues)
-        assigned-ships (atom nil)]
-    ;; Go through closest first
-    (for [{:keys [enemy vulnerable distance]} sorted-issues
-          :let [closest-defender (map/nearest-entity vulnerable
-                                                     (remove #(some (set [%]) @assigned-ships)
-                                                             my-fighter-ships))]
-          :when closest-defender
-          :let [defender-distance (math/distance-between closest-defender vulnerable)]
-          ;; Close enough to defend
-          :when (<= defender-distance (+ 14 distance))]
-      (do
-         (swap! assigned-ships conj closest-defender)
-         [closest-defender vulnerable enemy]))))
+        assigned-ships (atom nil)
+        ships-to-undock (atom nil)
+        vulnerable-ship-maps
+          ;; Go through closest first
+         (doall
+          (for [{:keys [enemy vulnerable distance]} sorted-issues
+                :let [closest-defender (map/nearest-entity vulnerable
+                                                           (remove #(some (set [%]) @assigned-ships)
+                                                                   my-fighter-ships))
+                ; :when closest-defender
+                      defender-distance (if-not closest-defender
+                                          infinity
+                                          (math/distance-between closest-defender vulnerable))]]
+                ;; Close enough to defend
+                ; :when (<= defender-distance (+ 14 distance))]
+            (if (<= defender-distance (+ 14 distance))
+              (do
+               (log "I can defend" vulnerable)
+               (swap! assigned-ships conj closest-defender)
+               [closest-defender vulnerable enemy])
+              (do
+               (log "I cannot defend" vulnerable)
+               (log "Before ships to undock" @ships-to-undock)
+               (swap! ships-to-undock conj vulnerable)
+               (log "After ships to undock" @ships-to-undock)
+               nil))))
+        vulnerable-ship-maps (remove nil? vulnerable-ship-maps)
+        undock-moves (create-undock-moves (set @ships-to-undock))]
+        ; undock-moves (create-undock-moves @ships-to-undock)]
+    {:vulnerable-ships vulnerable-ship-maps
+     :undock-moves undock-moves}))
 
 (defn run-to-corner-moves
   "Run away"
@@ -483,28 +507,30 @@
         max-defenders (* *num-ships* (/ 1 2))
         ; max-defenders *num-ships*
         ; max-defenders (* *num-ships* (/ 4 7))
-        vulnerable-ships (take max-defenders (get-vulnerable-ships potential-ships))]
-    (doall
-     (for [[defender ship enemy] vulnerable-ships
-           ; :let [advantage? (map/have-advantage? (custom-math/get-point-between ship enemy 0.8))
-           :let [times-up? (> (- (System/currentTimeMillis) *start-ms*) 1625)]
-           :when (not times-up?)
-           ; :let [advantage? (map/have-advantage? enemy)]
-           :let [
-                 ; closest-enemy enemy
-                 closest-enemy (map/nearest-entity ship enemy-fighters)
-                 distance (math/distance-between ship closest-enemy)
-                 ; advantage? false
-                 ; advantage? true
-                 advantage? (or (> distance 25)
-                                (map/have-advantage? (custom-math/get-closest-point-towards-target ship closest-enemy (- distance 3))))
-                 move (get-reachable-attack-spot-move ship)
-                 move (if move
-                        move
-                        (navigation/navigate-to-defend-ship defender ship closest-enemy advantage?))]
-           :when move]
-       (do (map/change-ship-positions! move)
-           move)))))
+        {:keys [undock-moves vulnerable-ships]} (get-vulnerable-ships potential-ships)
+        vulnerable-ships (take max-defenders vulnerable-ships)]
+    (concat undock-moves
+            (doall
+             (for [[defender ship enemy] vulnerable-ships
+                   ; :let [advantage? (map/have-advantage? (custom-math/get-point-between ship enemy 0.8))
+                   :let [times-up? (> (- (System/currentTimeMillis) *start-ms*) 1625)]
+                   :when (not times-up?)
+                   ; :let [advantage? (map/have-advantage? enemy)]
+                   :let [
+                         ; closest-enemy enemy
+                         closest-enemy (map/nearest-entity ship enemy-fighters)
+                         distance (math/distance-between ship closest-enemy)
+                         ; advantage? false
+                         ; advantage? true
+                         advantage? (or (> distance 25)
+                                        (map/have-advantage? (custom-math/get-closest-point-towards-target ship closest-enemy (- distance 3))))
+                         move (get-reachable-attack-spot-move ship)
+                         move (if move
+                                move
+                                (navigation/navigate-to-defend-ship defender ship closest-enemy advantage?))]
+                   :when move]
+               (do (map/change-ship-positions! move)
+                   move))))))
 
 (defn recalculate-friendly-moves
   "Returns the retreat to nearby friendly moves now that we know where all the other ships are
@@ -800,8 +826,8 @@
         moving-ships (map #(get-in % [:ship :id]) runaway-moves)
         ; skip-defense? true
         pct-ships-to-skip-defense (if (> *num-players* 2)
-                                    0.5
-                                    0.5)
+                                    0.65
+                                    0.6)
         skip-defense? (and (> *num-ships* 50)
                            (> *num-ships* (* pct-ships-to-skip-defense (count (vals *ships*)))))
         defend-moves (if skip-defense?

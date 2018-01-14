@@ -247,12 +247,11 @@
   "Returns true if the place I'm going looks to be good."
   [point my-ships enemy-ships spawn-points]
   (let [spawn-ships (filter #(< (math/distance-between point %) 6.5) spawn-points)
-        final-enemy-ships (filter #(and (< (math/distance-between point %) max-speed-distance)
-                                        (or (can-attack-spot? % point)
-                                            (< (math/distance-between point %) planet-in-the-way-max-distance)))
-                                            ; (< (math/distance-between point %) (/ max-speed-distance 2))))
-
-                                  ; (filter #(= :undocked (-> % :docking :status))
+        final-enemy-ships (filter (fn [ship]
+                                    (let [distance (math/distance-between point ship)]
+                                      (or (< distance planet-in-the-way-max-distance)
+                                          (and (< distance max-speed-distance)
+                                               (can-attack-spot? ship point)))))
                                   enemy-ships)
         final-enemy-ships (concat spawn-ships final-enemy-ships)]
     ; (log "Good-spot:" point "My ships" my-ships "Their orig ships:" enemy-ships
@@ -266,6 +265,30 @@
                                      my-ships)]
           ; (log "Good-spot:" point "My ships" (count final-my-ships) "Their ships:" (count final-enemy-ships))
           (>= (count final-my-ships) (count final-enemy-ships))))))
+
+; (defn good-spot?
+;   "Returns true if the place I'm going looks to be good."
+;   [point my-ships enemy-ships spawn-points]
+;   (let [spawn-ships (filter #(< (math/distance-between point %) 6.5) spawn-points)
+;         final-enemy-ships (filter #(and (< (math/distance-between point %) max-speed-distance)
+;                                         (or (can-attack-spot? % point)
+;                                             (< (math/distance-between point %) planet-in-the-way-max-distance)))
+;                                             ; (< (math/distance-between point %) (/ max-speed-distance 2))))
+;
+;                                   ; (filter #(= :undocked (-> % :docking :status))
+;                                   enemy-ships)
+;         final-enemy-ships (concat spawn-ships final-enemy-ships)]
+;     ; (log "Good-spot:" point "My ships" my-ships "Their orig ships:" enemy-ships
+;     ;      "Their final ships:" (count final-enemy-ships))
+;     (or (empty? final-enemy-ships)
+;         (let [final-my-ships (filter #(if (or (= 7 (:turn %))
+;                                               (not= :undocked (-> % :docking :status)))
+;                                         (< (math/distance-between point %) friendly-distance-moved)
+;                                         (and (< (math/distance-between point %) max-speed-distance)
+;                                              (can-attack-spot? % point)))
+;                                      my-ships)]
+;           ; (log "Good-spot:" point "My ships" (count final-my-ships) "Their ships:" (count final-enemy-ships))
+;           (>= (count final-my-ships) (count final-enemy-ships))))))
 
 (defn get-angle-to-run
   "Returns the angle to run away from an enemy."
