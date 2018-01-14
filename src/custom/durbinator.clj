@@ -424,7 +424,23 @@
   "Create undock moves for the passed in ships."
   [ships]
   (log "Create undock moves for" ships)
-  (map e/undock-move ships))
+  ;; Only undock if the ship shows up in the list more than once
+  (let [grouped-ships (group-by :id ships)
+        multiple-attacks (filter (fn [[k v]]
+                                   ; (println "K is" k "V count is" (count v))
+                                   (> (count v) 1))
+                                 grouped-ships)]
+    (log "Really undocking for" (mapv (fn [[k v]] (first v)) multiple-attacks))
+    (map e/undock-move
+         (map (fn [[k v]]
+                (first v))
+              multiple-attacks))))
+
+(comment
+ ;; Test undock logic
+  (def ships [#hlt.entity.Ship{:id 38, :pos #hlt.math.Position{:x 113.31427079601507, :y 96.8979402297031}, :health 128, :radius 0.5, :owner-id 0, :docking {:status :docked, :planet 1, :progress 0}} #hlt.entity.Ship{:id 82, :pos #hlt.math.Position{:x 110.41251442008456, :y 35.08759653764482}, :health 170, :radius 0.5, :owner-id 0, :docking {:status :docked, :planet 7, :progress 0}} #hlt.entity.Ship{:id 48, :pos #hlt.math.Position{:x 102.0717664832834, :y 71.29430026016966}, :health 255, :radius 0.5, :owner-id 0, :docking {:status :docked, :planet 2, :progress 0}} #hlt.entity.Ship{:id 48, :pos #hlt.math.Position{:x 102.0717664832834, :y 71.29430026016966}, :health 255, :radius 0.5, :owner-id 0, :docking {:status :docked, :planet 2, :progress 0}} #hlt.entity.Ship{:id 48, :pos #hlt.math.Position{:x 102.0717664832834, :y 71.29430026016966}, :health 255, :radius 0.5, :owner-id 0, :docking {:status :docked, :planet 2, :progress 0}} #hlt.entity.Ship{:id 53, :pos #hlt.math.Position{:x 105.44471871082905, :y 64.32571597974892}, :health 175, :radius 0.5, :owner-id 0, :docking {:status :docked, :planet 2, :progress 0}} #hlt.entity.Ship{:id 13, :pos #hlt.math.Position{:x 103.40284990201422, :y 88.87005159390104}, :health 255, :radius 0.5, :owner-id 0, :docking {:status :docked, :planet 1, :progress 0}} #hlt.entity.Ship{:id 38, :pos #hlt.math.Position{:x 113.31427079601507, :y 96.8979402297031}, :health 128, :radius 0.5, :owner-id 0, :docking {:status :docked, :planet 1, :progress 0}} #hlt.entity.Ship{:id 38, :pos #hlt.math.Position{:x 113.31427079601507, :y 96.8979402297031}, :health 128, :radius 0.5, :owner-id 0, :docking {:status :docked, :planet 1, :progress 0}} #hlt.entity.Ship{:id 38, :pos #hlt.math.Position{:x 113.31427079601507, :y 96.8979402297031}, :health 128, :radius 0.5, :owner-id 0, :docking {:status :docked, :planet 1, :progress 0}} #hlt.entity.Ship{:id 38, :pos #hlt.math.Position{:x 113.31427079601507, :y 96.8979402297031}, :health 128, :radius 0.5, :owner-id 0, :docking {:status :docked, :planet 1, :progress 0}} #hlt.entity.Ship{:id 82, :pos #hlt.math.Position{:x 110.41251442008456, :y 35.08759653764482}, :health 170, :radius 0.5, :owner-id 0, :docking {:status :docked, :planet 7, :progress 0}}])
+ (group-by :id ships)
+ (create-undock-moves ships))
 
 (defn get-vulnerable-ships
   "Returns a list of vulnerable ships. This function does way too much - refactor this monstrosity."
@@ -435,7 +451,7 @@
                                 my-ships)
         ; vulnerable-distance 75
         ; vulnerable-distance 49
-        vulnerable-distance 45
+        vulnerable-distance 52
         potential-issues (for [enemy-ship (vals *pesky-fighters*)
                                :let [nearest-docked-ship (map/nearest-entity enemy-ship my-docked-ships)]
                                :when nearest-docked-ship
@@ -467,12 +483,10 @@
                [closest-defender vulnerable enemy])
               (do
                (log "I cannot defend" vulnerable)
-               (log "Before ships to undock" @ships-to-undock)
                (swap! ships-to-undock conj vulnerable)
-               (log "After ships to undock" @ships-to-undock)
                nil))))
         vulnerable-ship-maps (remove nil? vulnerable-ship-maps)
-        undock-moves (create-undock-moves (set @ships-to-undock))]
+        undock-moves (create-undock-moves @ships-to-undock)]
         ; undock-moves (create-undock-moves @ships-to-undock)]
     {:vulnerable-ships vulnerable-ship-maps
      :undock-moves undock-moves}))
