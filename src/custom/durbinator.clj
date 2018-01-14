@@ -779,7 +779,7 @@
   []
   (if (= *num-players* 2)
     (map/closest-planet-to-my-planets)
-    (if (or (<= *num-ships* 5) (>= *num-ships* 8))
+    (if (>= *num-ships* 8)
       (map/closest-planet-to-my-planets)
       (map/corner-planet))))
 
@@ -793,7 +793,7 @@
         moving-ships (map #(get-in % [:ship :id]) runaway-moves)
         ; skip-defense? true
         pct-ships-to-skip-defense (if (> *num-players* 2)
-                                    0.4
+                                    0.5
                                     0.5)
         skip-defense? (and (> *num-ships* 50)
                            (> *num-ships* (* pct-ships-to-skip-defense (count (vals *ships*)))))
@@ -810,14 +810,24 @@
         ; swarm-moves (get-swarm-moves potential-ships)
         ; moving-ships (map #(get-in % [:ship :id]) runaway-moves swarm-moves defend-moves attack-moves)
         swarm-moves []
-        more-planet-moves (get-planet-only-moves ships-in-order (assoc custom-map-info :moving-ships moving-ships))
-        moving-ships (map #(get-in % [:ship :id]) (concat runaway-moves attack-moves defend-moves more-planet-moves swarm-moves))
 
         best-planet (get-best-planet)
-        best-planet-move (get-best-planet-moves best-planet moving-ships)
+        best-planet-move (if (= *num-players* 2)
+                           []
+                           (get-best-planet-moves best-planet moving-ships))
         best-planet-moves (if (seq best-planet-move) (flatten [best-planet-move]) [])
+        moving-ships (map #(get-in % [:ship :id]) (concat runaway-moves attack-moves defend-moves best-planet-moves swarm-moves))
 
-        moving-ships (map #(get-in % [:ship :id]) (concat runaway-moves attack-moves defend-moves more-planet-moves best-planet-moves swarm-moves))
+        more-planet-moves (get-planet-only-moves ships-in-order (assoc custom-map-info :moving-ships moving-ships))
+        moving-ships (map #(get-in % [:ship :id]) (concat runaway-moves attack-moves defend-moves more-planet-moves swarm-moves best-planet-moves))
+
+        best-planet (get-best-planet)
+        best-planet-move-2-players (if (not= *num-players* 2)
+                                     []
+                                     (get-best-planet-moves best-planet moving-ships))
+        best-planet-moves-2-players (if (seq best-planet-move-2-players) (flatten [best-planet-move-2-players]) [])
+
+        moving-ships (map #(get-in % [:ship :id]) (concat runaway-moves attack-moves defend-moves more-planet-moves best-planet-moves swarm-moves best-planet-moves-2-players))
         ; potential-ships (filter #(and (= :undocked (-> % :docking :status))
         ;                               (not (some (set [(:id %)]) moving-ships)))
         ;                         ships-in-order)
@@ -840,11 +850,11 @@
                       (get-swarm-moves custom-map-info potential-ships)
                       (get-swarm-moves custom-map-info potential-ships))
                       ; [])
-        moving-ships (map #(get-in % [:ship :id]) (concat runaway-moves swarm-moves defend-moves attack-moves best-planet-moves more-planet-moves))
+        moving-ships (map #(get-in % [:ship :id]) (concat runaway-moves swarm-moves defend-moves attack-moves best-planet-moves more-planet-moves best-planet-moves-2-players))
         ; moving-ships (map #(get-in % [:ship :id]) (concat main-moves runaway-moves swarm-moves defend-moves attack-moves best-planet-moves more-planet-moves))
         fallback-moves (get-main-moves ships-in-order (assoc custom-map-info :moving-ships moving-ships))
         ; all-moves (concat runaway-moves defend-moves attack-moves main-moves fallback-moves best-planet-moves swarm-moves more-planet-moves)
-        all-moves (concat runaway-moves defend-moves attack-moves fallback-moves best-planet-moves swarm-moves more-planet-moves)
+        all-moves (concat runaway-moves defend-moves attack-moves fallback-moves best-planet-moves swarm-moves more-planet-moves best-planet-moves-2-players)
         friendly-moves (recalculate-friendly-moves (filter #(= :friendly (:subtype %)) all-moves) custom-map-info)
 
         ;; DEBUG

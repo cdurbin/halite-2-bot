@@ -104,6 +104,7 @@ map_height = 2 * base_size
   * 112 - 3 timeouts in 118 games (2.5%)
   * 114 - 0 timeouts in 200 games
   * 116 - I think 1 timeout - best mu 55.21 after 102 games
+  * 117 - 55.5 mu after ~250 games
 
 ## Implement
   * [1/2] Figure out cases where I'm still doing dumb things with single ships getting killed - tried but still not great
@@ -126,3 +127,9 @@ map_height = 2 * base_size
   * [ ] Find maps where closest planet is not a good choice
   * [ ] Find maps where I have a single ship go in and die and find out why
   * [ ] Where I should attack better
+
+## TODO (Top priorities for tomorrow)
+  * [ ] Choose a good planet
+  * [ ] Figure out how to choose the outside planets in four players
+  * [ ] Undock early game rush, maybe try to rush early less often
+  * [ ] Try attack spots again? Track good attacks with the point and the enemy, move perpendicular to it
