@@ -122,6 +122,7 @@ map_height = 2 * base_size
   * [ ] Figure out the optimal position for an attack is it 3 side by side with 1 behind the middle, etc
   * [ ] Attempt to crash into an enemy when they have more health?
   * [ ] Crash into an enemy when they are attacking your docked ship?
+  * [ ] If someone is undocking and I'm more than 28 away - abandon my all out attack
 
 ## Testing
   * [ ] Find maps where closest planet is not a good choice
@@ -133,3 +134,4 @@ map_height = 2 * base_size
   * [ ] Figure out how to choose the outside planets in four players
   * [ ] Undock early game rush, maybe try to rush early less often
   * [ ] Try attack spots again? Track good attacks with the point and the enemy, move perpendicular to it
+  * [ ]

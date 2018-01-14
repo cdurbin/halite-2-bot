@@ -189,7 +189,8 @@
                                    ship (find-docked-ships-without-an-army enemy-ships))
         enemy-ship (map/nearest-enemy-not-decoy ship enemy-ships)]
     (when enemy-ship
-      (if (> *num-ships* 3)
+      (if (> *num-ships* 0)
+      ; (if (> *num-ships* 3)
         (move-ship-to-attack ship (or nearest-docked-enemy-ship enemy-ship))
         (let [distance (math/distance-between ship enemy-ship)]
           (if (> distance (get-retreat-range *num-ships*))
@@ -428,13 +429,26 @@
   (let [grouped-ships (group-by :id ships)
         multiple-attacks (filter (fn [[k v]]
                                    ; (println "K is" k "V count is" (count v))
-                                   (> (count v) 1))
-                                 grouped-ships)]
-    (log "Really undocking for" (mapv (fn [[k v]] (first v)) multiple-attacks))
-    (map e/undock-move
-         (map (fn [[k v]]
-                (first v))
-              multiple-attacks))))
+                                   (if (> *num-ships* 4)
+                                     (> (count v) 1)
+                                     (>= (count v) 1)))
+                                 grouped-ships)
+        ships-to-undock (map (fn [[k v]] (first v)) multiple-attacks)
+        planets-to-undock (set (map #(get-in % [:docking :planet]) ships-to-undock))]
+    (flatten
+     (for [planet-id planets-to-undock
+           :let [planet (*planets* planet-id)
+                 docking-ship-ids (get-in planet [:docking :ships])
+                 docking-ships (map #(*ships* %) docking-ship-ids)]]
+        (do
+          (log "Docking ships" docking-ships "Planet" planet)
+          (map e/undock-move docking-ships))))))
+
+    ; (log "Really undocking for" (mapv (fn [[k v]] (first v)) multiple-attacks))
+    ; (map e/undock-move
+    ;      (map (fn [[k v]]
+    ;             (first v))
+    ;           multiple-attacks))))
 
 (comment
  ;; Test undock logic
@@ -445,13 +459,17 @@
 (defn get-vulnerable-ships
   "Returns a list of vulnerable ships. This function does way too much - refactor this monstrosity."
   [my-ships]
-  (let [my-docked-ships (remove #(= :undocked (-> % :docking :status))
+  (let [my-docked-ships (remove #(or (= :undocked (-> % :docking :status))
+                                     (= :undocking (-> % :docking :status)))
                                 my-ships)
         my-fighter-ships (filter #(= :undocked (-> % :docking :status))
                                 my-ships)
         ; vulnerable-distance 75
         ; vulnerable-distance 49
-        vulnerable-distance 52
+        vulnerable-distance (if (> *num-ships* 5)
+                              ; 42
+                              55
+                              55)
         potential-issues (for [enemy-ship (vals *pesky-fighters*)
                                :let [nearest-docked-ship (map/nearest-entity enemy-ship my-docked-ships)]
                                :when nearest-docked-ship
@@ -476,7 +494,8 @@
                                           (math/distance-between closest-defender vulnerable))]]
                 ;; Close enough to defend
                 ; :when (<= defender-distance (+ 14 distance))]
-            (if (<= defender-distance (+ 14 distance))
+            (if (<= defender-distance (+ 7 distance))
+            ; (if (<= defender-distance (+ 14 distance))
               (do
                (log "I can defend" vulnerable)
                (swap! assigned-ships conj closest-defender)
@@ -607,9 +626,10 @@
             num-turns-me-to-dock-spot (Math/ceil (/ distance-to-pos e/max-ship-speed))
             num-turns-to-two-ships (+ num-turns-to-planet e/dock-turns turns-to-produce-two-ships-with-three-docked)
             num-turns-to-attack (+ num-turns-me-to-dock-spot num-turns-to-kill-ship)]
-        (when (<= num-turns-to-attack num-turns-to-two-ships)
+        (when (<= num-turns-to-attack num-turns-to-two-ships))
           ; (reset! all-out-attack (inc num-turns-me-to-dock-spot))
-          (reset! all-out-attack (+ 5 num-turns-to-two-ships)))
+          ;; Get rid of all out attack
+          ; (reset! all-out-attack (+ 5 num-turns-to-two-ships)))
         (log "The distance between my ship" my-ship "and their planet " pos "is " distance-to-pos
              "total turns" num-turns-to-planet "and " num-turns-me-to-dock-spot
              "they produce 2 in " num-turns-to-two-ships "and I kill in" num-turns-to-attack)))))

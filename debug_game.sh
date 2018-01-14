@@ -75,8 +75,8 @@ lein uberjar
 ##
 #./halite -s 2297016498 -d "240 160" "java -jar target/MyBot.jar" "java -jar jars/V66.jar"
 
-## Even
-./halite -s 3808204358 -d "240 160" "java -jar target/MyBot.jar log-stuff" "java -jar jars/V119.jar"
+## Even (generally lose)
+#./halite -s 3808204358 -d "240 160" "java -jar target/MyBot.jar log-stuff" "java -jar jars/V119.jar"
 
 #./halite -s 1054815491 -d "240 160" "java -jar target/MyBot.jar" "java -jar jars/V66.jar"
 #./halite -s 3719647738 -d "240 160" "java -jar target/MyBot.jar" "java -jar jars/V66.jar"
@@ -92,7 +92,7 @@ lein uberjar
 
 #./halite -s 2677457377 -d "240 160" "java -jar target/MyBot.jar log-stuff" "java -jar jars/V101.jar"
 
-#./halite -s 3044646300 -d "240 160" "java -jar target/MyBot.jar log-stuff" "java -jar jars/V33.jar"
+./halite -s 3044646300 -d "240 160" "java -jar target/MyBot.jar log-stuff" "java -jar jars/V33.jar"
 
 ## TODO Check this one out frame 81 or 82 - why didn't I run?
 #./halite -s 1919766103 -d "240 160" "java -jar target/MyBot.jar log-stuff" "java -jar jars/V33.jar"
