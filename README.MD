@@ -103,18 +103,24 @@ map_height = 2 * base_size
   * 8 timeouts in 470 games (1.7%)
   * 112 - 3 timeouts in 118 games (2.5%)
   * 114 - 0 timeouts in 200 games
+  * 116 - I think 1 timeout - best mu 55.21 after 102 games
 
 ## Implement
   * [1/2] Figure out cases where I'm still doing dumb things with single ships getting killed - tried but still not great
   * [ ] Don't just attack the closest docked ships, find the closest not super well protected docked ships - do some tweaking to figure out how many fighters and what distance from the docked ship to determine what battles are worth fighting.
   * [ ] Totally revamp the defend ship thing. Assign 2? ships to go after each enemy ship that is getting near my docked ships. (seems hard to get right, might need a different algorithm altogether).
   * [ ] More aggressively go after planets no one is near
+  * [ ] Add an imaginary ship near spawn points
   * [x] Stop doing the best corner planet thing with my early ships in four player games
   * [ ] Choose a better initial planet (how many ships can I produce in N turns)
   * [ ] Undock (only early in games - takes 5 turns to undock, so if I'm unprotected and units are < 42ish away).
   * [ ] Random 45 degree angle in either direction when fleeing
   * [ ] "Square up" against enemies (probably will never do, but the idea is put my ships in a line perpendicular to the enemy being targeted).
   * [ ] Stay around the edges in four player games (old corner planet implementation wasn't great)
+  * [ ] Rotate the weaker ships to the front to take the damage first?
+  * [ ] Figure out the optimal position for an attack is it 3 side by side with 1 behind the middle, etc
+  * [ ] Attempt to crash into an enemy when they have more health?
+  * [ ] Crash into an enemy when they are attacking your docked ship?
 
 ## Testing
   * [ ] Find maps where closest planet is not a good choice

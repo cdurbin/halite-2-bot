@@ -2,7 +2,7 @@
   "Functions for tracking custom info about the map."
   (:require
    [custom.game-map :refer [*docked-enemies* *pesky-fighters* *safe-planets* *num-ships*
-                            *num-players*]]
+                            *num-players* *spawn-points*]]
    [custom.math :as custom-math :refer [infinity]]
    [custom.utils :as utils :refer [pretty-log]]
    [custom.center-planet :as center-planet]
@@ -393,6 +393,17 @@
 (def attack-spots
   (atom nil))
 
+(defn get-spawn-points
+  "Modifies the enemy ships to include a pretend enemy at the spawn location for a planet."
+  []
+  (let [center-point (center-planet/get-center-point)
+        enemy-planets (filter (fn [planet]
+                                (and (not= *player-id* (:owner-id planet))
+                                     (not (nil? (:owner-id planet)))))
+                              (vals *planets*))]
+    (for [planet enemy-planets]
+      (math/closest-point center-point planet 2))))
+
 (defn get-custom-map-info
   "Returns additional map info that is useful to calculate at the beginning of each turn."
   [turn]
@@ -405,6 +416,8 @@
     (set! *num-players* (count (filter (fn [[k v]]
                                          (seq v))
                                        *owner-ships*)))
+    (set! *spawn-points* (get-spawn-points))
+    (log "Spawn points:" *spawn-points*)
     (reset! nemesis (find-nemesis (vals *planets*)))
     (reset! attack-spots nil)
     {:start-ms start-ms}))

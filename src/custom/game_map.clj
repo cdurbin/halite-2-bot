@@ -27,3 +27,7 @@
 (def ^:dynamic *start-ms*
   "Starting ms for the round to know when to time out."
   0)
+
+(def ^:dynamic *spawn-points*
+  "A list of points enemies might spawn from."
+  nil)

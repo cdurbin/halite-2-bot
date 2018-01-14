@@ -6,7 +6,7 @@
             [hlt.utils :as utils :refer [log]]
             [custom.durbinator :as durbinator]
             [custom.game-map :refer [*safe-planets* *docked-enemies* *pesky-fighters* *num-ships*
-                                     *num-players* *attack-spots* *start-ms*]]
+                                     *num-players* *attack-spots* *start-ms* *spawn-points*]]
             [custom.utils :refer [defn-timed]])
 
   (:import (java.io PrintWriter))
@@ -23,6 +23,7 @@
                *docked-enemies* nil
                *pesky-fighters* nil
                *attack-spots* nil
+               *spawn-points* nil
                *num-ships* 0
                *num-players* 0]
        ~@body)))

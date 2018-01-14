@@ -6,7 +6,7 @@
    [hlt.utils :refer [log]]
    [hlt.navigation :as hlt-navigation]
    [hlt.game-map :refer [*planets* *ships* *player-id* *map-size*]]
-   [custom.game-map :refer [*num-ships* *start-ms*]]
+   [custom.game-map :refer [*num-ships* *start-ms* *spawn-points*]]
    [hlt.math :as math :refer [get-x get-y]]))
 
 (def default-navigation-opts
@@ -245,14 +245,16 @@
 
 (defn good-spot?
   "Returns true if the place I'm going looks to be good."
-  [point my-ships enemy-ships]
-  (let [final-enemy-ships (filter #(and (< (math/distance-between point %) max-speed-distance)
+  [point my-ships enemy-ships spawn-points]
+  (let [spawn-ships (filter #(< (math/distance-between point %) 6.5) spawn-points)
+        final-enemy-ships (filter #(and (< (math/distance-between point %) max-speed-distance)
                                         (or (can-attack-spot? % point)
                                             (< (math/distance-between point %) planet-in-the-way-max-distance)))
                                             ; (< (math/distance-between point %) (/ max-speed-distance 2))))
 
                                   ; (filter #(= :undocked (-> % :docking :status))
-                                  enemy-ships)]
+                                  enemy-ships)
+        final-enemy-ships (concat spawn-ships final-enemy-ships)]
     ; (log "Good-spot:" point "My ships" my-ships "Their orig ships:" enemy-ships
     ;      "Their final ships:" (count final-enemy-ships))
     (or (empty? final-enemy-ships)
@@ -305,6 +307,8 @@
                                        ; (= (:id goal) k)))
                                  *ships*)
          all-obstacles (figure-out-potential-obstacles-new ship potential-ships)
+         spawn-points (filter #(< (math/distance-between ship %) safe-radius) *spawn-points*)
+         _ (log "Relevant spawn points:" spawn-points)
          final-ships-to-compare (filter (fn [[k v]]
                                           (integer? k))
                                           ; (nil? (:turn v)))
@@ -328,7 +332,7 @@
          thrust (int (min (- distance buffer) max-thrust))
          first-spot (custom-math/get-point ship thrust first-angle)
          ; avoid-attack (not (good-spot? first-spot my-ships other-ships))
-         good-spot (good-spot? first-spot my-ships other-ships)
+         good-spot (good-spot? first-spot my-ships other-ships spawn-points)
          guaranteed-safe (if good-spot
                            true
                            (not (not-guaranteed-safe? ship other-ships)))
@@ -397,7 +401,7 @@
                                   (first (midturn-collisions midturn-locations
                                                              (vals midturn-ships)))))
                          ; (and avoid-attack (not (unreachable? point other-ships)))
-                         (and avoid-attack (not (good-spot? point my-ships other-ships)))
+                         (and avoid-attack (not (good-spot? point my-ships other-ships spawn-points)))
                          (and avoid-corner (too-close-to-corner? point)))
                    (recur (rest iterations))
                    (do
@@ -441,13 +445,15 @@
                                        (= *player-id* (:owner-id v))))
                                 compare-ships))
          other-ships (figure-out-potential-attacks ship (vals compare-ships))
+         spawn-points (filter #(< (math/distance-between ship %) safe-radius) *spawn-points*)
+
          ; other-ships (when avoid-attack
          ;               (remove #(or (= *player-id* (:owner-id %))
          ;                            (not= :undocked (-> % :docking :status)))
          ;                       obstacles))
          thrust (int (min (- distance buffer) max-thrust))
          first-spot (custom-math/get-point ship thrust first-angle)
-         good-spot (good-spot? first-spot my-ships other-ships)
+         good-spot (good-spot? first-spot my-ships other-ships spawn-points)
          guaranteed-safe (if good-spot
                            true
                            (not (not-guaranteed-safe? ship other-ships)))
@@ -480,7 +486,7 @@
                          (and avoid-obstacles (first (new-entities-between ship point obstacles
                                                                            planet-compare-point)))
                          ; (and avoid-attack (not (unreachable? point other-ships)))
-                         (and avoid-attack (not (good-spot? point my-ships other-ships)))
+                         (and avoid-attack (not (good-spot? point my-ships other-ships spawn-points)))
                          (and avoid-corner (too-close-to-corner? point)))
                    (recur (rest iterations))
                    (assoc (e/thrust-move ship max-thrust angle) :subtype subtype)))))))))))

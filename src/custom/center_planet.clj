@@ -17,14 +17,14 @@
 
 (defn get-center-point
   "Returns the center point on the map."
-  [map-dimensions]
+  []
   (let [[max-x max-y] *map-size*]
     (math/->Position (/ max-x 2) (/ max-y 2))))
 
 (defn find-four-center-planets
   "Returns the four-center-planets"
   []
-  (let [midpoint (get-center-point *map-size*)
+  (let [midpoint (get-center-point)
         planet-distances (for [planet (vals *planets*)
                                :let [distance (math/distance-between planet midpoint)]]
                            {:planet planet
@@ -38,6 +38,6 @@
   (if (center-planet? planet)
     (let [
           ; _ (log "Yes this is a center planet" (:id planet))
-          center (get-center-point *map-size*)]
+          center (get-center-point)]
       (math/closest-point center planet 0))
     (math/closest-point ship planet 0)))
