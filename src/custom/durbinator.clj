@@ -127,10 +127,11 @@
 (defn move-to-nearest-enemy-ship-or-target
   "Moves the ship to the nearest enemy ship."
   [ship enemy-ships target]
-  (let [nemesis (deref map/nemesis)
-        enemy-ships (if nemesis
-                      (filter #(= nemesis (:owner-id %)) enemy-ships)
-                      enemy-ships)
+  (let [
+        ; nemesis (deref map/nemesis)
+        ; enemy-ships (if nemesis
+        ;               (filter #(= nemesis (:owner-id %)) enemy-ships)
+        ;               enemy-ships)
         nearest-docked-enemy-ship (map/nearest-entity
                                    ship (find-docked-ships-without-an-army enemy-ships))
         enemy-ship (map/nearest-enemy-not-decoy ship enemy-ships)]
@@ -189,10 +190,11 @@
 (defn move-to-nearest-enemy-ship
   "Moves the ship to the nearest enemy ship."
   [ship enemy-ships]
-  (let [nemesis (deref map/nemesis)
-        enemy-ships (if nemesis
-                      (filter #(= nemesis (:owner-id %)) enemy-ships)
-                      enemy-ships)
+  (let [
+        ; nemesis (deref map/nemesis)
+        ; enemy-ships (if nemesis
+        ;               (filter #(= nemesis (:owner-id %)) enemy-ships)
+        ;               enemy-ships)
         nearest-docked-enemy-ship (map/nearest-entity
                                    ship (find-docked-ships-without-an-army enemy-ships))
         enemy-ship (map/nearest-enemy-not-decoy ship enemy-ships)]
