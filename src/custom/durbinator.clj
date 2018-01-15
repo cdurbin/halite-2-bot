@@ -363,6 +363,16 @@
 ;        :enemy-ship enemy-ship
 ;        :distance distance})))
 
+(defn get-turns-to-new-ship
+  "Returns how many turns before a new ship will spawn for this docked ship's planet."
+  [ship]
+  (let [planet-id (-> ship :docking :planet)
+        planet (*planets* planet-id)
+        planet-progress (-> planet :docking :current-production)
+        num-docked-ships (-> planet :docking :ships count)
+        remaining-to-ship (- 72 planet-progress)]
+    (int (/ remaining-to-ship (* num-docked-ships 6)))))
+
 (defn- find-unprotected-ships
   "Helper function."
   [potential-ships assigned-ships]
@@ -382,9 +392,14 @@
         :when (and closest-ship
                    (= *player-id* (:owner-id closest-ship))
                    (not (some #{closest-ship} @assigned-ships)))
-        :let [distance (math/distance-between enemy-ship closest-ship)]
-        :when (< distance (get-unprotected-distance *num-ships*))]
+        :let [distance (math/distance-between enemy-ship closest-ship)
+              turns (int (/ distance 7))
+              turns-to-new-ship (get-turns-to-new-ship enemy-ship)
+              _ (log "Turns" turns "new ship" turns-to-new-ship)]
+        :when (<= turns turns-to-new-ship)]
     (do
+      (log "I found an unprotected ship! They will spawn a new ship in" turns-to-new-ship
+           "I get there in " turns)
       (swap! assigned-ships conj closest-ship)
       {:ship closest-ship
        :enemy-ship enemy-ship
@@ -416,7 +431,8 @@
 (defn attack-unprotected-enemy-ships
   "Returns moves to attack the unprotected enemy ships"
   [moving-ships {:keys [start-ms]}]
-  (if (< *num-ships* 6)
+  (log "Planets" (pretty-log (vals *planets*)))
+  (if (< *num-ships* 200)
     (let [ship-attacks (unprotected-enemy-ships moving-ships)]
       ; (log "unprotected enemy ships are:" ship-attacks)
       (doall
@@ -467,60 +483,6 @@
   (def ships [#hlt.entity.Ship{:id 38, :pos #hlt.math.Position{:x 113.31427079601507, :y 96.8979402297031}, :health 128, :radius 0.5, :owner-id 0, :docking {:status :docked, :planet 1, :progress 0}} #hlt.entity.Ship{:id 82, :pos #hlt.math.Position{:x 110.41251442008456, :y 35.08759653764482}, :health 170, :radius 0.5, :owner-id 0, :docking {:status :docked, :planet 7, :progress 0}} #hlt.entity.Ship{:id 48, :pos #hlt.math.Position{:x 102.0717664832834, :y 71.29430026016966}, :health 255, :radius 0.5, :owner-id 0, :docking {:status :docked, :planet 2, :progress 0}} #hlt.entity.Ship{:id 48, :pos #hlt.math.Position{:x 102.0717664832834, :y 71.29430026016966}, :health 255, :radius 0.5, :owner-id 0, :docking {:status :docked, :planet 2, :progress 0}} #hlt.entity.Ship{:id 48, :pos #hlt.math.Position{:x 102.0717664832834, :y 71.29430026016966}, :health 255, :radius 0.5, :owner-id 0, :docking {:status :docked, :planet 2, :progress 0}} #hlt.entity.Ship{:id 53, :pos #hlt.math.Position{:x 105.44471871082905, :y 64.32571597974892}, :health 175, :radius 0.5, :owner-id 0, :docking {:status :docked, :planet 2, :progress 0}} #hlt.entity.Ship{:id 13, :pos #hlt.math.Position{:x 103.40284990201422, :y 88.87005159390104}, :health 255, :radius 0.5, :owner-id 0, :docking {:status :docked, :planet 1, :progress 0}} #hlt.entity.Ship{:id 38, :pos #hlt.math.Position{:x 113.31427079601507, :y 96.8979402297031}, :health 128, :radius 0.5, :owner-id 0, :docking {:status :docked, :planet 1, :progress 0}} #hlt.entity.Ship{:id 38, :pos #hlt.math.Position{:x 113.31427079601507, :y 96.8979402297031}, :health 128, :radius 0.5, :owner-id 0, :docking {:status :docked, :planet 1, :progress 0}} #hlt.entity.Ship{:id 38, :pos #hlt.math.Position{:x 113.31427079601507, :y 96.8979402297031}, :health 128, :radius 0.5, :owner-id 0, :docking {:status :docked, :planet 1, :progress 0}} #hlt.entity.Ship{:id 38, :pos #hlt.math.Position{:x 113.31427079601507, :y 96.8979402297031}, :health 128, :radius 0.5, :owner-id 0, :docking {:status :docked, :planet 1, :progress 0}} #hlt.entity.Ship{:id 82, :pos #hlt.math.Position{:x 110.41251442008456, :y 35.08759653764482}, :health 170, :radius 0.5, :owner-id 0, :docking {:status :docked, :planet 7, :progress 0}}])
  (group-by :id ships)
  (create-undock-moves ships))
-
-; (defn get-vulnerable-ships
-;   "Returns a list of vulnerable ships. This function does way too much - refactor this monstrosity."
-;   [my-ships]
-;   (let [my-docked-ships (remove #(or (= :undocked (-> % :docking :status)))
-;                                      ; (= :undocking (-> % :docking :status)))
-;                                 my-ships)
-;         my-fighter-ships (filter #(= :undocked (-> % :docking :status))
-;                                 my-ships)
-;         ; vulnerable-distance 75
-;         ; vulnerable-distance 49
-;         vulnerable-distance (if (> *num-ships* 5)
-;                               ; 42
-;                               55
-;                               55)
-;         potential-issues (for [enemy-ship (vals *pesky-fighters*)
-;                                :let [nearest-docked-ship (map/nearest-entity enemy-ship my-docked-ships)]
-;                                :when nearest-docked-ship
-;                                :let [distance (math/distance-between enemy-ship nearest-docked-ship)]
-;                                :when (< distance vulnerable-distance)]
-;                            {:enemy enemy-ship :vulnerable nearest-docked-ship
-;                             ; :distance vulnerable-distance
-;                             :distance distance})
-;         sorted-issues (sort (utils/compare-by :distance utils/asc) potential-issues)
-;         assigned-ships (atom nil)
-;         ships-to-undock (atom nil)
-;         vulnerable-ship-maps
-;           ;; Go through closest first
-;          (doall
-;           (for [{:keys [enemy vulnerable distance]} sorted-issues
-;                 :let [closest-defender (map/nearest-entity vulnerable
-;                                                            (remove #(some (set [%]) @assigned-ships)
-;                                                                    my-fighter-ships))
-;                 ; :when closest-defender
-;                       defender-distance (if-not closest-defender
-;                                           infinity
-;                                           (math/distance-between closest-defender vulnerable))]]
-;                 ;; Close enough to defend
-;                 ; :when (<= defender-distance (+ 14 distance))]
-;             (if (<= defender-distance (+ 7 distance))
-;             ; (if (<= defender-distance (+ 14 distance))
-;               (do
-;                (log "I can defend" vulnerable)
-;                (swap! assigned-ships conj closest-defender)
-;                [closest-defender vulnerable enemy])
-;               (do
-;                (log "I cannot defend" vulnerable)
-;                (swap! ships-to-undock conj vulnerable)
-;                nil))))
-;         vulnerable-ship-maps (remove nil? vulnerable-ship-maps)
-;         undock-moves (create-undock-moves @ships-to-undock)]
-;         ; undock-moves (create-undock-moves @ships-to-undock)]
-;     {:vulnerable-ships vulnerable-ship-maps
-;      :undock-moves undock-moves}))
 
 (defn get-docked-ships-for-other-owners
   "Returns a map of player-id to their enemy docked ships (ones they want to take)."

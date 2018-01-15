@@ -104,11 +104,11 @@
         docked-ship-count    (read stream)
         docked-ships (vec (repeatedly docked-ship-count #(read stream)))]
     (e/->Planet id (math/->Position x-loc y-loc) health radius
-                (if (== has-owner 1)
-                  owner-candidate
-                  nil)
+                (when (== has-owner 1)
+                  owner-candidate)
                 {:spots docking-spots
-                 :ships docked-ships})))
+                 :ships docked-ships
+                 :current-production current-production})))
 
 (defn- parse-all-planets
   [stream]
