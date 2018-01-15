@@ -866,13 +866,13 @@
 (defn get-best-planet
   "Returns the best planet to take. Corner planet in four player games or a 2 player stalemate."
   [turn]
-  nil)
-  ; (if (go-for-corner-planet turn)
-  ;   (if (>= *num-ships* 8)
-  ;     (map/closest-planet-to-my-planets)
-  ;     ; (map/corner-planet)
-  ;     (map/corner-big-planet))
-  ;   (map/closest-planet-to-my-planets)))
+  (when (> turn 50)
+    (if (go-for-corner-planet turn)
+      (if (>= *num-ships* 8)
+        (map/closest-planet-to-my-planets)
+        (map/corner-planet))
+        ; (map/corner-big-planet))
+      (map/closest-planet-to-my-planets))))
 
 (defn get-moves-for-turn
   "Returns all of the moves for this turn."
