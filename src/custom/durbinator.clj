@@ -440,7 +440,7 @@
         multiple-attacks (filter (fn [[k v]]
                                    ; (println "K is" k "V count is" (count v))
                                    (if (> *num-ships* 3)
-                                     (>= (count v) 5)
+                                     (>= (count v) (* 0.65 *num-ships*))
                                      (>= (count v) 2)))
                                  grouped-ships)
         ships-to-undock (map (fn [[k v]] (first v)) multiple-attacks)
@@ -467,6 +467,60 @@
   (def ships [#hlt.entity.Ship{:id 38, :pos #hlt.math.Position{:x 113.31427079601507, :y 96.8979402297031}, :health 128, :radius 0.5, :owner-id 0, :docking {:status :docked, :planet 1, :progress 0}} #hlt.entity.Ship{:id 82, :pos #hlt.math.Position{:x 110.41251442008456, :y 35.08759653764482}, :health 170, :radius 0.5, :owner-id 0, :docking {:status :docked, :planet 7, :progress 0}} #hlt.entity.Ship{:id 48, :pos #hlt.math.Position{:x 102.0717664832834, :y 71.29430026016966}, :health 255, :radius 0.5, :owner-id 0, :docking {:status :docked, :planet 2, :progress 0}} #hlt.entity.Ship{:id 48, :pos #hlt.math.Position{:x 102.0717664832834, :y 71.29430026016966}, :health 255, :radius 0.5, :owner-id 0, :docking {:status :docked, :planet 2, :progress 0}} #hlt.entity.Ship{:id 48, :pos #hlt.math.Position{:x 102.0717664832834, :y 71.29430026016966}, :health 255, :radius 0.5, :owner-id 0, :docking {:status :docked, :planet 2, :progress 0}} #hlt.entity.Ship{:id 53, :pos #hlt.math.Position{:x 105.44471871082905, :y 64.32571597974892}, :health 175, :radius 0.5, :owner-id 0, :docking {:status :docked, :planet 2, :progress 0}} #hlt.entity.Ship{:id 13, :pos #hlt.math.Position{:x 103.40284990201422, :y 88.87005159390104}, :health 255, :radius 0.5, :owner-id 0, :docking {:status :docked, :planet 1, :progress 0}} #hlt.entity.Ship{:id 38, :pos #hlt.math.Position{:x 113.31427079601507, :y 96.8979402297031}, :health 128, :radius 0.5, :owner-id 0, :docking {:status :docked, :planet 1, :progress 0}} #hlt.entity.Ship{:id 38, :pos #hlt.math.Position{:x 113.31427079601507, :y 96.8979402297031}, :health 128, :radius 0.5, :owner-id 0, :docking {:status :docked, :planet 1, :progress 0}} #hlt.entity.Ship{:id 38, :pos #hlt.math.Position{:x 113.31427079601507, :y 96.8979402297031}, :health 128, :radius 0.5, :owner-id 0, :docking {:status :docked, :planet 1, :progress 0}} #hlt.entity.Ship{:id 38, :pos #hlt.math.Position{:x 113.31427079601507, :y 96.8979402297031}, :health 128, :radius 0.5, :owner-id 0, :docking {:status :docked, :planet 1, :progress 0}} #hlt.entity.Ship{:id 82, :pos #hlt.math.Position{:x 110.41251442008456, :y 35.08759653764482}, :health 170, :radius 0.5, :owner-id 0, :docking {:status :docked, :planet 7, :progress 0}}])
  (group-by :id ships)
  (create-undock-moves ships))
+
+; (defn get-vulnerable-ships
+;   "Returns a list of vulnerable ships. This function does way too much - refactor this monstrosity."
+;   [my-ships]
+;   (let [my-docked-ships (remove #(or (= :undocked (-> % :docking :status)))
+;                                      ; (= :undocking (-> % :docking :status)))
+;                                 my-ships)
+;         my-fighter-ships (filter #(= :undocked (-> % :docking :status))
+;                                 my-ships)
+;         ; vulnerable-distance 75
+;         ; vulnerable-distance 49
+;         vulnerable-distance (if (> *num-ships* 5)
+;                               ; 42
+;                               55
+;                               55)
+;         potential-issues (for [enemy-ship (vals *pesky-fighters*)
+;                                :let [nearest-docked-ship (map/nearest-entity enemy-ship my-docked-ships)]
+;                                :when nearest-docked-ship
+;                                :let [distance (math/distance-between enemy-ship nearest-docked-ship)]
+;                                :when (< distance vulnerable-distance)]
+;                            {:enemy enemy-ship :vulnerable nearest-docked-ship
+;                             ; :distance vulnerable-distance
+;                             :distance distance})
+;         sorted-issues (sort (utils/compare-by :distance utils/asc) potential-issues)
+;         assigned-ships (atom nil)
+;         ships-to-undock (atom nil)
+;         vulnerable-ship-maps
+;           ;; Go through closest first
+;          (doall
+;           (for [{:keys [enemy vulnerable distance]} sorted-issues
+;                 :let [closest-defender (map/nearest-entity vulnerable
+;                                                            (remove #(some (set [%]) @assigned-ships)
+;                                                                    my-fighter-ships))
+;                 ; :when closest-defender
+;                       defender-distance (if-not closest-defender
+;                                           infinity
+;                                           (math/distance-between closest-defender vulnerable))]]
+;                 ;; Close enough to defend
+;                 ; :when (<= defender-distance (+ 14 distance))]
+;             (if (<= defender-distance (+ 7 distance))
+;             ; (if (<= defender-distance (+ 14 distance))
+;               (do
+;                (log "I can defend" vulnerable)
+;                (swap! assigned-ships conj closest-defender)
+;                [closest-defender vulnerable enemy])
+;               (do
+;                (log "I cannot defend" vulnerable)
+;                (swap! ships-to-undock conj vulnerable)
+;                nil))))
+;         vulnerable-ship-maps (remove nil? vulnerable-ship-maps)
+;         undock-moves (create-undock-moves @ships-to-undock)]
+;         ; undock-moves (create-undock-moves @ships-to-undock)]
+;     {:vulnerable-ships vulnerable-ship-maps
+;      :undock-moves undock-moves}))
 
 (defn get-vulnerable-ships
   "Returns a list of vulnerable ships. This function does way too much - refactor this monstrosity."
@@ -630,8 +684,8 @@
         my-ship (first (vals (get *owner-ships* *player-id*)))]
     (log "Avoiding" four-center-planets)
     (when (> *num-players* 2)
-      (reset! map/avoid-planets (map :id four-center-planets))
-      (reset! center-planet/center-planets (map :id four-center-planets)))
+      (reset! map/avoid-planets (map :id four-center-planets)))
+    (reset! center-planet/center-planets (map :id four-center-planets))
     (doseq [[owner {:keys [pos distance]}] enemy-positions]
       (let [distance-to-pos (math/distance-between my-ship pos)
             num-turns-to-planet (Math/ceil (/ (- distance e/dock-radius) e/max-ship-speed))

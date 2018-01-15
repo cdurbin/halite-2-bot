@@ -415,7 +415,8 @@
 (defn get-custom-map-info
   "Returns additional map info that is useful to calculate at the beginning of each turn."
   [turn]
-  (let [start-ms (System/currentTimeMillis)]
+  (let [start-ms (System/currentTimeMillis)
+        all-ships-count (count (vals *ships*))]
     (decorate-planets-with-values-four-players!)
     (set! *safe-planets* (into {} (map (fn [planet] [(:id planet) planet]) (get-safe-planets))))
     (set! *docked-enemies* (into {} (map (fn [ship] [(:id ship) ship]) (get-docked-enemy-ships))))
@@ -426,6 +427,10 @@
                                        *owner-ships*)))
     (set! *spawn-points* (get-spawn-points))
     (log "Spawn points:" *spawn-points*)
+    (if (and (> *num-players* 2) (< *num-ships* (* 0.5 all-ships-count)))
+      (reset! avoid-planets (deref center-planet/center-planets))
+      (reset! avoid-planets nil))
+    (log "Avoiding planets:" @avoid-planets)
     (reset! nemesis (find-nemesis (vals *planets*)))
     (reset! attack-spots nil)
     {:start-ms start-ms}))
@@ -463,6 +468,13 @@
   []
   (filter #(nil? (:owner-id %)) (vals *planets*)))
 
+(defn get-unowned-good-planets
+  "Returns unowned (and good) planets."
+  []
+  (filter #(and (nil? (:owner-id %))
+                (not (avoid-planet? %)))
+          (vals *planets*)))
+
 (def planet-distance-dock-spots 20)
 
 (defn num-dock-slots-around-planet
@@ -485,7 +497,7 @@
 (defn safest-planet
   "Finds the planet that is the farthest away from every other player."
   []
-  (let [unowned-planets (get-unowned-planets)
+  (let [unowned-planets (get-unowned-good-planets)
         potential-planets (planets-closest-to-me unowned-planets)
         enemy-ships (filter #(not= *player-id* (:owner-id %))
                             (vals *ships*))
@@ -499,7 +511,7 @@
 (defn corner-planet
   "Finds the planet that is the farthest away from the opposite corner player."
   []
-  (let [unowned-planets (get-unowned-planets)
+  (let [unowned-planets (get-unowned-good-planets)
         potential-planets (planets-closest-to-me unowned-planets)
         enemy-ships (filter #(not= *player-id* (:owner-id %))
                             (vals *ships*))
@@ -513,7 +525,7 @@
 (defn corner-big-planet
   "Finds the biggest planet of the 3 furthest away planets."
   []
-  (let [unowned-planets (get-unowned-planets)
+  (let [unowned-planets (get-unowned-good-planets)
         potential-planets (planets-closest-to-me unowned-planets)
         enemy-ships (filter #(not= *player-id* (:owner-id %))
                             (vals *ships*))
@@ -531,7 +543,7 @@
 (defn my-best-planet
   "Returns the planet that I should target."
   []
-  (let [unowned-planets (get-unowned-planets)
+  (let [unowned-planets (get-unowned-good-planets)
         potential-planets (planets-closest-to-me unowned-planets)
         planets-that-count (if (= 2 *num-players*)
                              unowned-planets potential-planets)
