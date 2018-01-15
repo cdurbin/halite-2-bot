@@ -507,6 +507,24 @@
                             :distance distance})]
     (:planet (first (sort (utils/compare-by :distance utils/desc) planet-distances)))))
 
+(defn corner-big-planet
+  "Finds the biggest planet of the 3 furthest away planets."
+  []
+  (let [unowned-planets (get-unowned-planets)
+        potential-planets (planets-closest-to-me unowned-planets)
+        enemy-ships (filter #(not= *player-id* (:owner-id %))
+                            (vals *ships*))
+        planet-distances (for [planet potential-planets
+                               :let [farthest-ship (farthest-entity planet enemy-ships)
+                                     distance (math/distance-between planet farthest-ship)]]
+                           {:planet planet
+                            :distance distance
+                            :dock-spots (-> planet :docking :spots)})
+        top-3 (take 3 (sort (utils/compare-by :distance utils/desc) planet-distances))]
+
+    (:planet (first (sort (utils/compare-by :dock-spots utils/desc :distance utils/desc)
+                          planet-distances)))))
+
 (defn my-best-planet
   "Returns the planet that I should target."
   []

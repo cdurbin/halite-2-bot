@@ -429,8 +429,8 @@
   (let [grouped-ships (group-by :id ships)
         multiple-attacks (filter (fn [[k v]]
                                    ; (println "K is" k "V count is" (count v))
-                                   (if (> *num-ships* 4)
-                                     (> (count v) 1)
+                                   (if (> *num-ships* 3)
+                                     (>= (count v) 5)
                                      (>= (count v) 1)))
                                  grouped-ships)
         ships-to-undock (map (fn [[k v]] (first v)) multiple-attacks)
@@ -847,7 +847,8 @@
   (if (go-for-corner-planet turn)
     (if (>= *num-ships* 8)
       (map/closest-planet-to-my-planets)
-      (map/corner-planet))
+      ; (map/corner-planet)
+      (map/corner-big-planet))
     (map/closest-planet-to-my-planets)))
 
 (defn get-moves-for-turn
