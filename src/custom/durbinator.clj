@@ -522,14 +522,18 @@
 ;     {:vulnerable-ships vulnerable-ship-maps
 ;      :undock-moves undock-moves}))
 
+(defn get-docked-ships-for-other-owners
+  "Returns a map of player-id to their enemy docked ships (ones they want to take)."
+  [docked-ships]
+  (into {}
+    (for [owner-id (keys *owner-ships*)]
+      [owner-id (remove #(= owner-id (:owner-id %)) docked-ships)])))
+
 (defn get-vulnerable-ships
   "Returns a list of vulnerable ships. This function does way too much - refactor this monstrosity."
   [my-ships]
   (let [all-docked-ships (remove #(= :undocked (-> % :docking :status))
                                  (vals *ships*))
-        my-docked-ships (remove #(or (= :undocked (-> % :docking :status)))
-                                     ; (= :undocking (-> % :docking :status)))
-                                my-ships)
         my-fighter-ships (filter #(= :undocked (-> % :docking :status))
                                 my-ships)
         ; vulnerable-distance 75
@@ -538,11 +542,10 @@
                               ; 42
                               55
                               55)
+        docked-ships-other-by-owner (get-docked-ships-for-other-owners all-docked-ships)
         potential-issues (for [enemy-ship (vals *pesky-fighters*)
-                               :let [;; TODO - need to improve performance by caching this per player
-                                     docked-ships-they-care-about (remove #(= (:owner-id enemy-ship) (:owner-id %))
-                                                                          all-docked-ships)
-                                     nearest-docked-ship (map/nearest-entity enemy-ship docked-ships-they-care-about)]
+                               :let [owner-id (:owner-id enemy-ship)
+                                     nearest-docked-ship (map/nearest-entity enemy-ship (docked-ships-other-by-owner owner-id))]
                                :when (= *player-id* (:owner-id nearest-docked-ship))
                                :let [distance (math/distance-between enemy-ship nearest-docked-ship)]
                                :when (< distance vulnerable-distance)]
