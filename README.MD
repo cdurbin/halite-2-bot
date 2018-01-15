@@ -106,6 +106,7 @@ map_height = 2 * base_size
   * 116 - I think 1 timeout - best mu 55.21 after 102 games
   * 117 - 55.5 mu after ~250 games
   * 128 - 55.64 mu after 228 games
+  * 129 - 57.24 mu after 337 games!
 
 ## Implement
   * [1/2] Figure out cases where I'm still doing dumb things with single ships getting killed - tried but still not great
