@@ -232,7 +232,7 @@
          ; (good-surrounding-planet-helper planet 80)
          (if (= *num-players* 2)
            (good-surrounding-planet-helper planet 80)
-           (good-surrounding-planet-helper planet 55))
+           (good-surrounding-planet-helper planet 80))
          (good-surrounding-planet-helper planet 45)
          (good-surrounding-planet-helper planet 30)
          (good-surrounding-planet-helper planet 15))))
@@ -526,7 +526,7 @@
         top-3 (take 3 (sort (utils/compare-by :distance utils/desc) planet-distances))]
 
     (:planet (first (sort (utils/compare-by :dock-spots utils/desc :distance utils/desc)
-                          planet-distances)))))
+                          top-3)))))
 
 (defn my-best-planet
   "Returns the planet that I should target."
@@ -677,10 +677,10 @@
      ; (when fighter?
        (if remove?
          (set! *pesky-fighters* (dissoc *pesky-fighters* (:id enemy-ship)))
-         (set! *pesky-fighters* (assoc-in *pesky-fighters* [(:id enemy-ship) :attack-count] attack-count)))
-       (if remove?
-         (set! *docked-enemies* (dissoc *docked-enemies* (:id enemy-ship)))
-         (set! *docked-enemies* (assoc-in *docked-enemies* [(:id enemy-ship) :attack-count] attack-count)))))))
+         (set! *pesky-fighters* (assoc-in *pesky-fighters* [(:id enemy-ship) :attack-count] attack-count)))))))
+       ; (if remove?
+       ;   (set! *docked-enemies* (dissoc *docked-enemies* (:id enemy-ship)))
+       ;   (set! *docked-enemies* (assoc-in *docked-enemies* [(:id enemy-ship) :attack-count] attack-count)))))))
 
 (def close-fighter-distance 55)
 
