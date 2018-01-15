@@ -525,7 +525,9 @@
 (defn get-vulnerable-ships
   "Returns a list of vulnerable ships. This function does way too much - refactor this monstrosity."
   [my-ships]
-  (let [my-docked-ships (remove #(or (= :undocked (-> % :docking :status)))
+  (let [all-docked-ships (remove #(= :undocked (-> % :docking :status))
+                                 (vals *ships*))
+        my-docked-ships (remove #(or (= :undocked (-> % :docking :status)))
                                      ; (= :undocking (-> % :docking :status)))
                                 my-ships)
         my-fighter-ships (filter #(= :undocked (-> % :docking :status))
@@ -537,8 +539,11 @@
                               55
                               55)
         potential-issues (for [enemy-ship (vals *pesky-fighters*)
-                               :let [nearest-docked-ship (map/nearest-entity enemy-ship my-docked-ships)]
-                               :when nearest-docked-ship
+                               :let [;; TODO - need to improve performance by caching this per player
+                                     docked-ships-they-care-about (remove #(= (:owner-id enemy-ship) (:owner-id %))
+                                                                          all-docked-ships)
+                                     nearest-docked-ship (map/nearest-entity enemy-ship docked-ships-they-care-about)]
+                               :when (= *player-id* (:owner-id nearest-docked-ship))
                                :let [distance (math/distance-between enemy-ship nearest-docked-ship)]
                                :when (< distance vulnerable-distance)]
                            {:enemy enemy-ship :vulnerable nearest-docked-ship
