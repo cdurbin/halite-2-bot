@@ -191,7 +191,7 @@
              {:min-distance infinity}
              enemy-ships))))
 
-(defn- good-surrounding-planet-helper
+(defn good-surrounding-planet-helper
   "Checks whether we have the advantage for the docking spot at the given distance"
   [planet distance]
   (let [filter-fn (fn [ship]
@@ -666,15 +666,18 @@
   ([enemy-ship num-fighters]
    (let [fighter? (= :undocked (-> enemy-ship :docking :status))
          attack-count (+ num-fighters (get enemy-ship :attack-count 0))
-         remove? (>= attack-count 4)]
-     ; (if fighter?)
-     (when fighter?
+         remove? (if fighter?
+                   (>= attack-count 5)
+                   (>= attack-count 15))]
+
+     (if fighter?
+     ; (when fighter?
        (if remove?
          (set! *pesky-fighters* (dissoc *pesky-fighters* (:id enemy-ship)))
-         (set! *pesky-fighters* (assoc-in *pesky-fighters* [(:id enemy-ship) :attack-count] attack-count)))))))
-       ; (if remove?
-       ;   (set! *docked-enemies* (dissoc *docked-enemies* (:id enemy-ship)))
-       ;   (set! *docked-enemies* (assoc-in *docked-enemies* [(:id enemy-ship) :attack-count] attack-count)))))))
+         (set! *pesky-fighters* (assoc-in *pesky-fighters* [(:id enemy-ship) :attack-count] attack-count)))
+       (if remove?
+         (set! *docked-enemies* (dissoc *docked-enemies* (:id enemy-ship)))
+         (set! *docked-enemies* (assoc-in *docked-enemies* [(:id enemy-ship) :attack-count] attack-count)))))))
 
 (def close-fighter-distance 55)
 

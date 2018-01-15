@@ -127,7 +127,11 @@
 (defn move-to-nearest-enemy-ship-or-target
   "Moves the ship to the nearest enemy ship."
   [ship enemy-ships target]
-  (let [nearest-docked-enemy-ship (map/nearest-entity
+  (let [nemesis (deref map/nemesis)
+        enemy-ships (if nemesis
+                      (filter #(= nemesis (:owner-id %)) enemy-ships)
+                      enemy-ships)
+        nearest-docked-enemy-ship (map/nearest-entity
                                    ship (find-docked-ships-without-an-army enemy-ships))
         enemy-ship (map/nearest-enemy-not-decoy ship enemy-ships)]
     (when enemy-ship
@@ -185,7 +189,11 @@
 (defn move-to-nearest-enemy-ship
   "Moves the ship to the nearest enemy ship."
   [ship enemy-ships]
-  (let [nearest-docked-enemy-ship (map/nearest-entity
+  (let [nemesis (deref map/nemesis)
+        enemy-ships (if nemesis
+                      (filter #(= nemesis (:owner-id %)) enemy-ships)
+                      enemy-ships)
+        nearest-docked-enemy-ship (map/nearest-entity
                                    ship (find-docked-ships-without-an-army enemy-ships))
         enemy-ship (map/nearest-enemy-not-decoy ship enemy-ships)]
     (when enemy-ship
@@ -434,7 +442,9 @@
                                      (>= (count v) 2)))
                                  grouped-ships)
         ships-to-undock (map (fn [[k v]] (first v)) multiple-attacks)
-        planets-to-undock (set (map #(get-in % [:docking :planet]) ships-to-undock))]
+        planets-to-undock (set (map #(get-in % [:docking :planet]) ships-to-undock))
+        planets-to-undock (filter #(not (map/good-surrounding-planet-helper (*planets* %) 55))
+                                  planets-to-undock)]
     (flatten
      (for [planet-id planets-to-undock
            :let [planet (*planets* planet-id)
@@ -841,15 +851,26 @@
       (and (> turn 50)
            (< *num-ships* 4))))
 
+; (defn get-best-planet
+;   "Returns the best planet to take. Corner planet in four player games or a 2 player stalemate."
+;   [turn]
+;   (if (go-for-corner-planet turn)
+;     (if (>= *num-ships* 8)
+;       (map/closest-planet-to-my-planets)
+;       ; (map/corner-planet)
+;       (map/corner-big-planet))
+;     (map/closest-planet-to-my-planets)))
+
 (defn get-best-planet
   "Returns the best planet to take. Corner planet in four player games or a 2 player stalemate."
   [turn]
-  (if (go-for-corner-planet turn)
-    (if (>= *num-ships* 8)
-      (map/closest-planet-to-my-planets)
-      ; (map/corner-planet)
-      (map/corner-big-planet))
-    (map/closest-planet-to-my-planets)))
+  nil)
+  ; (if (go-for-corner-planet turn)
+  ;   (if (>= *num-ships* 8)
+  ;     (map/closest-planet-to-my-planets)
+  ;     ; (map/corner-planet)
+  ;     (map/corner-big-planet))
+  ;   (map/closest-planet-to-my-planets)))
 
 (defn get-moves-for-turn
   "Returns all of the moves for this turn."
