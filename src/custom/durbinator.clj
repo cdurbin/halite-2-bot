@@ -431,7 +431,7 @@
                                    ; (println "K is" k "V count is" (count v))
                                    (if (> *num-ships* 3)
                                      (>= (count v) 5)
-                                     (>= (count v) 1)))
+                                     (>= (count v) 2)))
                                  grouped-ships)
         ships-to-undock (map (fn [[k v]] (first v)) multiple-attacks)
         planets-to-undock (set (map #(get-in % [:docking :planet]) ships-to-undock))]
@@ -459,8 +459,8 @@
 (defn get-vulnerable-ships
   "Returns a list of vulnerable ships. This function does way too much - refactor this monstrosity."
   [my-ships]
-  (let [my-docked-ships (remove #(or (= :undocked (-> % :docking :status))
-                                     (= :undocking (-> % :docking :status)))
+  (let [my-docked-ships (remove #(or (= :undocked (-> % :docking :status)))
+                                     ; (= :undocking (-> % :docking :status)))
                                 my-ships)
         my-fighter-ships (filter #(= :undocked (-> % :docking :status))
                                 my-ships)
