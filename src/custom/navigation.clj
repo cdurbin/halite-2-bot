@@ -246,8 +246,8 @@
 
 (defn good-spot?
   "Returns true if the place I'm going looks to be good."
-  [point my-ships enemy-ships spawn-points]
-  (let [spawn-ships (filter #(< (math/distance-between point %) 6.5) spawn-points)
+  [point my-ships enemy-ships spawn-points equal-ok?]
+  (let [spawn-ships (filter #(<= (math/distance-between point %) 6.5) spawn-points)
         final-enemy-ships (filter (fn [ship]
                                     (let [distance (math/distance-between point ship)]
                                       (or (< distance planet-in-the-way-max-distance)
@@ -263,9 +263,12 @@
                                         (< (math/distance-between point %) friendly-distance-moved)
                                         (and (< (math/distance-between point %) max-speed-distance)
                                              (can-attack-spot? % point)))
-                                     my-ships)]
+                                     my-ships)
+              my-ship-count (if equal-ok?
+                              (inc (count final-my-ships))
+                              (count final-my-ships))]
           ; (log "Good-spot:" point "My ships" (count final-my-ships) "Their ships:" (count final-enemy-ships))
-          (>= (count final-my-ships) (count final-enemy-ships))))))
+          (>= my-ship-count (count final-enemy-ships))))))
 
 ; (defn good-spot?
 ;   "Returns true if the place I'm going looks to be good."
@@ -356,7 +359,7 @@
          thrust (int (min (- distance buffer) max-thrust))
          first-spot (custom-math/get-point ship thrust first-angle)
          ; avoid-attack (not (good-spot? first-spot my-ships other-ships))
-         good-spot (good-spot? first-spot my-ships other-ships spawn-points)
+         good-spot (good-spot? first-spot my-ships other-ships spawn-points (= subtype :defend))
          guaranteed-safe (if good-spot
                            true
                            (not (not-guaranteed-safe? ship other-ships)))
@@ -425,7 +428,7 @@
                                   (first (midturn-collisions midturn-locations
                                                              (vals midturn-ships)))))
                          ; (and avoid-attack (not (unreachable? point other-ships)))
-                         (and avoid-attack (not (good-spot? point my-ships other-ships spawn-points)))
+                         (and avoid-attack (not (good-spot? point my-ships other-ships spawn-points (= subtype :defend))))
                          (and avoid-corner (too-close-to-corner? point)))
                    (recur (rest iterations))
                    (do
@@ -477,7 +480,7 @@
          ;                       obstacles))
          thrust (int (min (- distance buffer) max-thrust))
          first-spot (custom-math/get-point ship thrust first-angle)
-         good-spot (good-spot? first-spot my-ships other-ships spawn-points)
+         good-spot (good-spot? first-spot my-ships other-ships spawn-points (= subtype :defend))
          guaranteed-safe (if good-spot
                            true
                            (not (not-guaranteed-safe? ship other-ships)))
@@ -510,7 +513,7 @@
                          (and avoid-obstacles (first (new-entities-between ship point obstacles
                                                                            planet-compare-point)))
                          ; (and avoid-attack (not (unreachable? point other-ships)))
-                         (and avoid-attack (not (good-spot? point my-ships other-ships spawn-points)))
+                         (and avoid-attack (not (good-spot? point my-ships other-ships spawn-points (= subtype :defend))))
                          (and avoid-corner (too-close-to-corner? point)))
                    (recur (rest iterations))
                    (assoc (e/thrust-move ship max-thrust angle) :subtype subtype)))))))))))
@@ -702,26 +705,40 @@
   "Returns a thrust move which will navigate this ship to the requested
   planet for docking. The ship will attempt to get to
   `docking-distance` units above the planet's surface. Returns nil if
-  it cannot find a suitable path."
+  it cannot find a suitable path. Assume they take a straight path 7 units towards my ship"
   [ship friendly-ship enemy-ship advantage?]
-  (let [angle (math/orient-towards friendly-ship enemy-ship)
-        distance (math/distance-between friendly-ship enemy-ship)
-        ;; Try to prevent sending my ship in to die
-        distance (if advantage?
-                   ; (/ (* 2 distance) 3
-                   (max 2 (- distance 5))
-                   2)
-                   ; (min 3 (- distance 3)))
-                   ; (/ (* 1 distance) 10)
-        midpoint (custom-math/get-point friendly-ship distance angle)]
-    ; (if (and (not advantage?) (< distance 7))
-    ;   (navigate-to ship (custom-math/get-point friendly-ship 7 angle)
-    ;                (merge default-navigation-opts {:buffer 0.0 :subtype :suicide}))
-    ; (if advantage?
-    ;   (navigate-to-attack-ship ship enemy-ship)
+  (let [angle (math/orient-towards enemy-ship friendly-ship)
+        distance (min (math/distance-between friendly-ship enemy-ship) 7)
+        midpoint (custom-math/get-point enemy-ship distance angle)
+        subtype (if advantage? :defend :defend-casual)]
     (navigate-to ship midpoint (merge default-navigation-opts {:buffer 0.0
-                                                               :subtype :defend
+                                                               :subtype subtype
                                                                :avoid-attack true}))))
+
+; (defn navigate-to-defend-ship
+;   "Returns a thrust move which will navigate this ship to the requested
+;   planet for docking. The ship will attempt to get to
+;   `docking-distance` units above the planet's surface. Returns nil if
+;   it cannot find a suitable path."
+;   [ship friendly-ship enemy-ship advantage?]
+;   (let [angle (math/orient-towards friendly-ship enemy-ship)
+;         distance (math/distance-between friendly-ship enemy-ship)
+;         ;; Try to prevent sending my ship in to die
+;         distance (if advantage?
+;                    ; (/ (* 2 distance) 3
+;                    (max 2 (- distance 5))
+;                    2)
+;                    ; (min 3 (- distance 3)))
+;                    ; (/ (* 1 distance) 10)
+;         midpoint (custom-math/get-point friendly-ship distance angle)]
+;     ; (if (and (not advantage?) (< distance 7))
+;     ;   (navigate-to ship (custom-math/get-point friendly-ship 7 angle)
+;     ;                (merge default-navigation-opts {:buffer 0.0 :subtype :suicide}))
+;     ; (if advantage?
+;     ;   (navigate-to-attack-ship ship enemy-ship)
+;     (navigate-to ship midpoint (merge default-navigation-opts {:buffer 0.0
+;                                                                :subtype :defend
+;                                                                :avoid-attack true}))))
 
 (defn navigate-to-dock
   "Returns a thrust move which will navigate this ship to the requested

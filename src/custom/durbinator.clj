@@ -520,7 +520,7 @@
                                           (math/distance-between closest-defender vulnerable))]]
                 ;; Close enough to defend
                 ; :when (<= defender-distance (+ 14 distance))]
-            (if (<= defender-distance (+ 7 distance))
+            (if (<= defender-distance (+ 14 distance))
             ; (if (<= defender-distance (+ 14 distance))
               (do
                (log "I can defend" vulnerable)
@@ -581,9 +581,9 @@
                          closest-enemy (map/nearest-entity ship enemy-fighters)
                          distance (math/distance-between ship closest-enemy)
                          ; advantage? false
-                         ; advantage? true
-                         advantage? (or (> distance 25)
-                                        (map/have-advantage? (custom-math/get-closest-point-towards-target ship closest-enemy (- distance 3))))
+                         advantage? (< distance 14)
+                         ; advantage? (or (> distance 25)
+                         ;                (map/have-advantage? (custom-math/get-closest-point-towards-target ship closest-enemy (- distance 3))))
                          move (get-reachable-attack-spot-move ship)
                          move (if move
                                 move
@@ -791,7 +791,7 @@
   "Returns moves towards the best planet."
   [planet moving-ships]
   (when (and planet
-             (map/good-surrounding-planet-helper planet 25))
+             (some #{(:id planet)} (keys *safe-planets*)))
     (return-planet-move planet moving-ships)))
 
 (defn get-moves-and-moving-ships

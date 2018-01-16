@@ -125,6 +125,7 @@ map_height = 2 * base_size
   * [ ] Attempt to crash into an enemy when they have more health?
   * [ ] Crash into an enemy when they are attacking your docked ship?
   * [ ] If someone is undocking and I'm more than 28 away - abandon my all out attack
+  * [ ] Performance improvement - if more than 300 total ships change navigation iterations to just 7 3 1
 
 ## Testing
   * [ ] Find maps where closest planet is not a good choice
