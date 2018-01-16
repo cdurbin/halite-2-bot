@@ -447,7 +447,7 @@
                                    ; (println "K is" k "V count is" (count v))
                                    (if (> *num-ships* 3)
                                      (>= (count v) (* 0.65 *num-ships*))
-                                     (>= (count v) 2)))
+                                     (>= (count v) 1)))
                                  grouped-ships)
         ships-to-undock (map (fn [[k v]] (first v)) multiple-attacks)
         planets-to-undock (set (map #(get-in % [:docking :planet]) ships-to-undock))
@@ -493,7 +493,7 @@
         vulnerable-distance (if (> *num-ships* 5)
                               ; 42
                               55
-                              55)
+                              62)
         docked-ships-other-by-owner (get-docked-ships-for-other-owners all-docked-ships)
         potential-issues (for [enemy-ship (vals *pesky-fighters*)
                                :let [owner-id (:owner-id enemy-ship)

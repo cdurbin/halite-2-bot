@@ -231,16 +231,18 @@
         planet (if nearest-ship
                  (assoc (math/closest-point nearest-ship planet) :radius 0.0)
                  planet)]
-    (if owned?
-      (good-surrounding-planet-helper planet 25)
-      (and
-         ; (good-surrounding-planet-helper planet 80)
-         (if (= *num-players* 2)
-           (good-surrounding-planet-helper planet 80)
-           (good-surrounding-planet-helper planet 70))
-         (good-surrounding-planet-helper planet 45)
-         (good-surrounding-planet-helper planet 30)
-         (good-surrounding-planet-helper planet 15)))))
+    ; (if (<= *num-ships* 3)
+    ;   (good-surrounding-planet-helper planet 80)
+      (if owned?
+        (good-surrounding-planet-helper planet 25)
+        (and
+           ; (good-surrounding-planet-helper planet 80)
+           (if (= *num-players* 2)
+             (good-surrounding-planet-helper planet 80)
+             (good-surrounding-planet-helper planet 70))
+           (good-surrounding-planet-helper planet 45)
+           (good-surrounding-planet-helper planet 30)
+           (good-surrounding-planet-helper planet 15)))))
     ; (and (good-surrounding-planet-helper planet 60)
     ;      (good-surrounding-planet-helper planet 30)
     ;      (good-surrounding-planet-helper planet 15))))
