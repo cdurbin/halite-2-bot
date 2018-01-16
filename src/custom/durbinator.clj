@@ -770,15 +770,9 @@
 (defn get-best-planet-moves
   "Returns moves towards the best planet."
   [planet moving-ships]
-  (if (and (not= 2 *num-players*)
-           (<= @all-out-attack 0)
-           (<= *num-ships* 3)
-           planet
-           (some #{(:id planet)} (keys *safe-planets*)))
-    (return-planet-move planet moving-ships)
-    (when planet
-    ; (when (and planet (> *num-ships* 20))
-      (return-planet-move planet moving-ships))))
+  (when (and planet
+             (map/good-surrounding-planet-helper planet 25))
+    (return-planet-move planet moving-ships)))
 
 (defn get-moves-and-moving-ships
   "TODO Returns moves and moving ships - make it easier to reorder."
@@ -865,19 +859,18 @@
 (defn go-for-corner-planet
   "Returns true or false if I should go for the corner planet."
   [turn]
-  (or (> *num-players* 2)
-      (and (> turn 50)
-           (< *num-ships* 4))))
+  (and (< *num-ships* 4)
+       (<= @all-out-attack 0)
+       (or (>= turn 50)
+           (> *num-players* 2))))
 
 (defn get-best-planet
   "Returns the best planet to take. Corner planet in four player games or a 2 player stalemate."
   [turn]
   (if (go-for-corner-planet turn)
-    (if (>= *num-ships* 8)
-      (map/closest-planet-to-my-planets)
-      ; (map/corner-planet)
-      (map/corner-big-planet))
-    (when (> *num-ships* 35) (map/closest-planet-to-my-planets))))
+    (map/corner-big-planet)
+    (when (> *num-ships* 35)
+      (map/closest-planet-to-my-planets))))
 
 ; (defn get-best-planet
 ;   "Returns the best planet to take. Corner planet in four player games or a 2 player stalemate."
@@ -899,15 +892,16 @@
         runaway-moves (run-to-corner-moves (reverse ships-in-order))
         moving-ships (map #(get-in % [:ship :id]) runaway-moves)
 
-        best-planet (get-best-planet turn)
-        best-planet-move (if (and best-planet (go-for-corner-planet turn))
-                           (get-best-planet-moves best-planet moving-ships)
-                           [])
-        best-planet-moves (if (seq best-planet-move) (flatten [best-planet-move]) [])
-        _ (log "Best planet is" best-planet "Best planet-moves are" best-planet-moves)
-        moving-ships (map #(get-in % [:ship :id]) (concat runaway-moves best-planet-moves))
+        ; best-planet (get-best-planet turn)
+        ; best-planet-move (if (and best-planet (go-for-corner-planet turn))
+        ;                    (get-best-planet-moves best-planet moving-ships)
+        ;                    [])
+        ; best-planet-moves (if (seq best-planet-move) (flatten [best-planet-move]) [])
+        ; _ (log "Best planet is" best-planet "Best planet-moves are" best-planet-moves)
+        ; moving-ships (map #(get-in % [:ship :id]) (concat runaway-moves best-planet-moves))
 
         ; skip-defense? true
+        best-planet-moves []
         pct-ships-to-skip-defense (if (> *num-players* 2)
                                     0.65
                                     0.6)
@@ -927,12 +921,12 @@
         ; moving-ships (map #(get-in % [:ship :id]) runaway-moves swarm-moves defend-moves attack-moves)
         swarm-moves []
 
-        ; best-planet (get-best-planet turn)
-        ; best-planet-move (if (go-for-corner-planet turn)
-        ;                    (get-best-planet-moves best-planet moving-ships)
-        ;                    [])
-        ; best-planet-moves (if (seq best-planet-move) (flatten [best-planet-move]) [])
-        ; moving-ships (map #(get-in % [:ship :id]) (concat runaway-moves attack-moves defend-moves best-planet-moves swarm-moves))
+        best-planet (get-best-planet turn)
+        best-planet-move (if (go-for-corner-planet turn)
+                           (get-best-planet-moves best-planet moving-ships)
+                           [])
+        best-planet-moves (if (seq best-planet-move) (flatten [best-planet-move]) [])
+        moving-ships (map #(get-in % [:ship :id]) (concat runaway-moves attack-moves defend-moves best-planet-moves swarm-moves))
 
         more-planet-moves (get-planet-only-moves ships-in-order (assoc custom-map-info :moving-ships moving-ships))
         moving-ships (map #(get-in % [:ship :id]) (concat runaway-moves attack-moves defend-moves more-planet-moves swarm-moves best-planet-moves))
