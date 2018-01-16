@@ -929,6 +929,9 @@
                       (get-best-planet turn)
                       (deref map/best-planet))
 
+        best-planet (when (nil? (:owner-id best-planet))
+                      best-planet)
+
         best-planet-move (if (go-for-corner-planet turn)
                            (get-best-planet-moves best-planet moving-ships)
                            [])
