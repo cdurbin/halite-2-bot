@@ -887,115 +887,167 @@
 ;         ; (map/corner-big-planet))
 ;       (map/closest-planet-to-my-planets))))
 
-(defn get-moves-for-turn
-  "Returns all of the moves for this turn."
+(defn being-rushed?
+  "Returns true if I seem to be getting rushed."
   [turn]
-  ; (if (= 10 turn) (throw (Exception. "quit")))
+  (let [num-planets (count (map/get-planets *player-id*))
+        players-with-planets (map/players-with-planets)]
+    (and (> *num-players* 2)
+         (= 0 num-planets)
+         (or (> turn 50) (> players-with-planets 2)))))
+
+(defn get-closest-safe-planet
+  "Returns the closest safe planet to the ship."
+  [ship]
+  (map/nearest-entity ship (vals *safe-planets*)))
+
+(defn compute-safest-planet-move*
+  "Picks the move for the ship based on proximity to planets and fighters near planets."
+  [ship]
+  (let [times-up? (> (- (System/currentTimeMillis) *start-ms*) 1625)]
+    (if (or times-up?
+            (not= :undocked (-> ship :docking :status)))
+      nil
+      (when-let [planet (get-closest-safe-planet ship)]
+        (move-ship-to-planet! ship planet)))))
+
+(defn compute-safest-planet-move
+  "Picks a move to get the ship near the closest safest planet."
+  [moving-ships ship]
+  (when-not (some #{(:id ship)} moving-ships)
+    (when-let [move (compute-safest-planet-move* ship)]
+      (map/change-ship-positions! move)
+      move)))
+
+(defn get-safest-planet-moves
+  "Returns safe planet moves when I'm desperate to survive."
+  [ships moving-ships]
+  (doall
+   (keep #(compute-safest-planet-move moving-ships %)
+         ships)))
+
+(defn get-rush-moves
+  "Returns rush protection moves."
+  [turn]
   (let [custom-map-info (calculations-for-turn turn)
         ships-in-order (map/sort-ships-by-distance (vals (get *owner-ships* *player-id*)))
         runaway-moves (run-to-corner-moves (reverse ships-in-order))
         moving-ships (map #(get-in % [:ship :id]) runaway-moves)
+        planet-moves (get-safest-planet-moves ships-in-order moving-ships)]
+    (concat runaway-moves planet-moves)))
 
-        ; best-planet (get-best-planet turn)
-        ; best-planet-move (if (and best-planet (go-for-corner-planet turn))
-        ;                    (get-best-planet-moves best-planet moving-ships)
-        ;                    [])
-        ; best-planet-moves (if (seq best-planet-move) (flatten [best-planet-move]) [])
-        ; _ (log "Best planet is" best-planet "Best planet-moves are" best-planet-moves)
-        ; moving-ships (map #(get-in % [:ship :id]) (concat runaway-moves best-planet-moves))
+(defn get-moves-for-turn
+  "Returns all of the moves for this turn."
+  [turn]
+  (if (being-rushed? turn)
+    (get-rush-moves turn)
+  ; (if true
+  ; (if (= 10 turn) (throw (Exception. "quit")))
+    (let [custom-map-info (calculations-for-turn turn)
+          ships-in-order (map/sort-ships-by-distance (vals (get *owner-ships* *player-id*)))
+          runaway-moves (run-to-corner-moves (reverse ships-in-order))
+          moving-ships (map #(get-in % [:ship :id]) runaway-moves)
 
-        ; skip-defense? true
-        best-planet-moves []
-        pct-ships-to-skip-defense (if (> *num-players* 2)
-                                    0.65
-                                    0.6)
-        skip-defense? (and (> *num-ships* 50)
-                           (> *num-ships* (* pct-ships-to-skip-defense (count (vals *ships*)))))
-        defend-moves (if skip-defense?
-                       []
-                       (defend-vulnerable-ships moving-ships custom-map-info))
-        moving-ships (map #(get-in % [:ship :id]) (concat defend-moves runaway-moves best-planet-moves))
+          ; best-planet (get-best-planet turn)
+          ; best-planet-move (if (and best-planet (go-for-corner-planet turn))
+          ;                    (get-best-planet-moves best-planet moving-ships)
+          ;                    [])
+          ; best-planet-moves (if (seq best-planet-move) (flatten [best-planet-move]) [])
+          ; _ (log "Best planet is" best-planet "Best planet-moves are" best-planet-moves)
+          ; moving-ships (map #(get-in % [:ship :id]) (concat runaway-moves best-planet-moves))
 
-        attack-moves (attack-unprotected-enemy-ships moving-ships custom-map-info)
-        moving-ships (map #(get-in % [:ship :id]) (concat runaway-moves attack-moves defend-moves best-planet-moves))
-        ; potential-ships (filter #(and (= :undocked (-> % :docking :status))
-        ;                               (not (some (set [(:id %)]) moving-ships)))
-        ;                         ships-in-order)
-        ; swarm-moves (get-swarm-moves potential-ships)
-        ; moving-ships (map #(get-in % [:ship :id]) runaway-moves swarm-moves defend-moves attack-moves)
-        swarm-moves []
+          ; skip-defense? true
+          best-planet-moves []
+          pct-ships-to-skip-defense (if (> *num-players* 2)
+                                      0.65
+                                      0.6)
+          skip-defense? (and (> *num-ships* 50)
+                             (> *num-ships* (* pct-ships-to-skip-defense (count (vals *ships*)))))
+          defend-moves (if skip-defense?
+                         []
+                         (defend-vulnerable-ships moving-ships custom-map-info))
+          moving-ships (map #(get-in % [:ship :id]) (concat defend-moves runaway-moves best-planet-moves))
 
-        best-planet (if (> turn 25)
-                      (get-best-planet turn)
-                      (deref map/best-planet))
+          attack-moves (attack-unprotected-enemy-ships moving-ships custom-map-info)
+          moving-ships (map #(get-in % [:ship :id]) (concat runaway-moves attack-moves defend-moves best-planet-moves))
+          ; potential-ships (filter #(and (= :undocked (-> % :docking :status))
+          ;                               (not (some (set [(:id %)]) moving-ships)))
+          ;                         ships-in-order)
+          ; swarm-moves (get-swarm-moves potential-ships)
+          ; moving-ships (map #(get-in % [:ship :id]) runaway-moves swarm-moves defend-moves attack-moves)
+          swarm-moves []
 
-        best-planet (when (nil? (:owner-id best-planet))
-                      best-planet)
+          best-planet (if (> turn 25)
+                        (get-best-planet turn)
+                        (deref map/best-planet))
 
-        best-planet-move (if (go-for-corner-planet turn)
-                           (get-best-planet-moves best-planet moving-ships)
-                           [])
-        best-planet-moves (if (seq best-planet-move) (flatten [best-planet-move]) [])
-        moving-ships (map #(get-in % [:ship :id]) (concat runaway-moves attack-moves defend-moves best-planet-moves swarm-moves))
+          best-planet (when (nil? (:owner-id best-planet))
+                        best-planet)
 
-        more-planet-moves (get-planet-only-moves ships-in-order (assoc custom-map-info :moving-ships moving-ships))
-        moving-ships (map #(get-in % [:ship :id]) (concat runaway-moves attack-moves defend-moves more-planet-moves swarm-moves best-planet-moves))
+          best-planet-move (if (go-for-corner-planet turn)
+                             (get-best-planet-moves best-planet moving-ships)
+                             [])
+          best-planet-moves (if (seq best-planet-move) (flatten [best-planet-move]) [])
+          moving-ships (map #(get-in % [:ship :id]) (concat runaway-moves attack-moves defend-moves best-planet-moves swarm-moves))
 
-        best-planet-move-2-players (if (and best-planet (not (go-for-corner-planet turn)))
-                                     (get-best-planet-moves best-planet moving-ships)
-                                     [])
-        best-planet-moves-2-players (if (seq best-planet-move-2-players) (flatten [best-planet-move-2-players]) [])
+          more-planet-moves (get-planet-only-moves ships-in-order (assoc custom-map-info :moving-ships moving-ships))
+          moving-ships (map #(get-in % [:ship :id]) (concat runaway-moves attack-moves defend-moves more-planet-moves swarm-moves best-planet-moves))
 
-        moving-ships (map #(get-in % [:ship :id]) (concat runaway-moves attack-moves defend-moves more-planet-moves best-planet-moves swarm-moves best-planet-moves-2-players))
-        ; potential-ships (filter #(and (= :undocked (-> % :docking :status))
-        ;                               (not (some (set [(:id %)]) moving-ships)))
-        ;                         ships-in-order)
-        ; swarm-moves (if (> *num-ships* 3)
-        ;               (get-swarm-moves custom-map-info potential-ships)
-        ;               (get-swarm-moves custom-map-info potential-ships))
-        ; moving-ships (map #(get-in % [:ship :id]) (concat runaway-moves swarm-moves defend-moves attack-moves best-planet-moves more-planet-moves))
+          best-planet-move-2-players (if (and best-planet (not (go-for-corner-planet turn)))
+                                       (get-best-planet-moves best-planet moving-ships)
+                                       [])
+          best-planet-moves-2-players (if (seq best-planet-move-2-players) (flatten [best-planet-move-2-players]) [])
 
-        ;; TODO - can I just get rid of all this and let things naturally happen?
-        ; my-fighters (map/get-fighters *player-id* moving-ships)
-        ; assigned-fighter-to-targets (map/fighters-to-targets my-fighters)
-        ; main-moves (get-fighter-moves custom-map-info assigned-fighter-to-targets)
-        ; moving-ships (map #(get-in % [:ship :id]) (concat runaway-moves attack-moves defend-moves main-moves best-planet-moves swarm-moves more-planet-moves))
-        ; ; _ (log "Moving ships: " moving-ships)
-        potential-ships (filter #(and (= :undocked (-> % :docking :status))
-                                      (not (some (set [(:id %)]) moving-ships)))
-                                ships-in-order)
-        ; ; _ (log "potential ships: " potential-ships)
-        swarm-moves (if (> *num-ships* 3)
-                      (get-swarm-moves custom-map-info potential-ships)
-                      (get-swarm-moves custom-map-info potential-ships))
-                      ; [])
-        moving-ships (map #(get-in % [:ship :id]) (concat runaway-moves swarm-moves defend-moves attack-moves best-planet-moves more-planet-moves best-planet-moves-2-players))
-        ; moving-ships (map #(get-in % [:ship :id]) (concat main-moves runaway-moves swarm-moves defend-moves attack-moves best-planet-moves more-planet-moves))
-        fallback-moves (get-main-moves ships-in-order (assoc custom-map-info :moving-ships moving-ships))
-        ; all-moves (concat runaway-moves defend-moves attack-moves main-moves fallback-moves best-planet-moves swarm-moves more-planet-moves)
-        all-moves (concat runaway-moves defend-moves attack-moves fallback-moves best-planet-moves swarm-moves more-planet-moves best-planet-moves-2-players)
-        friendly-moves (recalculate-friendly-moves (filter #(= :friendly (:subtype %)) all-moves) custom-map-info)
+          moving-ships (map #(get-in % [:ship :id]) (concat runaway-moves attack-moves defend-moves more-planet-moves best-planet-moves swarm-moves best-planet-moves-2-players))
+          ; potential-ships (filter #(and (= :undocked (-> % :docking :status))
+          ;                               (not (some (set [(:id %)]) moving-ships)))
+          ;                         ships-in-order)
+          ; swarm-moves (if (> *num-ships* 3)
+          ;               (get-swarm-moves custom-map-info potential-ships)
+          ;               (get-swarm-moves custom-map-info potential-ships))
+          ; moving-ships (map #(get-in % [:ship :id]) (concat runaway-moves swarm-moves defend-moves attack-moves best-planet-moves more-planet-moves))
 
-        ;; DEBUG
-        moving-ships (map #(get-in % [:ship :id]) (concat all-moves friendly-moves))
-        _ (log "Moving ships" moving-ships)
-        _ (log "All moves" (pretty-log all-moves))
-        _ (log "Friendly moves" (pretty-log friendly-moves))
+          ;; TODO - can I just get rid of all this and let things naturally happen?
+          ; my-fighters (map/get-fighters *player-id* moving-ships)
+          ; assigned-fighter-to-targets (map/fighters-to-targets my-fighters)
+          ; main-moves (get-fighter-moves custom-map-info assigned-fighter-to-targets)
+          ; moving-ships (map #(get-in % [:ship :id]) (concat runaway-moves attack-moves defend-moves main-moves best-planet-moves swarm-moves more-planet-moves))
+          ; ; _ (log "Moving ships: " moving-ships)
+          potential-ships (filter #(and (= :undocked (-> % :docking :status))
+                                        (not (some (set [(:id %)]) moving-ships)))
+                                  ships-in-order)
+          ; ; _ (log "potential ships: " potential-ships)
+          swarm-moves (if (> *num-ships* 3)
+                        (get-swarm-moves custom-map-info potential-ships)
+                        (get-swarm-moves custom-map-info potential-ships))
+                        ; [])
+          moving-ships (map #(get-in % [:ship :id]) (concat runaway-moves swarm-moves defend-moves attack-moves best-planet-moves more-planet-moves best-planet-moves-2-players))
+          ; moving-ships (map #(get-in % [:ship :id]) (concat main-moves runaway-moves swarm-moves defend-moves attack-moves best-planet-moves more-planet-moves))
+          fallback-moves (get-main-moves ships-in-order (assoc custom-map-info :moving-ships moving-ships))
+          ; all-moves (concat runaway-moves defend-moves attack-moves main-moves fallback-moves best-planet-moves swarm-moves more-planet-moves)
+          all-moves (concat runaway-moves defend-moves attack-moves fallback-moves best-planet-moves swarm-moves more-planet-moves best-planet-moves-2-players)
+          friendly-moves (recalculate-friendly-moves (filter #(= :friendly (:subtype %)) all-moves) custom-map-info)
 
-        all-moves (remove #(= :friendly (:subtype %)) all-moves)
-        all-moves (remove #(= 0 (:thrust %)) all-moves)]
-        ; main-moves (remove #(= :friendly (:subtype %)) main-moves)
-        ; main-moves (remove #(= 0 (:thrust %)) main-moves)
-        ; fallback-moves (remove #(= :friendly (:subtype %)) fallback-moves)
-        ; fallback-moves (remove #(= 0 (:thrust %)) fallback-moves)
-        ; swarm-moves (remove #(= :friendly (:subtype %)) swarm-moves)
-        ; swarm-moves (remove #(= 0 (:thrust %)) swarm-moves)]
-    ; (if (= 64 turn)
-    ;   (log "All ships" (pretty-log *ships*)))
+          ;; DEBUG
+          moving-ships (map #(get-in % [:ship :id]) (concat all-moves friendly-moves))
+          _ (log "Moving ships" moving-ships)
+          _ (log "All moves" (pretty-log all-moves))
+          _ (log "Friendly moves" (pretty-log friendly-moves))
 
-    (concat all-moves friendly-moves)))
-    ; all-moves))
-    ; (concat runaway-moves defend-moves attack-moves main-moves fallback-moves friendly-moves best-planet-moves swarm-moves more-planet-moves)))
+          all-moves (remove #(= :friendly (:subtype %)) all-moves)
+          all-moves (remove #(= 0 (:thrust %)) all-moves)]
+          ; main-moves (remove #(= :friendly (:subtype %)) main-moves)
+          ; main-moves (remove #(= 0 (:thrust %)) main-moves)
+          ; fallback-moves (remove #(= :friendly (:subtype %)) fallback-moves)
+          ; fallback-moves (remove #(= 0 (:thrust %)) fallback-moves)
+          ; swarm-moves (remove #(= :friendly (:subtype %)) swarm-moves)
+          ; swarm-moves (remove #(= 0 (:thrust %)) swarm-moves)]
+      ; (if (= 64 turn)
+      ;   (log "All ships" (pretty-log *ships*)))
+
+      (concat all-moves friendly-moves))))
+      ; all-moves))
+      ; (concat runaway-moves defend-moves attack-moves main-moves fallback-moves friendly-moves best-planet-moves swarm-moves more-planet-moves)))
 
 
 ;; (import 'net.jafama.FastMath)
