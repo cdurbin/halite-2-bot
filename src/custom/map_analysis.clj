@@ -223,7 +223,7 @@
 (defn have-most-ships-surrounding-planet?
   "Have the most fighters (non docking) surrounding the planet."
   [planet]
-  (let [
+  (let [owned? (= *player-id* (:owner-id planet))
         ;; Do some trickery here - consider a "planet" as the closest point to my closest ship
         nearest-ship (nearest-entity planet (filter #(and (= *player-id* (:owner-id %))
                                                           (= :undocked (-> % :docking :status)))
@@ -231,14 +231,16 @@
         planet (if nearest-ship
                  (assoc (math/closest-point nearest-ship planet) :radius 0.0)
                  planet)]
-    (and
+    (if owned?
+      (good-surrounding-planet-helper planet 25)
+      (and
          ; (good-surrounding-planet-helper planet 80)
          (if (= *num-players* 2)
            (good-surrounding-planet-helper planet 80)
-           (good-surrounding-planet-helper planet 80))
+           (good-surrounding-planet-helper planet 70))
          (good-surrounding-planet-helper planet 45)
          (good-surrounding-planet-helper planet 30)
-         (good-surrounding-planet-helper planet 15))))
+         (good-surrounding-planet-helper planet 15)))))
     ; (and (good-surrounding-planet-helper planet 60)
     ;      (good-surrounding-planet-helper planet 30)
     ;      (good-surrounding-planet-helper planet 15))))
@@ -708,16 +710,16 @@
          attack-count (+ num-fighters (get enemy-ship :attack-count 0))
          remove? (if fighter?
                    (>= attack-count 5)
-                   (>= attack-count 15))]
+                   (>= attack-count 30))]
 
      (if fighter?
      ; (when fighter?
        (if remove?
          (set! *pesky-fighters* (dissoc *pesky-fighters* (:id enemy-ship)))
-         (set! *pesky-fighters* (assoc-in *pesky-fighters* [(:id enemy-ship) :attack-count] attack-count)))))))
-       ; (if remove?
-       ;   (set! *docked-enemies* (dissoc *docked-enemies* (:id enemy-ship)))
-       ;   (set! *docked-enemies* (assoc-in *docked-enemies* [(:id enemy-ship) :attack-count] attack-count)))))))
+         (set! *pesky-fighters* (assoc-in *pesky-fighters* [(:id enemy-ship) :attack-count] attack-count)))
+       (if remove?
+         (set! *docked-enemies* (dissoc *docked-enemies* (:id enemy-ship)))
+         (set! *docked-enemies* (assoc-in *docked-enemies* [(:id enemy-ship) :attack-count] attack-count)))))))
 
 (def close-fighter-distance 55)
 
