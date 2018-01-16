@@ -900,9 +900,8 @@
         moving-ships (map #(get-in % [:ship :id]) runaway-moves)
 
         best-planet (get-best-planet turn)
-        best-planet-move (if (go-for-corner-planet turn)
-                           (do (log "I'm trying")
-                               (get-best-planet-moves best-planet moving-ships))
+        best-planet-move (if (and best-planet (go-for-corner-planet turn))
+                           (get-best-planet-moves best-planet moving-ships)
                            [])
         best-planet-moves (if (seq best-planet-move) (flatten [best-planet-move]) [])
         _ (log "Best planet is" best-planet "Best planet-moves are" best-planet-moves)
@@ -939,7 +938,7 @@
         moving-ships (map #(get-in % [:ship :id]) (concat runaway-moves attack-moves defend-moves more-planet-moves swarm-moves best-planet-moves))
 
         best-planet (get-best-planet turn)
-        best-planet-move-2-players (if-not (go-for-corner-planet turn)
+        best-planet-move-2-players (if (and best-planet (not (go-for-corner-planet turn)))
                                      (get-best-planet-moves best-planet moving-ships)
                                      [])
         best-planet-moves-2-players (if (seq best-planet-move-2-players) (flatten [best-planet-move-2-players]) [])
