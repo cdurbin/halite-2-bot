@@ -460,7 +460,7 @@
                  docking-ships (map #(*ships* %) docking-ship-ids)]]
         (do
           (log "Docking ships" docking-ships "Planet" planet)
-          (map e/undock-move docking-ships))))))
+          (map e/undock-move (remove #(nil? (:id %)) docking-ships)))))))
 
     ; (log "Really undocking for" (mapv (fn [[k v]] (first v)) multiple-attacks))
     ; (map e/undock-move
