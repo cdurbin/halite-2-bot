@@ -11,6 +11,9 @@
    [hlt.math :as math]
    [hlt.utils :refer [log]]))
 
+(def best-planet
+  (atom nil))
+
 (defn nearest-entity
   "Returns the closest other entity to the passed in entity."
   [entity other-entities]

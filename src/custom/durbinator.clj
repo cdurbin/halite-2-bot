@@ -627,9 +627,27 @@
 
 (def num-turns-to-kill-ship 2)
 
+(defn go-for-corner-planet
+  "Returns true or false if I should go for the corner planet."
+  [turn]
+  (and (< *num-ships* 4)
+       (<= @all-out-attack 0)
+       (or (>= turn 50)
+           (> *num-players* 2))))
+
+(defn get-best-planet
+  "Returns the best planet to take. Corner planet in four player games or a 2 player stalemate."
+  [turn]
+  (if (go-for-corner-planet turn)
+    (map/corner-big-planet)
+    (when (> *num-ships* 35)
+      (map/closest-planet-to-my-planets))))
+
 (defn-timed starting-game-strategy!
   "Function called at beginning of game before starting."
   []
+  ;; Initializes everything
+  (map/get-custom-map-info 1)
   (let [four-center-planets (center-planet/find-four-center-planets)
         closet-planet-docking-spots-by-owner
         (into {}
@@ -644,9 +662,11 @@
                                              (keys *owner-ships*)))
         my-ship (first (vals (get *owner-ships* *player-id*)))]
     (log "Avoiding" four-center-planets)
-    (when (> *num-players* 2)
-      (reset! map/avoid-planets (map :id four-center-planets)))
+    ;; Num players wasn't calculated yet - this does nothing since it is always 0
+    ; (when (> *num-players* 2)
+    ;   (reset! map/avoid-planets (map :id four-center-planets)))
     (reset! center-planet/center-planets (map :id four-center-planets))
+    (reset! map/best-planet (get-best-planet 1))
     (doseq [[owner {:keys [pos distance]}] enemy-positions]
       (let [distance-to-pos (math/distance-between my-ship pos)
             num-turns-to-planet (Math/ceil (/ (- distance e/dock-radius) e/max-ship-speed))
@@ -856,22 +876,6 @@
 ;       (map/closest-dockable-planet)
 ;       (map/corner-planet))))
 
-(defn go-for-corner-planet
-  "Returns true or false if I should go for the corner planet."
-  [turn]
-  (and (< *num-ships* 4)
-       (<= @all-out-attack 0)
-       (or (>= turn 50)
-           (> *num-players* 2))))
-
-(defn get-best-planet
-  "Returns the best planet to take. Corner planet in four player games or a 2 player stalemate."
-  [turn]
-  (if (go-for-corner-planet turn)
-    (map/corner-big-planet)
-    (when (> *num-ships* 35)
-      (map/closest-planet-to-my-planets))))
-
 ; (defn get-best-planet
 ;   "Returns the best planet to take. Corner planet in four player games or a 2 player stalemate."
 ;   [turn]
@@ -921,7 +925,10 @@
         ; moving-ships (map #(get-in % [:ship :id]) runaway-moves swarm-moves defend-moves attack-moves)
         swarm-moves []
 
-        best-planet (get-best-planet turn)
+        best-planet (if (> turn 25)
+                      (get-best-planet turn)
+                      (deref map/best-planet))
+
         best-planet-move (if (go-for-corner-planet turn)
                            (get-best-planet-moves best-planet moving-ships)
                            [])
@@ -931,7 +938,6 @@
         more-planet-moves (get-planet-only-moves ships-in-order (assoc custom-map-info :moving-ships moving-ships))
         moving-ships (map #(get-in % [:ship :id]) (concat runaway-moves attack-moves defend-moves more-planet-moves swarm-moves best-planet-moves))
 
-        best-planet (get-best-planet turn)
         best-planet-move-2-players (if (and best-planet (not (go-for-corner-planet turn)))
                                      (get-best-planet-moves best-planet moving-ships)
                                      [])
