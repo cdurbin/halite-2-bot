@@ -793,7 +793,8 @@
   "Returns moves towards the best planet."
   [planet moving-ships]
   (when (and planet
-             (some #{(:id planet)} (keys *safe-planets*)))
+             (map/good-surrounding-planet-helper planet 30))
+             ; (some #{(:id planet)} (keys *safe-planets*)))
     (return-planet-move planet moving-ships)))
 
 (defn get-moves-and-moving-ships
