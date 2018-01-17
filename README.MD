@@ -138,3 +138,19 @@ map_height = 2 * base_size
   * [ ] Undock early game rush, maybe try to rush early less often
   * [ ] Try attack spots again? Track good attacks with the point and the enemy, move perpendicular to it
   * [ ]
+
+# 1/17
+  * [ ] If I can reach a ship before another one can spawn send up to 3 ships to get it
+      * Once I have a list of all my ships, their docked ship, distance
+        - Find the smallest of the distances for my ship and keep it, remove the others
+        - For any docked ship that has more than 3 attackers, remove anything beyond the 3rd
+  * [ ] Attack unprotected ships before I defend (see if this is better - might not want to do together with the first change)
+  * [ ] Choosing to move to a planet that already has ships docked
+    - Verify that I can get to the planet and back to the same distance away from 2nd closest planet before a new ship could dock there.
+  * [ ] Choosing new planets
+    * Time it takes to get one ship back in range of the closest enemy should be the tie breaker between two planets (in 2 player) note that it's not always obvious that being close to the enemy is beneficial see https://halite.io/play/?game_id=8241974&replay_class=1&replay_name=replay-20180117-190405%2B0000--2159712529-312-208-1516215809 turn 100.
+  * [ ] More complicated way of choosing which docking ships to target (and with how many units)
+    - Will need to weight the value of planets based on distance, number of undocked ships nearby, number of docking spots, position of planet relative to other 2 players not involved (nemesis)
+    - Use a tiered approach (high value, medium value, low value). Enemy fighters within 19.5 distance of my docked ships might be high value along with docked ships? Could potentially eliminate a lot of the defend logic? Probably not though because looking out 55 definitely has helped.
+  * [ ] Verify I am actually calculating the closest planet correctly (I don't ever seem to send ships until after I've fully populated the planet in front of it even when I have an unlimited number of ships)
+  * [ ] Never go after the docked ships for the diagonal player from me in four player

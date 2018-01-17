@@ -336,106 +336,198 @@
     early-unprotected-distance
     unprotected-distance))
 
+(defn- find-unprotected-ships
+  "Helper function."
+  [potential-ships]
+  (let [counter (atom 0)]
+    (into {}
+      (for [enemy-ship (vals *docked-enemies*)
+            :let [other-fighters (remove #(= (:id enemy-ship) (:id %)) potential-ships)
+            ;       no-help (nil? (first (filter #(and (= (:owner-id enemy-ship (:owner-id %)))
+            ;                                          (not= (:id enemy-ship) (:id %))
+            ;                                          (<= (math/distance-between % enemy-ship) 5))
+            ;                                    other-fighters)))]
+            ; :when no-help
+            ; :let [turns-to-new-ship (map/get-turns-to-new-ship enemy-ship)]
+                  turns-to-new-ship (map/get-turns-to-new-ship enemy-ship)
+                  in-range-ships (filter #(<= (math/distance-between % enemy-ship)
+                                              (* 7 turns-to-new-ship))
+                                         other-fighters)
+                  my-ships (filter #(= *player-id* (:owner-id %)) in-range-ships)
+                  my-ship-count (count my-ships)
+                  other-ship-count (- (count in-range-ships) my-ship-count)]
+            :when (> my-ship-count other-ship-count)
+            :let [attack-ships (for [ship my-ships
+                                     :let [distance (math/distance-between enemy-ship ship)]]
+                                 {:ship ship :distance distance})]]
+        (do
+          (let [id (swap! counter inc)
+                attack-group [id {:attack-ships attack-ships
+                                  :enemy-docked-ship enemy-ship
+                                  :num-defenders other-ship-count
+                                  :turns turns-to-new-ship
+                                  :id id}]]
+            (log "I found an unprotected ship. I will attack with" attack-group)
+            attack-group))))))
+
+(defn process-attack-groups
+  "Takes a list of attack groups to figure out how best to attack.
+  Here's the tricky part - we want to assign attack groups in a way that we have enough
+  ships to take out the docked ship, while not counting the same ship in multiple groups
+  If we always assign groups based on the closest distance we might end up in a place where
+  we assign attack groups to the closest places only to find we can no longer attack either
+  group because we removed the critical ship that put us over the top. :(
+  So the plan is choose attack groups with the least number of turns first (time critical)
+  Make sure we have at least one extra attacker in that group. Once we have enough
+  attackers remove those chosen ones (the closest ones) from every other attack group.
+  Go to the next attack group and do the same for each.
+  If an attack group no longer has the advantage remove that attack group.
+  Then in reverse order remove any ship that belongs to a higher priority attack group
+  If we have more than 3 more than the number of defenders, remove them as well
+  Information needed:
+  Attack group {:attack-ships [] :enemy-docked-ship :num-defenders :turns-to-new-ship}
+  The attack-ships need the following - :ship :distance (TBD maybe health though really
+  unlikely to be important)"
+  [attack-group-map]
+  (let [sorted-attack-groups (sort (utils/compare-by :turns utils/asc :num-defenders utils/asc)
+                                   (vals attack-group-map))
+        ;; TODO figure out a better way for mutation - maybe reduce
+        final-attack-group-map (atom attack-group-map)]
+    (log "CDD: Starting sorted-attack-groups" (pretty-log sorted-attack-groups))
+    (log "CDD: Starting attack-group-map" (pretty-log @final-attack-group-map))
+    ;; Go through each one and remove fighters from the other attack groups as they are locked
+    (doseq [attack-group sorted-attack-groups
+            :let [up-to-date-attack-group (get @final-attack-group-map (:id attack-group))
+                  {:keys [attack-ships enemy-docked-ship num-defenders]} up-to-date-attack-group
+                  attack-ships (map :ship (sort (utils/compare-by :distance utils/asc) attack-ships))
+                  locked-defenders (take (inc num-defenders) attack-ships)]
+            :when (> (count attack-ships) num-defenders)
+            locked-ship locked-defenders
+            final-group sorted-attack-groups
+            :when (not= (:id final-group) (:id attack-group))]
+      ;; Remove the locked defenders from every other group
+      (do
+        (log "CDD: I am trying to remove ship " locked-ship "from all other groups")
+        (log "I'm checking for ID" (:id locked-ship) "in this group of ships" (get-in @final-attack-group-map [(:id final-group) :attack-ships]))
+        (reset! final-attack-group-map (update-in @final-attack-group-map
+                                                  [(:id final-group) :attack-ships]
+                                                  (fn [old-value]
+                                                    (log "the old-value is" old-value)
+                                                    (log "ID of locked-ship" (:id locked-ship))
+                                                    (log "ID of other ships" (mapv #(:id (:ship %)) old-value))
+                                                    (remove #(= (:id locked-ship) (:id (:ship %)))
+                                                            old-value))))))
+    (log "CDD: Processed locked defenders:" (pretty-log @final-attack-group-map))
+    (for [attack-group (vals @final-attack-group-map)
+          :when (> (count (:attack-ships attack-group)) (:num-defenders attack-group))]
+      (do
+          ;(log "Now my final attack groups are" attack-group)
+          attack-group))))
+
+(defn create-moves-for-attack-groups
+  "This assumes the attack group has already been processed down. Creates the moves based on the
+  attack group map"
+  [attack-groups]
+  (log "CDD: creating moves for attack groups " attack-groups)
+  (for [{:keys [attack-ships enemy-docked-ship attack-groups]} attack-groups
+        my-ship attack-ships
+        :let [my-ship (:ship my-ship)
+              times-up? (> (- (System/currentTimeMillis) *start-ms*) 1625)]
+        :when (not times-up?)
+        :let [_ (log "CDD: I'm trying to create a move for my-ship" my-ship "to attack enemy" enemy-docked-ship)
+              move (navigation/navigate-to-attack-docked-ship
+                    my-ship enemy-docked-ship true)]
+                    ; ship enemy-ship (> (math/distance-between ship enemy-ship) 21.1)
+                    ; ship enemy-ship (> (math/distance-between ship enemy-ship) 12))]
+        :when move]
+    (do
+        (log "CDD: MOVE" move)
+        (map/change-ship-positions! move)
+        move)))
+
+(defn attack-unprotected-enemy-ships
+  "Returns moves to attack the unprotected enemy ships"
+  [moving-ships {:keys [start-ms]}]
+  ; (log "Planets" (pretty-log (vals *planets*)))
+  (let [potential-ships (filter #(and (= :undocked (-> % :docking :status))
+                                      (not (some (set [(:id %)]) moving-ships)))
+                                (vals *ships*))
+        attack-groups (find-unprotected-ships potential-ships)
+        processed-attack-groups (process-attack-groups attack-groups)]
+    (doall
+     (create-moves-for-attack-groups processed-attack-groups))))
+
 ; (defn- find-unprotected-ships
 ;   "Helper function."
 ;   [potential-ships assigned-ships]
 ;   (for [enemy-ship (vals *docked-enemies*)
-;         ; :let [no-help (empty? (filter #(and (= (:owner-id enemy-ship (:owner-id %)))
-;         ;                                     (<= (math/distance-between % enemy-ship) 7))
-;         ;                               potential-ships))]
-;         ; :let [no-help (navigation/unreachable? enemy-ship (filter #(= (:owner-id enemy-ship)
-;         ;                                                               (:owner-id %))
-;         ;                                                           potential-ships))]
-;         ; :when no-help
+;         :let [no-help (nil? (first (filter #(and (= (:owner-id enemy-ship (:owner-id %)))
+;                                                  (not= (:id enemy-ship) (:id %))
+;                                                  (<= (math/distance-between % enemy-ship) 5))
+;                                            potential-ships)))]
+;         :when no-help
 ;         :let [closest-ship (map/nearest-entity enemy-ship
 ;                                                (remove #(or (= (:id enemy-ship) (:id %))
-;                                                             (not= *player-id* (:id %))
+;                                                             ; (not= *player-id* (:id %))
 ;                                                             (some (set [%]) @assigned-ships))
 ;                                                        potential-ships))]
 ;         :when (and closest-ship
 ;                    (= *player-id* (:owner-id closest-ship))
 ;                    (not (some #{closest-ship} @assigned-ships)))
-;         :let [distance (math/distance-between enemy-ship closest-ship)]
-;         :when (< distance unprotected-distance)]
+;         :let [distance (math/distance-between enemy-ship closest-ship)
+;               turns (int (/ distance 7))
+;               turns-to-new-ship (map/get-turns-to-new-ship enemy-ship)
+;               _ (log "Turns" turns "new ship" turns-to-new-ship)]
+;         :when (<= turns turns-to-new-ship)]
 ;     (do
+;       (log "I found an unprotected ship! They will spawn a new ship in" turns-to-new-ship
+;            "I get there in " turns)
 ;       (swap! assigned-ships conj closest-ship)
 ;       {:ship closest-ship
 ;        :enemy-ship enemy-ship
 ;        :distance distance})))
 
-(defn- find-unprotected-ships
-  "Helper function."
-  [potential-ships assigned-ships]
-  (for [enemy-ship (vals *docked-enemies*)
-        :let [no-help (nil? (second (filter #(and (= (:owner-id enemy-ship (:owner-id %)))
-                                                  (<= (math/distance-between % enemy-ship) 5))
-                                            potential-ships)))]
-        ; :let [no-help (navigation/unreachable? enemy-ship (filter #(= (:owner-id enemy-ship)
-        ;                                                               (:owner-id %))
-        ;                                                           potential-ships))]
-        :when no-help
-        :let [closest-ship (map/nearest-entity enemy-ship
-                                               (remove #(or (= (:id enemy-ship) (:id %))
-                                                            ; (not= *player-id* (:id %))
-                                                            (some (set [%]) @assigned-ships))
-                                                       potential-ships))]
-        :when (and closest-ship
-                   (= *player-id* (:owner-id closest-ship))
-                   (not (some #{closest-ship} @assigned-ships)))
-        :let [distance (math/distance-between enemy-ship closest-ship)
-              turns (int (/ distance 7))
-              turns-to-new-ship (map/get-turns-to-new-ship enemy-ship)
-              _ (log "Turns" turns "new ship" turns-to-new-ship)]
-        :when (<= turns turns-to-new-ship)]
-    (do
-      (log "I found an unprotected ship! They will spawn a new ship in" turns-to-new-ship
-           "I get there in " turns)
-      (swap! assigned-ships conj closest-ship)
-      {:ship closest-ship
-       :enemy-ship enemy-ship
-       :distance distance})))
-
-(defn unprotected-enemy-ships
-  "Returns a map of unprotected enemy ships with my ship as the key and the enemy ship as the value.
-  TODO - this will only find a single dock point most of the time because the same ship of mine
-  is probably the closest to several spots. Remove my ship each time it is selected. Will require
-  several passes."
-  [moving-ships]
-  (let [distance unprotected-distance
-        potential-ships (filter #(and (= :undocked (-> % :docking :status))
-                                      (not (some (set [(:id %)]) moving-ships)))
-                                (vals *ships*))
-        assigned-ships (atom nil)
-        all-permutations (find-unprotected-ships potential-ships assigned-ships)
-        sorted-order (sort (utils/compare-by :distance utils/desc) all-permutations)]
-    ;; This makes sure that if the same ship is the closest to multiple it picks the closest one.
-    (into {}
-      (for [triple-map sorted-order]
-        [(:ship triple-map) (:enemy-ship triple-map)]))))
+; (defn unprotected-enemy-ships
+;   "Returns a map of unprotected enemy ships with my ship as the key and the enemy ship as the value.
+;   TODO - this will only find a single dock point most of the time because the same ship of mine
+;   is probably the closest to several spots. Remove my ship each time it is selected. Will require
+;   several passes."
+;   [moving-ships]
+;   (let [distance unprotected-distance
+;         potential-ships (filter #(and (= :undocked (-> % :docking :status))
+;                                       (not (some (set [(:id %)]) moving-ships)))
+;                                 (vals *ships*))
+;         assigned-ships (atom nil)
+;         all-permutations (find-unprotected-ships potential-ships assigned-ships)
+;         sorted-order (sort (utils/compare-by :distance utils/desc) all-permutations)]
+;     ;; This makes sure that if the same ship is the closest to multiple it picks the closest one.
+;     (into {}
+;       (for [triple-map sorted-order]
+;         [(:ship triple-map) (:enemy-ship triple-map)]))))
 
 ; (defn attack-unprotected-enemy-ships
 ;   "Returns moves to attack the unprotected enemy ships"
 ;   [moving-ships {:keys [start-ms]}]
 ;   [])
 
-(defn attack-unprotected-enemy-ships
-  "Returns moves to attack the unprotected enemy ships"
-  [moving-ships {:keys [start-ms]}]
-  (log "Planets" (pretty-log (vals *planets*)))
-  (if (< *num-ships* 200)
-    (let [ship-attacks (unprotected-enemy-ships moving-ships)]
-      ; (log "unprotected enemy ships are:" ship-attacks)
-      (doall
-       (for [[ship enemy-ship] ship-attacks
-             :let [times-up? (> (- (System/currentTimeMillis) *start-ms*) 1625)]
-             :when (not times-up?)
-             :let [move (navigation/navigate-to-attack-docked-ship
-                         ship enemy-ship true)]
-                         ; ship enemy-ship (> (math/distance-between ship enemy-ship) 21.1)
-                         ; ship enemy-ship (> (math/distance-between ship enemy-ship) 12))]
-             :when move]
-         (do (map/change-ship-positions! move)
-             move))))))
+; (defn attack-unprotected-enemy-ships
+;   "Returns moves to attack the unprotected enemy ships"
+;   [moving-ships {:keys [start-ms]}]
+;   (log "Planets" (pretty-log (vals *planets*)))
+;   (if (< *num-ships* 200)
+;     (let [ship-attacks (unprotected-enemy-ships moving-ships)]
+;       ; (log "unprotected enemy ships are:" ship-attacks)
+;       (doall
+;        (for [[ship enemy-ship] ship-attacks
+;              :let [times-up? (> (- (System/currentTimeMillis) *start-ms*) 1625)]
+;              :when (not times-up?)
+;              :let [move (navigation/navigate-to-attack-docked-ship
+;                          ship enemy-ship true)]
+;                          ; ship enemy-ship (> (math/distance-between ship enemy-ship) 21.1)
+;                          ; ship enemy-ship (> (math/distance-between ship enemy-ship) 12))]
+;              :when move]
+;          (do (map/change-ship-positions! move)
+;              move))))))
 
 (defn create-undock-moves
   "Create undock moves for the passed in ships."
