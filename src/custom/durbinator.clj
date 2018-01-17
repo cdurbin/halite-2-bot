@@ -813,18 +813,19 @@
   (let [retreat-range (get-retreat-range *num-ships*)
         ; enemy-ships (filter #(not= *player-id* (:owner-id %)) (vals *ships*))
         swarms (swarm/get-swarms ships)
-        moves (for [single-swarm swarms
-                    :let [times-up? (> (- (System/currentTimeMillis) *start-ms*) 1625)]
-                    :when (not times-up?)
-                    :let [enemy-ships (concat (vals *docked-enemies*) (vals *pesky-fighters*))
-                          swarm-moves (when (seq enemy-ships)
-                                        (swarm/get-swarm-move single-swarm enemy-ships retreat-range
-                                                              *player-id*))]
-                    :when (seq swarm-moves)]
-                (do (process-swarm-moves swarm-moves)
-                    swarm-moves))]
-    ; (log "The swarm-moves " (pr-str moves))
-    (flatten moves)))
+        moves (doall
+               (for [single-swarm swarms
+                     :let [times-up? (> (- (System/currentTimeMillis) *start-ms*) 1625)]
+                     :when (not times-up?)
+                     :let [enemy-ships (concat (vals *docked-enemies*) (vals *pesky-fighters*))
+                           swarm-moves (when (seq enemy-ships)
+                                         (swarm/get-swarm-move single-swarm enemy-ships retreat-range
+                                                               *player-id*))]
+                     :when (seq swarm-moves)]
+                 (do (process-swarm-moves swarm-moves)
+                     swarm-moves)))]
+     ; (log "The swarm-moves " (pr-str moves))
+     (flatten moves)))
 
 (defn compute-planet-only-move*
   "Picks the move for the ship based on proximity to planets and fighters near planets."

@@ -35,12 +35,23 @@
 
 (def potential-attack-distance
   (+ (* 2 e/max-ship-speed) 6.5))
+
+; (def potential-attack-distance
+;   (+ (* 2 e/max-ship-speed) 9.5))
   ; (+ e/max-ship-speed 2.2 0.6))
 
 (defn figure-out-potential-attacks
   "TODO: Note planets I should look further out, but ships this is fine."
   [ship all-ships]
   (filter #(and (not= *player-id* (:owner-id %))
+                (= :undocked (-> % :docking :status))
+                (<= (math/distance-between ship %) potential-attack-distance))
+          all-ships))
+
+(defn figure-out-potential-friendly
+  "TODO: Note planets I should look further out, but ships this is fine."
+  [ship all-ships]
+  (filter #(and (= *player-id* (:owner-id %))
                 (= :undocked (-> % :docking :status))
                 (<= (math/distance-between ship %) potential-attack-distance))
           all-ships))
@@ -361,6 +372,7 @@
                                   (and (integer? k)
                                        (= *player-id* (:owner-id v))))
                                 potential-ships))
+         my-ships (figure-out-potential-friendly ship my-ships)
          other-ships (figure-out-potential-attacks ship (vals potential-ships))
          ; ship-attack-obstacles (figure-out-potential-attacks ship
          ;                                                     (filter #(not= *player-id* (:owner-id %))
@@ -484,6 +496,7 @@
                                   (and (integer? k)
                                        (= *player-id* (:owner-id v))))
                                 compare-ships))
+         my-ships (figure-out-potential-friendly ship my-ships)
          other-ships (figure-out-potential-attacks ship (vals compare-ships))
          spawn-points (filter #(< (math/distance-between ship %) safe-radius) *spawn-points*)
 
@@ -493,14 +506,18 @@
          ;                       obstacles))
          thrust (int (min (- distance buffer) max-thrust))
          first-spot (custom-math/get-point ship thrust first-angle)
-         good-spot (good-spot? first-spot my-ships other-ships spawn-points (= subtype :defend))
+         good-spot (if (> (count my-ships) 30)
+                     true
+                     (good-spot? first-spot my-ships other-ships spawn-points (= subtype :defend)))
          guaranteed-safe (if good-spot
                            true
                            (not (not-guaranteed-safe? ship other-ships)))
          thrust (if (not good-spot)
                   7
                   thrust)
-         avoid-attack guaranteed-safe
+         avoid-attack (if (> (count my-ships) 35)
+                        false
+                        guaranteed-safe)
          first-angle (if (and (not good-spot) (not guaranteed-safe))
                        (or (get-angle-to-run ship other-ships) first-angle)
                        first-angle)
@@ -545,7 +562,6 @@
    (if (> *num-ships* 50)
      (navigate-to-fast ship goal opts)
      (navigate-to-precise ship goal opts))))
-
 
 ; (defn navigate-swarm-to
 ;   "Returns a thrust move that moves the ship to the provided goal. The
