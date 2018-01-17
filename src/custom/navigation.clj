@@ -338,7 +338,7 @@
   returns nil if it cannot find a suitable path."
   ([ship goal]
    (navigate-to-precise ship goal default-navigation-opts))
-  ([ship goal {:keys [max-corrections avoid-obstacles
+  ([ship goal {:keys [max-corrections avoid-obstacles failed-once
                       angular-step max-thrust buffer subtype avoid-attack avoid-corner]
                :as opts}]
    ; (log "Ship" ship)
@@ -391,15 +391,22 @@
          thrust (if (not good-spot)
                   7
                   thrust)
-         avoid-attack guaranteed-safe
-         first-angle (if (and (not good-spot) (not guaranteed-safe))
+         avoid-attack (if failed-once
+                        false
+                        guaranteed-safe)
+         first-angle (if (or failed-once
+                             (and (not good-spot) (not guaranteed-safe)))
                        (or (get-angle-to-run ship other-ships) first-angle)
                        first-angle)
          _ (log "Avoid attack for:" (:id ship) "is" avoid-attack "good spot" good-spot "guaranteed-safe" guaranteed-safe "first spot" first-spot "thrust" thrust)
-         navigation-iterations (if (< thrust 7)
-                                 (filter #(<= (:max-thrust %) thrust)
+         ;; If failed once try full speed in every direction
+         navigation-iterations (if failed-once
+                                 (filter #(= (:max-thrust %) 7)
                                          all-navigation-iterations)
-                                 all-navigation-iterations)]
+                                 (if (< thrust 7)
+                                   (filter #(<= (:max-thrust %) thrust)
+                                           all-navigation-iterations)
+                                   all-navigation-iterations))]
 
          ; avoid-attack (if (and avoid-attack (not (not-guaranteed-safe? ship other-ships)))
          ;                avoid-attack
@@ -561,7 +568,10 @@
    ; (if (> *num-ships* 1)
    (if (> *num-ships* 50)
      (navigate-to-fast ship goal opts)
-     (navigate-to-precise ship goal opts))))
+     (let [move (navigate-to-precise ship goal opts)]
+       (if (= "Precise - ran out of moves." (:reason move))
+         (navigate-to-precise ship goal (assoc opts :failed-once true))
+         move)))))
 
 ; (defn navigate-swarm-to
 ;   "Returns a thrust move that moves the ship to the provided goal. The
