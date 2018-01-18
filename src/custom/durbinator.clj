@@ -336,6 +336,81 @@
     early-unprotected-distance
     unprotected-distance))
 
+(defn- find-unprotected-ships-old
+  "Helper function."
+  [potential-ships assigned-ships]
+  (for [enemy-ship (vals *docked-enemies*)
+        :let [no-help (nil? (second (filter #(and (= (:owner-id enemy-ship (:owner-id %)))
+                                                  (<= (math/distance-between % enemy-ship) 5))
+                                            potential-ships)))]
+        ; :let [no-help (navigation/unreachable? enemy-ship (filter #(= (:owner-id enemy-ship)
+        ;                                                               (:owner-id %))
+        ;                                                           potential-ships))]
+        :when no-help
+        :let [closest-ship (map/nearest-entity enemy-ship
+                                               (remove #(or (= (:id enemy-ship) (:id %))
+                                                            ; (not= *player-id* (:id %))
+                                                            (some (set [%]) @assigned-ships))
+                                                       potential-ships))]
+        :when (and closest-ship
+                   (= *player-id* (:owner-id closest-ship))
+                   (not (some #{closest-ship} @assigned-ships)))
+        :let [distance (math/distance-between enemy-ship closest-ship)
+              turns (int (/ distance 7))
+              turns-to-new-ship (map/get-turns-to-new-ship enemy-ship)
+              _ (log "Turns" turns "new ship" turns-to-new-ship)]
+        :when (<= turns turns-to-new-ship)]
+    (do
+      (log "I found an unprotected ship! They will spawn a new ship in" turns-to-new-ship
+           "I get there in " turns)
+      (swap! assigned-ships conj closest-ship)
+      {:ship closest-ship
+       :enemy-ship enemy-ship
+       :distance distance})))
+
+(defn unprotected-enemy-ships-old
+  "Returns a map of unprotected enemy ships with my ship as the key and the enemy ship as the value.
+  TODO - this will only find a single dock point most of the time because the same ship of mine
+  is probably the closest to several spots. Remove my ship each time it is selected. Will require
+  several passes."
+  [moving-ships]
+  (let [distance unprotected-distance
+        potential-ships (filter #(and (= :undocked (-> % :docking :status))
+                                      (not (some (set [(:id %)]) moving-ships)))
+                                (vals *ships*))
+        assigned-ships (atom nil)
+        all-permutations (find-unprotected-ships-old potential-ships assigned-ships)
+        sorted-order (sort (utils/compare-by :distance utils/desc) all-permutations)]
+    ;; This makes sure that if the same ship is the closest to multiple it picks the closest one.
+    (into {}
+      (for [triple-map sorted-order]
+        [(:ship triple-map) (:enemy-ship triple-map)]))))
+
+; (defn attack-unprotected-enemy-ships
+;   "Returns moves to attack the unprotected enemy ships"
+;   [moving-ships {:keys [start-ms]}]
+;   [])
+
+(defn attack-unprotected-enemy-ships-old
+  "Returns moves to attack the unprotected enemy ships"
+  [moving-ships {:keys [start-ms]}]
+  (log "Planets" (pretty-log (vals *planets*)))
+  (if (< *num-ships* 200)
+    (let [ship-attacks (unprotected-enemy-ships-old moving-ships)]
+      ; (log "unprotected enemy ships are:" ship-attacks)
+      (doall
+       (for [[ship enemy-ship] ship-attacks
+             :let [times-up? (> (- (System/currentTimeMillis) *start-ms*) 1625)]
+             :when (not times-up?)
+             :let [move (navigation/navigate-to-attack-docked-ship
+                         ship enemy-ship true)]
+                         ; ship enemy-ship (> (math/distance-between ship enemy-ship) 21.1)
+                         ; ship enemy-ship (> (math/distance-between ship enemy-ship) 12))]
+             :when move]
+         (do (map/change-ship-positions! move)
+             move))))))
+
+
 (defn- find-unprotected-ships
   "Helper function."
   [potential-ships]
@@ -407,6 +482,21 @@
             :when (not= (:id final-group) (:id attack-group))]
       ;; Remove the locked defenders from every other group
       (do
+        (reset! final-attack-group-map (update-in @final-attack-group-map
+                                                  [(:id final-group) :attack-ships]
+                                                  (fn [old-value]
+                                                    (remove #(= (:id locked-ship) (:id (:ship %)))
+                                                            old-value))))))
+
+    (doseq [attack-group sorted-attack-groups
+            :let [up-to-date-attack-group (get @final-attack-group-map (:id attack-group))
+                  {:keys [attack-ships enemy-docked-ship num-defenders]} up-to-date-attack-group
+                  attack-ships (map :ship (sort (utils/compare-by :distance utils/asc) attack-ships))]
+            locked-ship attack-ships
+            final-group sorted-attack-groups
+            :when (not= (:id final-group) (:id attack-group))]
+      ;; Remove the locked defenders from every other group
+      (do
         (log "CDD: I am trying to remove ship " locked-ship "from all other groups")
         (log "I'm checking for ID" (:id locked-ship) "in this group of ships" (get-in @final-attack-group-map [(:id final-group) :attack-ships]))
         (reset! final-attack-group-map (update-in @final-attack-group-map
@@ -417,12 +507,15 @@
                                                     (log "ID of other ships" (mapv #(:id (:ship %)) old-value))
                                                     (remove #(= (:id locked-ship) (:id (:ship %)))
                                                             old-value))))))
+
     (log "CDD: Processed locked defenders:" (pretty-log @final-attack-group-map))
     (for [attack-group (vals @final-attack-group-map)
           :when (> (count (:attack-ships attack-group)) (:num-defenders attack-group))]
       (do
           ;(log "Now my final attack groups are" attack-group)
-          attack-group))))
+          ;; Attack with no more than 5 extra than they have defenders
+          (update-in attack-group [:attack-ships] (fn [old-attacks]
+                                                    (take (+ 5 (:num-defenders attack-group)) old-attacks)))))))
 
 (defn create-moves-for-attack-groups
   "This assumes the attack group has already been processed down. Creates the moves based on the
@@ -1054,6 +1147,11 @@
 
           ; skip-defense? true
           best-planet-moves []
+
+          ; attack-moves []
+          attack-moves (attack-unprotected-enemy-ships moving-ships custom-map-info)
+          moving-ships (map #(get-in % [:ship :id]) (concat runaway-moves attack-moves best-planet-moves))
+
           pct-ships-to-skip-defense (if (> *num-players* 2)
                                       0.65
                                       0.6)
@@ -1062,10 +1160,14 @@
           defend-moves (if skip-defense?
                          []
                          (defend-vulnerable-ships moving-ships custom-map-info))
-          moving-ships (map #(get-in % [:ship :id]) (concat defend-moves runaway-moves best-planet-moves))
+          ; moving-ships (map #(get-in % [:ship :id]) (concat defend-moves runaway-moves best-planet-moves))
+          moving-ships (map #(get-in % [:ship :id]) (concat defend-moves runaway-moves attack-moves best-planet-moves))
 
-          attack-moves (attack-unprotected-enemy-ships moving-ships custom-map-info)
-          moving-ships (map #(get-in % [:ship :id]) (concat runaway-moves attack-moves defend-moves best-planet-moves))
+          attack-moves-old (attack-unprotected-enemy-ships-old moving-ships custom-map-info)
+          moving-ships (map #(get-in % [:ship :id]) (concat attack-moves-old runaway-moves attack-moves defend-moves best-planet-moves))
+
+          ; attack-moves (attack-unprotected-enemy-ships moving-ships custom-map-info)
+          ; moving-ships (map #(get-in % [:ship :id]) (concat runaway-moves attack-moves defend-moves best-planet-moves))
           ; potential-ships (filter #(and (= :undocked (-> % :docking :status))
           ;                               (not (some (set [(:id %)]) moving-ships)))
           ;                         ships-in-order)
@@ -1084,17 +1186,17 @@
                              (get-best-planet-moves best-planet moving-ships)
                              [])
           best-planet-moves (if (seq best-planet-move) (flatten [best-planet-move]) [])
-          moving-ships (map #(get-in % [:ship :id]) (concat runaway-moves attack-moves defend-moves best-planet-moves swarm-moves))
+          moving-ships (map #(get-in % [:ship :id]) (concat attack-moves-old runaway-moves attack-moves defend-moves best-planet-moves swarm-moves))
 
           more-planet-moves (get-planet-only-moves ships-in-order (assoc custom-map-info :moving-ships moving-ships))
-          moving-ships (map #(get-in % [:ship :id]) (concat runaway-moves attack-moves defend-moves more-planet-moves swarm-moves best-planet-moves))
+          moving-ships (map #(get-in % [:ship :id]) (concat attack-moves-old runaway-moves attack-moves defend-moves more-planet-moves swarm-moves best-planet-moves))
 
           best-planet-move-2-players (if (and best-planet (not (go-for-corner-planet turn)))
                                        (get-best-planet-moves best-planet moving-ships)
                                        [])
           best-planet-moves-2-players (if (seq best-planet-move-2-players) (flatten [best-planet-move-2-players]) [])
 
-          moving-ships (map #(get-in % [:ship :id]) (concat runaway-moves attack-moves defend-moves more-planet-moves best-planet-moves swarm-moves best-planet-moves-2-players))
+          moving-ships (map #(get-in % [:ship :id]) (concat attack-moves-old runaway-moves attack-moves defend-moves more-planet-moves best-planet-moves swarm-moves best-planet-moves-2-players))
           ; potential-ships (filter #(and (= :undocked (-> % :docking :status))
           ;                               (not (some (set [(:id %)]) moving-ships)))
           ;                         ships-in-order)
@@ -1117,11 +1219,11 @@
                         (get-swarm-moves custom-map-info potential-ships)
                         (get-swarm-moves custom-map-info potential-ships))
                         ; [])
-          moving-ships (map #(get-in % [:ship :id]) (concat runaway-moves swarm-moves defend-moves attack-moves best-planet-moves more-planet-moves best-planet-moves-2-players))
+          moving-ships (map #(get-in % [:ship :id]) (concat attack-moves-old runaway-moves swarm-moves defend-moves attack-moves best-planet-moves more-planet-moves best-planet-moves-2-players))
           ; moving-ships (map #(get-in % [:ship :id]) (concat main-moves runaway-moves swarm-moves defend-moves attack-moves best-planet-moves more-planet-moves))
           fallback-moves (get-main-moves ships-in-order (assoc custom-map-info :moving-ships moving-ships))
           ; all-moves (concat runaway-moves defend-moves attack-moves main-moves fallback-moves best-planet-moves swarm-moves more-planet-moves)
-          all-moves (concat runaway-moves defend-moves attack-moves fallback-moves best-planet-moves swarm-moves more-planet-moves best-planet-moves-2-players)
+          all-moves (concat attack-moves-old runaway-moves defend-moves attack-moves fallback-moves best-planet-moves swarm-moves more-planet-moves best-planet-moves-2-players)
           friendly-moves (recalculate-friendly-moves (filter #(= :friendly (:subtype %)) all-moves) custom-map-info)
 
           ;; DEBUG
