@@ -114,12 +114,12 @@
 (defn find-docked-ships-without-an-army
   "Returns docked ships that don't have a bunch of fighters nearby."
   [ships]
-  (let [army-number 7
+  (let [army-number (max 4 (/ *num-ships* 7))
         army-distance 15
-        owner-id (when (= 3 (count (deref map/players-in-order)))
-                   (nth (deref map/players-in-order) 2))
-        docked-ships (filter #(and (not= :undocked (-> % :docking :status))
-                                   (not= owner-id (:owner-id %)))
+        ; owner-id (when (= 3 (count (deref map/players-in-order)))
+        ;            (nth (deref map/players-in-order) 2))
+        docked-ships (filter #(and (not= :undocked (-> % :docking :status)))
+                                   ; (not= owner-id (:owner-id %)))
                              ships)
         fighter-ships (filter #(= :undocked (-> % :docking :status)) ships)]
     (for [ship docked-ships

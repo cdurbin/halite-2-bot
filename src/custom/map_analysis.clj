@@ -744,8 +744,8 @@
                    (if (= (:owner-id enemy-ship) (first @players-in-order))
                       (>= attack-count 30)
                       (if (= (:owner-id enemy-ship) (second @players-in-order))
-                        (>= attack-count 5)
-                        true)))]
+                        (>= attack-count 30)
+                        (>= attack-count 5))))]
 
      (if fighter?
      ; (when fighter?
