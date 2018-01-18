@@ -440,6 +440,33 @@
           :when (<= turns 1)]
       (math/closest-point center-point planet 2))))
 
+(def players-in-order
+  (atom []))
+
+(defn avg
+  "Returns the average of a collection of numbers"
+  [coll]
+  (/ (reduce + coll) (count coll)))
+
+(defn closest-players-by-base
+  "Returns the player-ids in order of closest to furthest from me."
+  []
+  (let [planets-by-owner (group-by :owner-id (remove #(nil? (:owner-id %))
+                                                     (vals *planets*)))
+        owner-bases (into {}
+                          (for [[owner-id planets] planets-by-owner
+                                :let [xs (map math/get-x planets)
+                                      ys (map math/get-y planets)]]
+                            [owner-id (math/->Position (avg xs) (avg ys))]))
+        my-base (get owner-bases *player-id*)
+        owner-distances (when my-base
+                          (for [[owner-id base] (dissoc owner-bases *player-id*)]
+                            {:owner-id owner-id
+                             :distance (math/distance-between base my-base)}))
+        sorted-owner-distances (sort (utils/compare-by :distance utils/asc) owner-distances)]
+    (log "The closest players to me are: " sorted-owner-distances)
+    (map :owner-id owner-distances)))
+
 (defn get-custom-map-info
   "Returns additional map info that is useful to calculate at the beginning of each turn."
   [turn]
@@ -461,6 +488,7 @@
     (log "Avoiding planets:" @avoid-planets)
     (reset! nemesis (find-nemesis (vals *planets*)))
     (reset! attack-spots nil)
+    (reset! players-in-order (closest-players-by-base))
     {:start-ms start-ms}))
 
 (defn get-planets
@@ -713,7 +741,11 @@
          attack-count (+ num-fighters (get enemy-ship :attack-count 0))
          remove? (if fighter?
                    (>= attack-count 5)
-                   (>= attack-count 30))]
+                   (if (= (:owner-id enemy-ship) (first @players-in-order))
+                      (>= attack-count 30)
+                      (if (= (:owner-id enemy-ship) (second @players-in-order))
+                        (>= attack-count 5)
+                        true)))]
 
      (if fighter?
      ; (when fighter?
