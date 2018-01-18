@@ -1148,9 +1148,9 @@
           ; skip-defense? true
           best-planet-moves []
 
-          ; attack-moves []
-          attack-moves (attack-unprotected-enemy-ships moving-ships custom-map-info)
-          moving-ships (map #(get-in % [:ship :id]) (concat runaway-moves attack-moves best-planet-moves))
+          attack-moves []
+          ; attack-moves (attack-unprotected-enemy-ships moving-ships custom-map-info)
+          ; moving-ships (map #(get-in % [:ship :id]) (concat runaway-moves attack-moves best-planet-moves))
 
           pct-ships-to-skip-defense (if (> *num-players* 2)
                                       0.65
@@ -1163,11 +1163,12 @@
           ; moving-ships (map #(get-in % [:ship :id]) (concat defend-moves runaway-moves best-planet-moves))
           moving-ships (map #(get-in % [:ship :id]) (concat defend-moves runaway-moves attack-moves best-planet-moves))
 
+          attack-moves (attack-unprotected-enemy-ships moving-ships custom-map-info)
+          moving-ships (map #(get-in % [:ship :id]) (concat runaway-moves attack-moves defend-moves best-planet-moves))
+
           attack-moves-old (attack-unprotected-enemy-ships-old moving-ships custom-map-info)
           moving-ships (map #(get-in % [:ship :id]) (concat attack-moves-old runaway-moves attack-moves defend-moves best-planet-moves))
 
-          ; attack-moves (attack-unprotected-enemy-ships moving-ships custom-map-info)
-          ; moving-ships (map #(get-in % [:ship :id]) (concat runaway-moves attack-moves defend-moves best-planet-moves))
           ; potential-ships (filter #(and (= :undocked (-> % :docking :status))
           ;                               (not (some (set [(:id %)]) moving-ships)))
           ;                         ships-in-order)
