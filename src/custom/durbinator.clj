@@ -116,11 +116,7 @@
   [ships]
   (let [army-number (max 4 (/ *num-ships* 7))
         army-distance 15
-        ; owner-id (when (= 3 (count (deref map/players-in-order)))
-        ;            (nth (deref map/players-in-order) 2))
-        docked-ships (filter #(and (not= :undocked (-> % :docking :status)))
-                                   ; (not= owner-id (:owner-id %)))
-                             ships)
+        docked-ships (map/docked-enemies-to-care-about)
         fighter-ships (filter #(= :undocked (-> % :docking :status)) ships)]
     (for [ship docked-ships
           :let [nearby-fighters (filter #(< (math/distance-between ship %) army-distance)
@@ -413,7 +409,6 @@
              :when move]
          (do (map/change-ship-positions! move)
              move))))))
-
 
 (defn- find-unprotected-ships
   "Helper function."

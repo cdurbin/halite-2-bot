@@ -465,7 +465,7 @@
                              :distance (math/distance-between base my-base)}))
         sorted-owner-distances (sort (utils/compare-by :distance utils/asc) owner-distances)]
     (log "The closest players to me are: " sorted-owner-distances)
-    (map :owner-id owner-distances)))
+    (map :owner-id sorted-owner-distances)))
 
 (defn get-custom-map-info
   "Returns additional map info that is useful to calculate at the beginning of each turn."
@@ -755,6 +755,30 @@
        (if remove?
          (set! *docked-enemies* (dissoc *docked-enemies* (:id enemy-ship)))
          (set! *docked-enemies* (assoc-in *docked-enemies* [(:id enemy-ship) :attack-count] attack-count)))))))
+
+(defn player-to-avoid
+  "Returns the player to avoid (or nil if there is none)"
+  []
+  (when (= 3 (count @players-in-order))
+    (nth @players-in-order 2)))
+
+; (defn docked-enemies-to-care-about
+;   "Returns the docked enemies I should try to go after."
+;   []
+;   (if-let [player-id (player-to-avoid)]
+;     (do
+;      (log "Players order was" @players-in-order "and the player I'm going to ignore is" player-to-avoid)
+;      (remove #(= player-id (:owner-id %)) (vals *docked-enemies*)))
+;     (vals *docked-enemies*)))
+
+(defn docked-enemies-to-care-about
+  "Returns the docked enemies I should try to go after."
+  []
+  (if-let [player-id (first @players-in-order)]
+    (do
+     (log "Players order was" @players-in-order "and the player I'm going to attack is" player-to-avoid)
+     (filter #(= player-id (:owner-id %)) (vals *docked-enemies*)))
+    (vals *docked-enemies*)))
 
 (def close-fighter-distance 55)
 
