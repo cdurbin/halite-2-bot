@@ -1,6 +1,10 @@
 (ns custom.game-map)
 
 (def ^:dynamic *pesky-fighters*
+  "A list of enemy fighters."
+  nil)
+
+(def ^:dynamic *pesky-fighters-2*
   "A list of ships to battle against because they are too close to my planet."
   nil)
 

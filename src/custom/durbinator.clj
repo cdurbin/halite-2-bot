@@ -2,7 +2,7 @@
   (:require
    [clojure.stacktrace :as stack]
    [custom.game-map :refer [*safe-planets* *docked-enemies* *pesky-fighters* *num-ships*
-                            *num-players* *start-ms*]]
+                            *num-players* *start-ms* *pesky-fighters-2*]]
    [custom.map-analysis :as map]
    [custom.math :as custom-math :refer [infinity]]
    [custom.navigation :as navigation]
@@ -120,7 +120,8 @@
         ;               (filter #(= nemesis (:owner-id %)) enemy-ships)
         ;               enemy-ships)
         nearest-docked-enemy-ship (map/nearest-entity
-                                   ship (vals (deref map/top-player-docked-ships)))
+                                   ship (concat (vals (deref map/top-player-docked-ships))
+                                                (vals *pesky-fighters-2*)))
         enemy-ship (map/nearest-enemy-not-decoy ship enemy-ships)]
     (when enemy-ship
       (if (> *num-ships* 3)
@@ -183,7 +184,8 @@
         ;               (filter #(= nemesis (:owner-id %)) enemy-ships)
         ;               enemy-ships)
         nearest-docked-enemy-ship (map/nearest-entity
-                                   ship (vals (deref map/top-player-docked-ships)))
+                                   ship (concat (vals (deref map/top-player-docked-ships))
+                                                (vals *pesky-fighters-2*)))
         enemy-ship (map/nearest-enemy-not-decoy ship enemy-ships)]
     (when enemy-ship
       (if (> *num-ships* 0)
