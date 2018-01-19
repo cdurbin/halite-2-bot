@@ -10,5 +10,5 @@
 ./halite -d "240 160" "java -jar target/MyBot.jar log-stuff" "java -jar jars/V144.jar"
 #./halite -s 736584344 -d "240 160" "java -jar target/MyBot.jar log-stuff" "java -jar jars/V144.jar"
 
-## no change
+## 156 no change
 mv *.hlt hlts/
