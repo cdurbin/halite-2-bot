@@ -471,10 +471,10 @@
 (defn docked-enemies-to-care-about
   "Returns the docked enemies I should try to go after."
   []
-  (if-let [player-id (first @players-in-order)]
-    (do
-     (log "Players order was" @players-in-order "and the player I'm going to attack is" player-id)
-     (filter #(= player-id (:owner-id %)) (vals *docked-enemies*)))
+  (if (= 3 (count @players-in-order))
+    (let [player-id (nth @players-in-order 2)]
+      (log "Players order was" @players-in-order "and the player I'm going to attack is" player-id)
+      (remove #(= player-id (:owner-id %)) (vals *docked-enemies*)))
     (vals *docked-enemies*)))
 
 (def top-player-docked-ships
@@ -483,7 +483,7 @@
 (defn find-docked-ships-without-an-army
   "Returns docked ships that don't have a bunch of fighters nearby."
   [fighter-ships]
-  (let [army-number (max 4 (/ *num-ships* 7))
+  (let [army-number (max 4 (/ *num-ships* 10))
         army-distance 15
         docked-ships (docked-enemies-to-care-about)]
     (for [ship docked-ships
@@ -502,10 +502,10 @@
          remove? (if fighter?
                    (>= attack-count 5)
                    (if (= (:owner-id enemy-ship) (first @players-in-order))
-                      (>= attack-count 30)
+                      (>= attack-count (max 10 (/ *num-ships* 10)))
                       (if (= (:owner-id enemy-ship) (second @players-in-order))
-                        (>= attack-count 30)
-                        (>= attack-count 5))))]
+                        (>= attack-count (max 10 (/ *num-ships* 10)))
+                        (>= attack-count 3))))]
 
      (if fighter?
      ; (when fighter?
