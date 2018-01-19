@@ -974,13 +974,13 @@
   [moves-fn existing-moves moving-ships]
   nil)
 
-(defn- process-swarm-moves
-  "Processes swarm moves."
-  [moves]
-  (for [move moves]
-    (do
-     (map/change-ship-positions! move)
-     move)))
+; (defn- process-swarm-moves
+;   "Processes swarm moves."
+;   [moves]
+;   (for [move moves]
+;     (do
+;      (map/change-ship-positions! move)
+;      move)))
 
 (defn get-swarm-moves
   "Returns the swarm moves."
@@ -997,9 +997,9 @@
                                          (swarm/get-swarm-move single-swarm enemy-ships retreat-range
                                                                *player-id*))]
                      :when (seq swarm-moves)]
-                 (do (process-swarm-moves swarm-moves)
-                     swarm-moves)))]
-     ; (log "The swarm-moves " (pr-str moves))
+                 ; (do (process-swarm-moves swarm-moves)
+                 swarm-moves))]
+     (log "The swarm-moves " (pr-str moves))
      (flatten moves)))
 
 (defn compute-planet-only-move*

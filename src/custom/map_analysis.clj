@@ -517,7 +517,8 @@
            (reset! top-player-docked-ships (dissoc @top-player-docked-ships (:id enemy-ship)))
            (set! *docked-enemies* (dissoc *docked-enemies* (:id enemy-ship))))
          (do
-           (reset! top-player-docked-ships (assoc-in @top-player-docked-ships [(:id enemy-ship) :attack-count] attack-count))
+           (when (get @top-player-docked-ships (:id enemy-ship))
+             (reset! top-player-docked-ships (assoc-in @top-player-docked-ships [(:id enemy-ship) :attack-count] attack-count)))
            (set! *docked-enemies* (assoc-in *docked-enemies* [(:id enemy-ship) :attack-count] attack-count))))))))
 
 (defn get-custom-map-info
