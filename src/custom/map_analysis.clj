@@ -451,7 +451,8 @@
 (defn closest-players-by-base
   "Returns the player-ids in order of closest to furthest from me."
   []
-  (let [planets-by-owner (group-by :owner-id (remove #(nil? (:owner-id %))
+  (let [planets-by-owner (group-by :owner-id (remove #(or (nil? (:owner-id %))
+                                                          (center-planet/center-planet? %))
                                                      (vals *planets*)))
         owner-bases (into {}
                           (for [[owner-id planets] planets-by-owner
@@ -466,6 +467,58 @@
         sorted-owner-distances (sort (utils/compare-by :distance utils/asc) owner-distances)]
     (log "The closest players to me are: " sorted-owner-distances)
     (map :owner-id sorted-owner-distances)))
+
+(defn docked-enemies-to-care-about
+  "Returns the docked enemies I should try to go after."
+  []
+  (if-let [player-id (first @players-in-order)]
+    (do
+     (log "Players order was" @players-in-order "and the player I'm going to attack is" player-id)
+     (filter #(= player-id (:owner-id %)) (vals *docked-enemies*)))
+    (vals *docked-enemies*)))
+
+(def top-player-docked-ships
+  (atom nil))
+
+(defn find-docked-ships-without-an-army
+  "Returns docked ships that don't have a bunch of fighters nearby."
+  [fighter-ships]
+  (let [army-number (max 4 (/ *num-ships* 7))
+        army-distance 15
+        docked-ships (docked-enemies-to-care-about)]
+    (for [ship docked-ships
+          :let [nearby-fighters (filter #(< (math/distance-between ship %) army-distance)
+                                        fighter-ships)]
+          :when (< (count nearby-fighters) army-number)]
+      ship)))
+
+(defn update-fighters
+  "Updates fighter ships so I don't send too many to the same place."
+  ([enemy-ship]
+   (update-fighters enemy-ship 1))
+  ([enemy-ship num-fighters]
+   (let [fighter? (= :undocked (-> enemy-ship :docking :status))
+         attack-count (+ num-fighters (get enemy-ship :attack-count 0))
+         remove? (if fighter?
+                   (>= attack-count 5)
+                   (if (= (:owner-id enemy-ship) (first @players-in-order))
+                      (>= attack-count 30)
+                      (if (= (:owner-id enemy-ship) (second @players-in-order))
+                        (>= attack-count 30)
+                        (>= attack-count 5))))]
+
+     (if fighter?
+     ; (when fighter?
+       (if remove?
+         (set! *pesky-fighters* (dissoc *pesky-fighters* (:id enemy-ship)))
+         (set! *pesky-fighters* (assoc-in *pesky-fighters* [(:id enemy-ship) :attack-count] attack-count)))
+       (if remove?
+         (do
+           (reset! top-player-docked-ships (dissoc @top-player-docked-ships (:id enemy-ship)))
+           (set! *docked-enemies* (dissoc *docked-enemies* (:id enemy-ship))))
+         (do
+           (reset! top-player-docked-ships (assoc-in @top-player-docked-ships [(:id enemy-ship) :attack-count] attack-count))
+           (set! *docked-enemies* (assoc-in *docked-enemies* [(:id enemy-ship) :attack-count] attack-count))))))))
 
 (defn get-custom-map-info
   "Returns additional map info that is useful to calculate at the beginning of each turn."
@@ -489,6 +542,9 @@
     (reset! nemesis (find-nemesis (vals *planets*)))
     (reset! attack-spots nil)
     (reset! players-in-order (closest-players-by-base))
+    (reset! top-player-docked-ships (into {} (map (fn [ship] [(:id ship) ship])
+                                                  (find-docked-ships-without-an-army
+                                                   (vals *pesky-fighters*)))))
     {:start-ms start-ms}))
 
 (defn get-planets
@@ -732,30 +788,6 @@
         ; (log "Last imaginary-ship is:" (last imaginary-ships))
         (set! *ships* (assoc *ships* (:id ship) (last imaginary-ships)))))))
 
-(defn update-fighters
-  "Updates fighter ships so I don't send too many to the same place."
-  ([enemy-ship]
-   (update-fighters enemy-ship 1))
-  ([enemy-ship num-fighters]
-   (let [fighter? (= :undocked (-> enemy-ship :docking :status))
-         attack-count (+ num-fighters (get enemy-ship :attack-count 0))
-         remove? (if fighter?
-                   (>= attack-count 5)
-                   (if (= (:owner-id enemy-ship) (first @players-in-order))
-                      (>= attack-count 30)
-                      (if (= (:owner-id enemy-ship) (second @players-in-order))
-                        (>= attack-count 30)
-                        (>= attack-count 5))))]
-
-     (if fighter?
-     ; (when fighter?
-       (if remove?
-         (set! *pesky-fighters* (dissoc *pesky-fighters* (:id enemy-ship)))
-         (set! *pesky-fighters* (assoc-in *pesky-fighters* [(:id enemy-ship) :attack-count] attack-count)))
-       (if remove?
-         (set! *docked-enemies* (dissoc *docked-enemies* (:id enemy-ship)))
-         (set! *docked-enemies* (assoc-in *docked-enemies* [(:id enemy-ship) :attack-count] attack-count)))))))
-
 (defn player-to-avoid
   "Returns the player to avoid (or nil if there is none)"
   []
@@ -770,15 +802,6 @@
 ;      (log "Players order was" @players-in-order "and the player I'm going to ignore is" player-to-avoid)
 ;      (remove #(= player-id (:owner-id %)) (vals *docked-enemies*)))
 ;     (vals *docked-enemies*)))
-
-(defn docked-enemies-to-care-about
-  "Returns the docked enemies I should try to go after."
-  []
-  (if-let [player-id (first @players-in-order)]
-    (do
-     (log "Players order was" @players-in-order "and the player I'm going to attack is" player-to-avoid)
-     (filter #(= player-id (:owner-id %)) (vals *docked-enemies*)))
-    (vals *docked-enemies*)))
 
 (def close-fighter-distance 55)
 
