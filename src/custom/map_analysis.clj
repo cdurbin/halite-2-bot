@@ -239,8 +239,9 @@
            ; (good-surrounding-planet-helper planet 80)
            (if (= *num-players* 2)
              (good-surrounding-planet-helper planet 80)
-             true)
-             ; (good-surrounding-planet-helper planet 70))
+             (if (<= *num-ships* 3)
+               (good-surrounding-planet-helper planet 80)
+               true))
            (good-surrounding-planet-helper planet 45)
            (good-surrounding-planet-helper planet 30)
            (good-surrounding-planet-helper planet 15)))))
@@ -419,14 +420,6 @@
         remaining-to-ship (- 72 planet-progress)]
     (int (/ remaining-to-ship (* num-docked-ships 6)))))
 
-(defn get-turns-to-new-ship-planet
-  "Returns how many turns before a new ship will spawn for this docked ship's planet."
-  [planet]
-  (let [planet-progress (-> planet :docking :current-production)
-        num-docked-ships (-> planet :docking :ships count)
-        remaining-to-ship (- 72 planet-progress)]
-    (int (/ remaining-to-ship (* num-docked-ships 6)))))
-
 (defn get-spawn-points
   "Modifies the enemy ships to include a pretend enemy at the spawn location for a planet."
   []
@@ -436,7 +429,7 @@
                                      (not (nil? (:owner-id planet)))))
                               (vals *planets*))]
     (for [planet enemy-planets
-          :let [turns (get-turns-to-new-ship-planet planet)]
+          :let [turns (center-planet/get-turns-to-new-ship-planet planet)]
           :when (<= turns 1)]
       (math/closest-point center-point planet 2))))
 

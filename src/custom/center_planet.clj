@@ -41,3 +41,32 @@
           center (get-center-point)]
       (math/closest-point center planet 0))
     (math/closest-point ship planet 0)))
+
+(defn closest-to-edge
+  "Returns the planet that is closest to the corner in a list of planets."
+  [planets]
+  (let [midpoint (get-center-point)
+        planet-distances (for [planet (vals *planets*)
+                               :let [distance (math/distance-between planet midpoint)]]
+                           {:planet planet
+                            :distance distance})]
+    (-> (sort (utils/compare-by :distance utils/desc) planet-distances)
+        first
+        :planet)))
+
+(defn num-turns-to-planet
+  "Returns the number of turns to get to a docking spot on a planet from a given point."
+  [start planet]
+  (/ (math/distance-between start planet) e/max-ship-speed))
+
+(defn num-turns-to-new-ship
+  "How many turns before a new ship will dock."
+  [planet])
+
+(defn get-turns-to-new-ship-planet
+  "Returns how many turns before a new ship will spawn for this docked ship's planet."
+  [planet]
+  (let [planet-progress (-> planet :docking :current-production)
+        num-docked-ships (-> planet :docking :ships count)
+        remaining-to-ship (- 72 planet-progress)]
+    (int (/ remaining-to-ship (* num-docked-ships 6)))))
