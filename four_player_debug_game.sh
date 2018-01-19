@@ -12,5 +12,10 @@ rm *.log
 
 #./halite -d "384 256" "java -jar target/MyBot.jar log-stuff" "java -jar jars/V47.jar" "java -jar jars/V44.jar" "java -jar jars/V131.jar"
 
-./halite -s 596501298 -d "384 256" "java -jar target/MyBot.jar log-stuff" "java -jar jars/V47.jar" "java -jar jars/V44.jar" "java -jar jars/V131.jar"
+## Two rushers with old bots
+#./halite -d "288 192" "java -jar target/MyBot.jar log-stuff" "java -jar jars/V47.jar" "java -jar jars/V44.jar" "java -jar jars/V131.jar"
+
+./halite -d "288 192" "java -jar target/MyBot.jar log-stuff" "java -jar jars/V147.jar" "java -jar jars/V148.jar" "java -jar jars/V131.jar"
+
+#./halite -s 596501298 -d "384 256" "java -jar target/MyBot.jar log-stuff" "java -jar jars/V47.jar" "java -jar jars/V44.jar" "java -jar jars/V131.jar"
 mv *.hlt hlts/

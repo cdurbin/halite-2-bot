@@ -818,8 +818,9 @@
   [turn]
   (and (< *num-ships* 4)
        (<= @all-out-attack 0)
-       (or (>= turn 50)
-           (> *num-players* 2))))
+       (>= turn 50)))
+       ; (or (>= turn 50))))
+           ; (> *num-players* 2))))
 
 (defn get-best-planet
   "Returns the best planet to take. Corner planet in four player games or a 2 player stalemate."
