@@ -2,7 +2,7 @@
   "Functions for tracking custom info about the map."
   (:require
    [custom.game-map :refer [*docked-enemies* *pesky-fighters* *safe-planets* *num-ships*
-                            *num-players* *spawn-points* *pesky-fighters-2*]]
+                            *num-players* *spawn-points*]]
    [custom.math :as custom-math :refer [infinity]]
    [custom.utils :as utils :refer [pretty-log]]
    [custom.center-planet :as center-planet]
@@ -320,23 +320,23 @@
     (or (empty? final-enemy-ships)
         (> (count final-my-ships) (count final-enemy-ships)))))
 
-(defn get-really-pesky-fighters
+(defn get-pesky-fighters-new
   "Fighters near my planets or neutral planets."
   []
-  (let [my-docked-ships (filter #(and (= *player-id* (:owner-id %))
-                                      (not= :undocked (-> % :docking :status)))
-                                (vals *ships*))
-        close-distance 25]
+  (let [mine-or-neutral-planets (filter #(or (nil? (:owner-id %))
+                                             (= *player-id* (:owner-id %)))
+                                        (vals *planets*))
+        close-distance (if (<= *num-ships* 10) 130 21.1)]
     (set
-      (for [my-ship my-docked-ships
+      (for [planet mine-or-neutral-planets
             ship (vals *ships*)
             :when (and (not= *player-id* (:owner-id ship))
                        (= :undocked (-> ship :docking :status))
-                       (< (math/distance-between ship my-ship) close-distance))]
+                       (< (math/distance-between ship planet) close-distance))]
         ship))))
 
 (defn get-pesky-fighters
-  "All fighters."
+  "Fighters near my planets or neutral planets."
   []
   (filter #(and (not= *player-id* (:owner-id %))
                 (= :undocked (-> % :docking :status)))
@@ -503,13 +503,8 @@
      (if fighter?
      ; (when fighter?
        (if remove?
-         (do
-           (set! *pesky-fighters* (dissoc *pesky-fighters* (:id enemy-ship)))
-           (set! *pesky-fighters-2* (dissoc *pesky-fighters* (:id enemy-ship))))
-         (do
-           (when (get *pesky-fighters-2* (:id enemy-ship))
-             (set! *pesky-fighters-2* (assoc-in *pesky-fighters-2* [(:id enemy-ship) :attack-count] attack-count)))
-           (set! *pesky-fighters* (assoc-in *pesky-fighters* [(:id enemy-ship) :attack-count] attack-count))))
+         (set! *pesky-fighters* (dissoc *pesky-fighters* (:id enemy-ship)))
+         (set! *pesky-fighters* (assoc-in *pesky-fighters* [(:id enemy-ship) :attack-count] attack-count)))
        (if remove?
          (do
            (reset! top-player-docked-ships (dissoc @top-player-docked-ships (:id enemy-ship)))
@@ -528,7 +523,6 @@
     (set! *safe-planets* (into {} (map (fn [planet] [(:id planet) planet]) (get-safe-planets))))
     (set! *docked-enemies* (into {} (map (fn [ship] [(:id ship) ship]) (get-docked-enemy-ships))))
     (set! *pesky-fighters* (into {} (map (fn [ship] [(:id ship) ship]) (get-pesky-fighters))))
-    (set! *pesky-fighters-2* (into {} (map (fn [ship] [(:id ship) ship]) (get-really-pesky-fighters))))
     (set! *num-ships* (count (filter #(= *player-id* (:owner-id %)) (vals *ships*))))
     (set! *num-players* (count (filter (fn [[k v]]
                                          (seq v))
