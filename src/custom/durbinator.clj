@@ -1068,7 +1068,7 @@
                        (or (not (e/within-docking-range? ship chosen-planet))
                            (and (map/good-surrounding-planet-helper-extra ship 35 0)
                                 (map/good-surrounding-planet-helper-extra ship 25 0)
-                                (map/good-surrounding-planet-helper-extra ship 15 1)
+                                (map/good-surrounding-planet-helper-extra ship 15 0)
                                 (map/safe-to-dock? ship))))
                 (move-ship-to-planet! ship chosen-planet)
                 (if (and
@@ -1076,7 +1076,7 @@
                          (or (not (e/within-docking-range? ship other-planet))
                              (and (map/good-surrounding-planet-helper-extra ship 35 0)
                                   (map/good-surrounding-planet-helper-extra ship 25 0)
-                                  (map/good-surrounding-planet-helper-extra ship 15 1)
+                                  (map/good-surrounding-planet-helper-extra ship 15 0)
                                   (map/safe-to-dock? ship))))
                   (move-ship-to-planet! ship other-planet))))))))))
 
@@ -1156,7 +1156,9 @@
 (defn get-closest-safe-planet
   "Returns the closest safe planet to the ship."
   [ship]
-  (map/nearest-entity ship (vals *safe-planets*)))
+  (map/nearest-entity ship (filter (fn [planet]
+                                     (map/good-surrounding-planet-helper planet 100))
+                                   (vals *safe-planets*))))
 
 (defn compute-safest-planet-move*
   "Picks the move for the ship based on proximity to planets and fighters near planets."

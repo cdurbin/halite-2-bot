@@ -201,31 +201,11 @@
              {:min-distance infinity}
              enemy-ships))))
 
-(defn good-surrounding-planet-helper
-  "Checks whether we have the advantage for the docking spot at the given distance"
-  [planet distance]
-  (let [filter-fn (fn [ship]
-                    (and (= :undocked (-> ship :docking :status))
-                         (< (math/distance-between ship planet) (+ distance (:radius planet)))))
-        docked-filter-fn (fn [ship]
-                           (and (not= *player-id* (:owner-id ship))
-                                (not= :undocked (-> ship :docking :status))
-                                (< (math/distance-between ship planet) (+ distance (:radius planet)))))
-        ships (for [[k v] *ships*
-                    :when (integer? k)]
-                v)
-        ; closeby-docked (filter docked-filter-fn ships)
-        nearby-fighters (filter filter-fn ships)
-        fighters-by-owner (group-by :owner-id nearby-fighters)
-        my-count (dec (count (get fighters-by-owner *player-id*)))
-        max-other-count (apply max 0 (map count (vals (dissoc fighters-by-owner *player-id*))))
-        ;; Special case to make sure I have one extra defender early
-        my-count (if (and (< *num-ships* 5) (pos? max-other-count))
-                   (dec my-count)
-                   my-count)]
-    (or (and (zero? max-other-count))
-             ; (zero? (count closeby-docked)))
-        (>= my-count max-other-count))))
+(defn get-planets
+  "Return all of the planets for the given owner ID."
+  [owner-id]
+  (filter #(= owner-id (:owner-id %))
+          (vals *planets*)))
 
 (defn good-surrounding-planet-helper-extra
   "Checks whether we have the advantage for the docking spot at the given distance"
@@ -233,25 +213,40 @@
   (let [filter-fn (fn [ship]
                     (and (= :undocked (-> ship :docking :status))
                          (< (math/distance-between ship planet) (+ distance (:radius planet)))))
-        docked-filter-fn (fn [ship]
-                           (and (not= *player-id* (:owner-id ship))
-                                (not= :undocked (-> ship :docking :status))
-                                (< (math/distance-between ship planet) (+ distance (:radius planet)))))
+        ; docked-filter-fn (fn [ship]
+        ;                    (and
+        ;                         ; (not= *player-id* (:owner-id ship))
+        ;                         (= :docked (-> ship :docking :status))
+        ;                         (< (math/distance-between ship planet) (+ distance (:radius planet)))))
         ships (for [[k v] *ships*
                     :when (integer? k)]
                 v)
-        closeby-docked (filter docked-filter-fn ships)
+        closeby-planets (filter #(<= (- (math/distance-between planet %)
+                                        (:radius planet) (:radius %))
+                                     distance)
+                                (get-planets *player-id*))
+        my-docked-count (reduce + (map #(count (get-in % [:docking :ships]))
+                                       closeby-planets))
+        ; docked-by-owner (group-by :owner-id closeby-docked)
+        ; my-docked-count (count (get docked-by-owner *player-id*))
+        _ (log "My docked count is: " my-docked-count)
         nearby-fighters (filter filter-fn ships)
         fighters-by-owner (group-by :owner-id nearby-fighters)
         my-count (dec (count (get fighters-by-owner *player-id*)))
+        my-count (+ my-count (/ my-docked-count 12))
         max-other-count (apply max 0 (map count (vals (dissoc fighters-by-owner *player-id*))))
         ;; Special case to make sure I have one extra defender early
         my-count (if (and (< *num-ships* 5) (pos? max-other-count))
                    (dec my-count)
                    my-count)]
-    (or (and (zero? max-other-count)
-             (zero? (count closeby-docked)))
+    (or (and (zero? max-other-count))
+             ; (zero? (count closeby-docked)))
         (>= (- my-count extra) max-other-count))))
+
+(defn good-surrounding-planet-helper
+  "Checks whether we have the advantage for the docking spot at the given distance"
+  [planet distance]
+  (good-surrounding-planet-helper-extra planet distance 0))
 
 (defn have-most-ships-surrounding-planet?
   "Have the most fighters (non docking) surrounding the planet."
@@ -273,7 +268,7 @@
            (if (= *num-players* 2)
              (good-surrounding-planet-helper planet 80)
              (if (<= *num-ships* 3)
-               (good-surrounding-planet-helper planet 60)
+               (good-surrounding-planet-helper planet 70)
                true))
            (good-surrounding-planet-helper planet 50)
            (good-surrounding-planet-helper planet 30)
@@ -571,12 +566,6 @@
                                                    (vals *pesky-fighters*)))))
     {:start-ms start-ms}))
 
-(defn get-planets
-  "Return all of the planets for the given owner ID."
-  [owner-id]
-  (filter #(= owner-id (:owner-id %))
-          (vals *planets*)))
-
 (defn fighters-to-targets
   "Returns a target for each of the fighters passed in."
   [ships]
@@ -837,9 +826,9 @@
                              (vals *ships*))
         closest-fighter (nearest-entity ship all-fighters)]
     (or (nil? closest-fighter)
+        (> (math/distance-between ship closest-fighter) close-fighter-distance)
         (and (= *player-id* (:owner-id closest-fighter))
              (not (first (filter #(and (= :undocked (-> % :docking :status))
                                        (not= *player-id* (:owner-id %))
                                        (<= (math/distance-between ship %) 7))
-                                 all-fighters))))
-        (> (math/distance-between ship closest-fighter) close-fighter-distance))))
+                                 all-fighters)))))))
