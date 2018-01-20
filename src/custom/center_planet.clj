@@ -98,16 +98,20 @@
         neutral-planets (filter #(nil? (:owner-id %))
                                 (vals *planets*))
         bonus-for-3-spots (if (= *num-ships* 3)
-                            42 ;; 6 turns - really 3 turns because we double the distance in 2 players
+                            (if (= *num-players* 2)
+                              42
+                              21) ;; 6 turns - really 3 turns because we double the distance in 2 players
                             0)]
     (for [planet (vals *planets*)
           :let [distance (if (= 2 *num-players*)
                            0
                            (math/distance-between planet midpoint))
                 ; dock-spot-value (* 7 (get-in planet [:docking :spots]))
-                dock-spot-value (* 14 (get-in planet [:docking :spots]))
-                next-neutral-planet (nearest-entity planet neutral-planets)
-                distance-to-next-neutral-planet (if next-neutral-planet
+                dock-spot-value (* 7 (get-in planet [:docking :spots]))
+                next-neutral-planet (nearest-entity planet (remove #(= (:id %) (:id planet))
+                                                                   neutral-planets))
+                ; distance-to-next-neutral-planet 0
+                distance-to-next-neutral-planet (if (and next-neutral-planet (nil? (:owner-id planet)))
                                                   (- (math/distance-between planet next-neutral-planet)
                                                      (:radius planet) (:radius next-neutral-planet))
                                                   0)
