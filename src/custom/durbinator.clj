@@ -806,7 +806,7 @@
   [turn]
   (and (< *num-ships* 4)
        (<= @all-out-attack 0)
-       (>= turn 50)))
+       (>= turn 35)))
        ; (or (>= turn 50))))
            ; (> *num-players* 2))))
 
@@ -1149,7 +1149,7 @@
         players-with-planets (map/players-with-planets)]
     (and (> *num-players* 2)
          (= 0 num-planets)
-         (or (> turn 50)
+         (or (> turn 35)
              (and (> turn 15)
                   (>= players-with-planets 2))))))
 
