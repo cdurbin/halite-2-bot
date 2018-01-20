@@ -95,29 +95,34 @@
   [planets]
   (let [midpoint (get-center-point)
         neutral-planets (filter #(nil? (:owner-id %))
-                                (vals *planets*))
-        planet-distances (for [planet (vals *planets*)
-                               :let [distance (math/distance-between planet midpoint)
-                                     dock-spot-value (* 7 (get-in planet [:docking :spots]))
-                                     ; dock-spot-value (* 14 (get-in planet [:docking :spots]))
-                                     next-neutral-planet (nearest-entity planet neutral-planets)
-                                     distance-to-next-neutral-planet (if next-neutral-planet
-                                                                       (- (math/distance-between planet next-neutral-planet)
-                                                                          (:radius planet) (:radius next-neutral-planet))
-                                                                       0)
-                                     distance-to-next-neutral-planet (* -1 distance-to-next-neutral-planet)]]
-                           {:planet planet
-                            :distance (if (= *num-players* 2)
-                                        (- distance dock-spot-value distance-to-next-neutral-planet)
-                                        (+ distance dock-spot-value distance-to-next-neutral-planet))})
-        direction (if (= *num-players* 2)
-                    utils/asc
-                    utils/desc)
-        _ (log "PS: direction is" direction)
-        planets-in-order (sort (utils/compare-by :distance direction) planet-distances)]
-    (map-indexed (fn [idx planet]
-                   (assoc planet :priority (inc idx)))
-                 (map :planet planets-in-order))))
+                                (vals *planets*))]
+    (for [planet (vals *planets*)
+          :let [distance (math/distance-between planet midpoint)
+                dock-spot-value (* 7 (get-in planet [:docking :spots]))
+                ; dock-spot-value (* 14 (get-in planet [:docking :spots]))
+                next-neutral-planet (nearest-entity planet neutral-planets)
+                distance-to-next-neutral-planet (if next-neutral-planet
+                                                  (- (math/distance-between planet next-neutral-planet)
+                                                     (:radius planet) (:radius next-neutral-planet))
+                                                  0)
+                distance-to-next-neutral-planet (* -1 distance-to-next-neutral-planet)
+                priority (if (= *num-players* 2)
+                            (- distance dock-spot-value distance-to-next-neutral-planet)
+                            (+ distance dock-spot-value distance-to-next-neutral-planet))]]
+      (assoc planet :priority priority))))
+    ;   {:planet planet
+    ;    :distance (if (= *num-players* 2)
+    ;                (- distance dock-spot-value distance-to-next-neutral-planet)
+    ;                (+ distance dock-spot-value distance-to-next-neutral-planet))
+    ;     ; direction (if (= *num-players* 2)
+    ;     ;             utils/asc
+    ;     ;             utils/desc)
+    ;     _ (log "PS: direction is" direction)})
+    ; (map #(assoc (:planet %) :priority (:distance %)))))
+    ;     planets-in-order (sort (utils/compare-by :distance direction) planet-distances))
+    ; (map-indexed (fn [idx planet]
+    ;                (assoc planet :priority (inc idx)))
+    ;              (map :planet planets-in-order))))
 
 (defn get-turns-to-planet
   "Returns a collection of maps with keys of :planet and :turns. Takes into account the radius
@@ -128,3 +133,12 @@
                        {:planet planet
                         :turns turns})]
     (sort (utils/compare-by :turns utils/asc) planet-turns)))
+
+(defn rescore-planet
+  "Rescores the value of the planet based on the provided point."
+  [pos planet]
+  (let [distance (- (math/distance-between pos planet) (:radius planet))
+        priority (if (= *num-players* 2)
+                   (+ (:priority planet) distance)
+                   (- (:priority planet) distance))]
+    (assoc planet :priority priority)))

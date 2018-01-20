@@ -1044,10 +1044,15 @@
                                          (filter #(<= (:turns %) (+ 6 fewest-turns))
                                                  planet-turns)
                 ;; Limit to the three closest
-                potential-planet-turns (take 3 (sort (utils/compare-by :turns utils/asc)
-                                                     potential-planet-turns))
+                ; potential-planet-turns (take 3 (sort (utils/compare-by :turns utils/asc)
+                ;                                      potential-planet-turns))
                 potential-planets (map :planet potential-planet-turns)
-                best-planet (first (sort (utils/compare-by :priority utils/asc)
+                ;; Rescore planets
+                potential-planets (map #(center-planet/rescore-planet ship %) potential-planets)
+                direction (if (= 2 *num-players*)
+                            utils/asc
+                            utils/desc)
+                best-planet (first (sort (utils/compare-by :priority direction)
                                          potential-planets))
                 ;; if moving to the closest planet moves us towards the best planet, take it
                 ;; otherwise go to the best planet
