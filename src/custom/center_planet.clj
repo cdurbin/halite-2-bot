@@ -1,7 +1,7 @@
 (ns custom.center-planet
   "Functions specific to dealing with the center planets. Broken out from map analysis for now."
   (:require
-   [custom.game-map :refer [*num-players*]]
+   [custom.game-map :refer [*num-players* *num-ships*]]
    [custom.utils :as utils]
    [custom.math :refer [infinity]]
    [hlt.entity :as e]
@@ -93,22 +93,31 @@
   "Planets get priority based on their distance from the center. In four player games the
   priority is the outside and 2 player games the priority is the center."
   [planets]
+  (log "APTP: Num ships is: " *num-ships*)
   (let [midpoint (get-center-point)
         neutral-planets (filter #(nil? (:owner-id %))
-                                (vals *planets*))]
+                                (vals *planets*))
+        bonus-for-3-spots (if (= *num-ships* 3)
+                            42 ;; 6 turns - really 3 turns because we double the distance in 2 players
+                            0)]
     (for [planet (vals *planets*)
-          :let [distance (math/distance-between planet midpoint)
-                dock-spot-value (* 7 (get-in planet [:docking :spots]))
-                ; dock-spot-value (* 14 (get-in planet [:docking :spots]))
+          :let [distance (if (= 2 *num-players*)
+                           0
+                           (math/distance-between planet midpoint))
+                ; dock-spot-value (* 7 (get-in planet [:docking :spots]))
+                dock-spot-value (* 14 (get-in planet [:docking :spots]))
                 next-neutral-planet (nearest-entity planet neutral-planets)
                 distance-to-next-neutral-planet (if next-neutral-planet
                                                   (- (math/distance-between planet next-neutral-planet)
                                                      (:radius planet) (:radius next-neutral-planet))
                                                   0)
                 distance-to-next-neutral-planet (* -1 distance-to-next-neutral-planet)
+                bonus (if (>= (get-in planet [:docking :spots]) 3)
+                        bonus-for-3-spots
+                        0)
                 priority (if (= *num-players* 2)
-                            (- distance dock-spot-value distance-to-next-neutral-planet)
-                            (+ distance dock-spot-value distance-to-next-neutral-planet))]]
+                            (- distance dock-spot-value distance-to-next-neutral-planet bonus)
+                            (+ distance dock-spot-value distance-to-next-neutral-planet bonus))]]
       (assoc planet :priority priority))))
     ;   {:planet planet
     ;    :distance (if (= *num-players* 2)
@@ -139,6 +148,6 @@
   [pos planet]
   (let [distance (- (math/distance-between pos planet) (:radius planet))
         priority (if (= *num-players* 2)
-                   (+ (:priority planet) distance)
+                   (+ (:priority planet) (* 2 distance))
                    (- (:priority planet) distance))]
     (assoc planet :priority priority)))

@@ -210,6 +210,7 @@
 (defn good-surrounding-planet-helper-extra
   "Checks whether we have the advantage for the docking spot at the given distance"
   [planet distance extra]
+  ; (log "Planet" planet "Distance" distance "Extra" extra)
   (let [filter-fn (fn [ship]
                     (and (= :undocked (-> ship :docking :status))
                          (< (math/distance-between ship planet) (+ distance (:radius planet)))))
@@ -229,7 +230,7 @@
                                        closeby-planets))
         ; docked-by-owner (group-by :owner-id closeby-docked)
         ; my-docked-count (count (get docked-by-owner *player-id*))
-        _ (log "My docked count is: " my-docked-count)
+        ; _ (log "My docked count is: " my-docked-count)
         nearby-fighters (filter filter-fn ships)
         fighters-by-owner (group-by :owner-id nearby-fighters)
         my-count (dec (count (get fighters-by-owner *player-id*)))
@@ -543,6 +544,7 @@
   (set! *num-players* (count (filter (fn [[k v]]
                                        (seq v))
                                      *owner-ships*)))
+  (set! *num-ships* (count (filter #(= *player-id* (:owner-id %)) (vals *ships*))))
   (let [start-ms (System/currentTimeMillis)
         all-ships-count (count (vals *ships*))
         planets (center-planet/add-priority-to-planets (vals *planets*))]
@@ -551,7 +553,6 @@
     (set! *safe-planets* (into {} (map (fn [planet] [(:id planet) planet]) (get-safe-planets planets))))
     (set! *docked-enemies* (into {} (map (fn [ship] [(:id ship) ship]) (get-docked-enemy-ships))))
     (set! *pesky-fighters* (into {} (map (fn [ship] [(:id ship) ship]) (get-pesky-fighters))))
-    (set! *num-ships* (count (filter #(= *player-id* (:owner-id %)) (vals *ships*))))
     (set! *spawn-points* (get-spawn-points))
     (log "Spawn points:" *spawn-points*)
     (if (and (> *num-players* 2) (< *num-ships* (* 0.35 all-ships-count)))
@@ -832,3 +833,41 @@
                                        (not= *player-id* (:owner-id %))
                                        (<= (math/distance-between ship %) 7))
                                  all-fighters)))))))
+
+(defn best-initial-planet
+  "Returns the best initial planet to move to (when you have 3 ships you want a planet with 3
+  docking spots.)"
+  [ships]
+  (let [xs (map math/get-x ships)
+        ys (map math/get-y ships)
+        pos (math/->Position (custom-math/avg xs) (custom-math/avg ys))
+        ship (assoc (first ships) :pos pos)
+        planets (filter #(or (nil? (:owner-id %))
+                             (and (= *player-id* (:owner-id %))
+                                  (e/any-remaining-docking-spots? %)))
+                        (vals *planets*))
+        planet-turns (center-planet/get-turns-to-planet ship planets)
+        fewest-turns (:turns (first planet-turns))
+        closest-planet (:planet (first planet-turns))]
+    (when closest-planet
+      (let [potential-planet-turns planet-turns
+            ;; Limit to the three closest
+            ; potential-planet-turns (take 3 (sort (utils/compare-by :turns utils/asc)
+            ;                                      potential-planet-turns))
+            potential-planets (map :planet potential-planet-turns)
+            ;; Rescore planets
+            potential-planets (map #(center-planet/rescore-planet ship %) potential-planets)
+            direction (if (= 2 *num-players*)
+                        utils/asc
+                        utils/desc)
+            best-planet (first (sort (utils/compare-by :priority direction)
+                                     potential-planets))]
+        (when (and best-planet
+                   (>= (get-in best-planet [:docking :spots]) 3)
+                   (some #{(:id best-planet)} (keys *safe-planets*))
+                   (or (not (e/within-docking-range? ship best-planet))
+                       (and (good-surrounding-planet-helper-extra ship 35 0)
+                            (good-surrounding-planet-helper-extra ship 25 0)
+                            (good-surrounding-planet-helper-extra ship 15 0)
+                            (safe-to-dock? ship))))
+          best-planet)))))

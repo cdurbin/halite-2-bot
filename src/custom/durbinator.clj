@@ -1139,11 +1139,20 @@
 (defn-timed get-planet-only-moves
   "Returns the planet only moves"
   [ships custom-map-info]
-  (let [ships-in-order (map/sort-ships-by-distance ships
-                                                   (vals *safe-planets*))]
-    (doall
-     (keep #(compute-planet-only-move custom-map-info %)
-           ships-in-order))))
+  (if (and (= *num-ships* 3)
+           (seq (filter #(= :undocked (-> % :docking :status)) ships)))
+    (let [ships (filter #(= :undocked (-> % :docking :status)) ships)]
+      (when-let [planet (map/best-initial-planet ships)]
+        (let [ships-in-order (map/sort-ships-by-distance ships
+                                                         [planet])]
+          (doall
+           (keep #(move-ship-to-planet! % planet)
+                 ships-in-order)))))
+    (let [ships-in-order (map/sort-ships-by-distance ships
+                                                     (vals *safe-planets*))]
+      (doall
+       (keep #(compute-planet-only-move custom-map-info %)
+             ships-in-order)))))
 
 ; (defn get-best-planet
 ;   "Returns the best planet to take."

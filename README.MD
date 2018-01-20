@@ -168,3 +168,6 @@ TODO
 * [ ] Don't send a ship to a planet if it can spawn enough ships to fill the planet before the ship makes it.
 * [ ] Don't send a ship to a planet I already own if there's another planet at a similar distance in the opposite direction.
 * [ ] Change away from ordering planets to a value for each planet (I can then calculate distance into the formula.)
+
+V165:  Games Win % Loss %
+ reCurs3	30	30	70
