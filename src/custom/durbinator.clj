@@ -1114,10 +1114,12 @@
 
 (defn-timed get-planet-only-moves
   "Returns the planet only moves"
-  [ships-in-order custom-map-info]
-  (doall
-   (keep #(compute-planet-only-move custom-map-info %)
-         ships-in-order)))
+  [ships custom-map-info]
+  (let [ships-in-order (map/sort-ships-by-distance ships
+                                                   (vals *safe-planets*))]
+    (doall
+     (keep #(compute-planet-only-move custom-map-info %)
+           ships-in-order))))
 
 ; (defn get-best-planet
 ;   "Returns the best planet to take."
@@ -1184,7 +1186,9 @@
   "Returns rush protection moves."
   [turn]
   (let [custom-map-info (calculations-for-turn turn)
-        ships-in-order (map/sort-ships-by-distance (vals (get *owner-ships* *player-id*)))
+        ships-in-order (map/sort-ships-by-distance
+                        (vals (get *owner-ships* *player-id*))
+                        (concat (vals *docked-enemies*) (vals *safe-planets*) (vals *pesky-fighters*)))
         runaway-moves (run-to-corner-moves (reverse ships-in-order))
         moving-ships (map #(get-in % [:ship :id]) runaway-moves)
         planet-moves (get-safest-planet-moves ships-in-order moving-ships)]
@@ -1198,7 +1202,9 @@
   ; (if true
   ; (if (= 10 turn) (throw (Exception. "quit")))
     (let [custom-map-info (calculations-for-turn turn)
-          ships-in-order (map/sort-ships-by-distance (vals (get *owner-ships* *player-id*)))
+          ships-in-order (map/sort-ships-by-distance
+                          (vals (get *owner-ships* *player-id*))
+                          (vals (deref map/top-player-docked-ships)))
           runaway-moves (run-to-corner-moves (reverse ships-in-order))
           moving-ships (map #(get-in % [:ship :id]) runaway-moves)
 

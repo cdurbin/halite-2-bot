@@ -103,10 +103,17 @@
 (defn sort-ships-by-distance
   "Returns ships from closest to point of interest to farthest. A point of interest is a planet,
   docked enemy ship, enemy ship near one of my planets."
-  [ships]
-  (let [pois (concat (vals *docked-enemies*) (vals *safe-planets*) (vals *pesky-fighters*))
-        ships-w-distance (map #(assoc % :distance (distance-to-poi % pois)) ships)]
+  [ships pois]
+  (let [ships-w-distance (map #(assoc % :distance (distance-to-poi % pois)) ships)]
     (mapv #(dissoc % :distance) (sort (utils/compare-by :distance utils/asc) ships-w-distance))))
+
+; (defn sort-ships-by-distance
+;   "Returns ships from closest to point of interest to farthest. A point of interest is a planet,
+;   docked enemy ship, enemy ship near one of my planets."
+;   [ships]
+;   (let [pois (concat (vals *docked-enemies*) (vals *safe-planets*) (vals *pesky-fighters*))
+;         ships-w-distance (map #(assoc % :distance (distance-to-poi % pois)) ships)]
+;     (mapv #(dissoc % :distance) (sort (utils/compare-by :distance utils/asc) ships-w-distance))))
 
 (defn get-my-ships
   "Returns all of ships (including imaginary ships)."
