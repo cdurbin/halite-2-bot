@@ -391,10 +391,10 @@
   "Returns a list of planets that are safe to dock at."
   [planets]
   (let [filter-fn (fn [planet]
-                    (and (or (nil? (:owner-id planet))
+                    (and (or (and (nil? (:owner-id planet))
+                                  (have-most-ships-surrounding-planet? planet))
                              (and (= *player-id* (:owner-id planet))
                                   (e/any-remaining-docking-spots? planet)))
-                         (have-most-ships-surrounding-planet? planet)
                          (not (avoid-planet? planet))))]
     (filter filter-fn planets)))
 
