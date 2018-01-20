@@ -1136,6 +1136,14 @@
       (map/change-ship-positions! move)
       move)))
 
+(defn compute-initial-move
+  "Computes the initial move."
+  [{:keys [start-ms moving-ships] :as custom-map-info} ship planet]
+  (when-not (some #{(:id ship)} moving-ships)
+    (when-let [move (move-ship-to-planet! ship planet)]
+      (map/change-ship-positions! move)
+      move)))
+
 (defn-timed get-planet-only-moves
   "Returns the planet only moves"
   [ships custom-map-info]
@@ -1146,7 +1154,7 @@
         (let [ships-in-order (map/sort-ships-by-distance ships
                                                          [planet])]
           (doall
-           (keep #(move-ship-to-planet! % planet)
+           (keep #(compute-initial-move custom-map-info % planet)
                  ships-in-order)))))
     (let [ships-in-order (map/sort-ships-by-distance ships
                                                      (vals *safe-planets*))]

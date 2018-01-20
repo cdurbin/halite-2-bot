@@ -113,6 +113,7 @@ map_height = 2 * base_size
   * 155 - 57.01 and climbing after 225 games
   * 157 - 57.92 mu 283 games
   * 163 - 58.4 mu after 101 games, but 57.58 after 188 games
+  * 165 - 57.81 mu after 230 games
 
 ## Implement
   * [1/2] Figure out cases where I'm still doing dumb things with single ships getting killed - tried but still not great
