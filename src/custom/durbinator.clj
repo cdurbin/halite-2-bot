@@ -717,6 +717,7 @@
                                   my-ships)
         neutral-planet-count (count (filter #(nil? (:owner-id %))
                                             (vals *planets*)))]
+    ; (when true)
     (when (and (> *num-players* 2)
                ;; Less than 10 percent of the total ships and no more than 4 neutral planets
                (<= neutral-planet-count 7)

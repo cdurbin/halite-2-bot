@@ -214,7 +214,7 @@
         ships (for [[k v] *ships*
                     :when (integer? k)]
                 v)
-        closeby-docked (filter docked-filter-fn ships)
+        ; closeby-docked (filter docked-filter-fn ships)
         nearby-fighters (filter filter-fn ships)
         fighters-by-owner (group-by :owner-id nearby-fighters)
         my-count (dec (count (get fighters-by-owner *player-id*)))
@@ -223,8 +223,8 @@
         my-count (if (and (< *num-ships* 5) (pos? max-other-count))
                    (dec my-count)
                    my-count)]
-    (or (and (zero? max-other-count)
-             (zero? (count closeby-docked)))
+    (or (and (zero? max-other-count))
+             ; (zero? (count closeby-docked)))
         (>= my-count max-other-count))))
 
 (defn good-surrounding-planet-helper-extra
@@ -398,10 +398,10 @@
   "Returns a list of planets that are safe to dock at."
   [planets]
   (let [filter-fn (fn [planet]
-                    (and (or (and (nil? (:owner-id planet))
-                                  (have-most-ships-surrounding-planet? planet))
+                    (and (or (and (nil? (:owner-id planet)))
                              (and (= *player-id* (:owner-id planet))
                                   (e/any-remaining-docking-spots? planet)))
+                         (have-most-ships-surrounding-planet? planet)
                          (not (avoid-planet? planet))))]
     (filter filter-fn planets)))
 
