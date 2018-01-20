@@ -1,6 +1,7 @@
 (ns custom.center-planet
   "Functions specific to dealing with the center planets. Broken out from map analysis for now."
   (:require
+   [custom.game-map :refer [*num-players*]]
    [custom.utils :as utils]
    [hlt.entity :as e]
    [hlt.game-map :refer [*map-size* *planets*]]
@@ -57,11 +58,13 @@
 (defn num-turns-to-planet
   "Returns the number of turns to get to a docking spot on a planet from a given point."
   [start planet]
-  (/ (math/distance-between start planet) e/max-ship-speed))
+  (inc (int (/ (- (math/distance-between start planet) (:radius planet) 0.01)
+               e/max-ship-speed))))
 
 (defn num-turns-to-new-ship
   "How many turns before a new ship will dock."
-  [planet])
+  [planet]
+  nil)
 
 (defn get-turns-to-new-ship-planet
   "Returns how many turns before a new ship will spawn for this docked ship's planet."
@@ -70,3 +73,30 @@
         num-docked-ships (-> planet :docking :ships count)
         remaining-to-ship (- 72 planet-progress)]
     (int (/ remaining-to-ship (* num-docked-ships 6)))))
+
+(defn add-priority-to-planets
+  "Planets get priority based on their distance from the center. In four player games the
+  priority is the outside and 2 player games the priority is the center."
+  [planets]
+  (let [midpoint (get-center-point)
+        planet-distances (for [planet (vals *planets*)
+                               :let [distance (math/distance-between planet midpoint)]]
+                           {:planet planet
+                            :distance distance})
+        direction (if (= *num-players* 2)
+                    utils/asc
+                    utils/desc)
+        planets-in-order (sort (utils/compare-by :distance utils/desc) planet-distances)]
+    (map-indexed (fn [idx planet]
+                   (assoc planet :priority (inc idx)))
+                 (map :planet planets-in-order))))
+
+(defn get-turns-to-planet
+  "Returns a collection of maps with keys of :planet and :turns. Takes into account the radius
+  of the planet. Returned in sorted order from fewest to most."
+  [point planets]
+  (let [planet-turns (for [planet planets
+                           :let [turns (num-turns-to-planet point planet)]]
+                       {:planet planet
+                        :turns turns})]
+    (sort (utils/compare-by :turns utils/asc) planet-turns)))

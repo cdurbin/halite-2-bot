@@ -11,6 +11,13 @@
 
 (def infinity 99999999.0)
 
+(defn avg
+  "Returns the average of a collection of numbers"
+  [coll]
+  (if (empty? coll)
+    0
+    (/ (reduce + coll) (count coll))))
+
 (defn deg->rad
   "Translates degrees to radians."
   [^double deg]

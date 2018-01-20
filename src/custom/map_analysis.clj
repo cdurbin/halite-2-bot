@@ -240,9 +240,9 @@
            (if (= *num-players* 2)
              (good-surrounding-planet-helper planet 80)
              (if (<= *num-ships* 3)
-               (good-surrounding-planet-helper planet 80)
+               (good-surrounding-planet-helper planet 60)
                true))
-           (good-surrounding-planet-helper planet 45)
+           (good-surrounding-planet-helper planet 50)
            (good-surrounding-planet-helper planet 30)
            (good-surrounding-planet-helper planet 15)))))
     ; (and (good-surrounding-planet-helper planet 60)
@@ -363,14 +363,14 @@
 
 (defn get-safe-planets
   "Returns a list of planets that are safe to dock at."
-  []
+  [planets]
   (let [filter-fn (fn [planet]
                     (and (or (nil? (:owner-id planet))
                              (and (= *player-id* (:owner-id planet))
                                   (e/any-remaining-docking-spots? planet)))
                          (have-most-ships-surrounding-planet? planet)
                          (not (avoid-planet? planet))))]
-    (filter filter-fn (vals *planets*))))
+    (filter filter-fn planets)))
 
 (defn nearest-planet-distance
   "Returns the closest distance from one planet to any planet in a list."
@@ -436,11 +436,6 @@
 (def players-in-order
   (atom []))
 
-(defn avg
-  "Returns the average of a collection of numbers"
-  [coll]
-  (/ (reduce + coll) (count coll)))
-
 (defn closest-players-by-base
   "Returns the player-ids in order of closest to furthest from me."
   []
@@ -451,7 +446,7 @@
                           (for [[owner-id planets] planets-by-owner
                                 :let [xs (map math/get-x planets)
                                       ys (map math/get-y planets)]]
-                            [owner-id (math/->Position (avg xs) (avg ys))]))
+                            [owner-id (math/->Position (custom-math/avg xs) (custom-math/avg ys))]))
         my-base (get owner-bases *player-id*)
         owner-distances (when my-base
                           (for [[owner-id base] (dissoc owner-bases *player-id*)]
@@ -476,7 +471,7 @@
 (defn find-docked-ships-without-an-army
   "Returns docked ships that don't have a bunch of fighters nearby."
   [fighter-ships]
-  (let [army-number (max 4 (/ *num-ships* 10))
+  (let [army-number (max 4 (/ *num-ships* 20))
         army-distance 15
         docked-ships (docked-enemies-to-care-about)]
     (for [ship docked-ships
@@ -518,9 +513,11 @@
   "Returns additional map info that is useful to calculate at the beginning of each turn."
   [turn]
   (let [start-ms (System/currentTimeMillis)
-        all-ships-count (count (vals *ships*))]
+        all-ships-count (count (vals *ships*))
+        planets (center-planet/add-priority-to-planets (vals *planets*))]
     (decorate-planets-with-values-four-players!)
-    (set! *safe-planets* (into {} (map (fn [planet] [(:id planet) planet]) (get-safe-planets))))
+    (set! *planets* (into {} (map (fn [planet] [(:id planet) planet]) planets)))
+    (set! *safe-planets* (into {} (map (fn [planet] [(:id planet) planet]) (get-safe-planets planets))))
     (set! *docked-enemies* (into {} (map (fn [ship] [(:id ship) ship]) (get-docked-enemy-ships))))
     (set! *pesky-fighters* (into {} (map (fn [ship] [(:id ship) ship]) (get-pesky-fighters))))
     (set! *num-ships* (count (filter #(= *player-id* (:owner-id %)) (vals *ships*))))
@@ -529,7 +526,7 @@
                                        *owner-ships*)))
     (set! *spawn-points* (get-spawn-points))
     (log "Spawn points:" *spawn-points*)
-    (if (and (> *num-players* 2) (< *num-ships* (* 0.5 all-ships-count)))
+    (if (and (> *num-players* 2) (< *num-ships* (* 0.35 all-ships-count)))
       (reset! avoid-planets (deref center-planet/center-planets))
       (reset! avoid-planets nil))
     (log "Avoiding planets:" @avoid-planets)

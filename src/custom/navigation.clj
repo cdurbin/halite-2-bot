@@ -318,11 +318,19 @@
 ;           ; (log "Good-spot:" point "My ships" (count final-my-ships) "Their ships:" (count final-enemy-ships))
 ;           (>= (count final-my-ships) (count final-enemy-ships))))))
 
+; (defn get-angle-to-run
+;   "Returns the angle to run away from an enemy."
+;   [ship enemies]
+;   (when-let [closest-enemy (nearest-entity ship enemies)]
+;     (custom-math/orient-away ship closest-enemy)))
+
 (defn get-angle-to-run
   "Returns the angle to run away from an enemy."
   [ship enemies]
-  (when-let [closest-enemy (nearest-entity ship enemies)]
-    (custom-math/orient-away ship closest-enemy)))
+  (let [xs (map math/get-x enemies)
+        ys (map math/get-y enemies)
+        enemy-pos (math/->Position (custom-math/avg xs) (custom-math/avg ys))]
+    (custom-math/orient-away ship enemy-pos)))
 
 (defn navigate-to-friendly-ship-later
   "Return a fake move to be processed later."
