@@ -112,6 +112,7 @@ map_height = 2 * base_size
   * 154 - 56.71 after 142 games but climbing
   * 155 - 57.01 and climbing after 225 games
   * 157 - 57.92 mu 283 games
+  * 163 - 58.4 mu after 101 games, but 57.58 after 188 games
 
 ## Implement
   * [1/2] Figure out cases where I'm still doing dumb things with single ships getting killed - tried but still not great
@@ -159,3 +160,11 @@ map_height = 2 * base_size
     - Use a tiered approach (high value, medium value, low value). Enemy fighters within 19.5 distance of my docked ships might be high value along with docked ships? Could potentially eliminate a lot of the defend logic? Probably not though because looking out 55 definitely has helped.
   * [ ] Verify I am actually calculating the closest planet correctly (I don't ever seem to send ships until after I've fully populated the planet in front of it even when I have an unlimited number of ships)
   * [ ] Never go after the docked ships for the diagonal player from me in four player
+
+TODO
+* [ ] Change attack check to not check to see if we can attack before a single ship - instead can we attack before they have enough defenders.
+* [ ] Add number of dock spots into priority calculation - start with each dock spot is worth 2 turns (14 distance)
+* [ ] Fix jittery moves due to processing planets out of order when a higher priority planet overrides a closer planet
+* [ ] Don't send a ship to a planet if it can spawn enough ships to fill the planet before the ship makes it.
+* [ ] Don't send a ship to a planet I already own if there's another planet at a similar distance in the opposite direction.
+* [ ] Change away from ordering planets to a value for each planet (I can then calculate distance into the formula.)

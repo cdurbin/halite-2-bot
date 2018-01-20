@@ -13,5 +13,6 @@ rm *.log
 
 ## Good planet selection map
 #./halite -s 1168232716 -d "240 160" "java -jar target/MyBot.jar log-stuff" "java -jar jars/V130.jar"
-./halite -s 1168232716 -d "240 160" "java -jar target/MyBot.jar log-stuff" "java -jar jars/V144.jar"
+#./halite -s 1168232716 -d "240 160" "java -jar target/MyBot.jar log-stuff" "java -jar jars/V144.jar"
+./halite -s 1168232716 -d "240 160" "java -jar target/MyBot.jar log-stuff" "java -jar jars/V162.jar"
 mv *.hlt hlts/

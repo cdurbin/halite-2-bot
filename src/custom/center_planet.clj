@@ -3,6 +3,7 @@
   (:require
    [custom.game-map :refer [*num-players*]]
    [custom.utils :as utils]
+   [custom.math :refer [infinity]]
    [hlt.entity :as e]
    [hlt.game-map :refer [*map-size* *planets*]]
    [hlt.math :as math]
@@ -74,15 +75,41 @@
         remaining-to-ship (- 72 planet-progress)]
     (int (/ remaining-to-ship (* num-docked-ships 6)))))
 
+(defn nearest-entity
+  "Returns the closest other entity to the passed in entity."
+  [entity other-entities]
+  ; (log "Called with entity" entity "Other entities" other-entities)
+  (:nearest-entity
+   (reduce (fn [{:keys [min-distance nearest-entity]} other-entity]
+             (let [distance (- (math/distance-between entity other-entity)
+                               (:radius other-entity))]
+               (if (< distance min-distance)
+                 {:min-distance distance :nearest-entity other-entity}
+                 {:min-distance min-distance :nearest-entity nearest-entity})))
+           {:min-distance infinity}
+           other-entities)))
+
 (defn add-priority-to-planets
   "Planets get priority based on their distance from the center. In four player games the
   priority is the outside and 2 player games the priority is the center."
   [planets]
   (let [midpoint (get-center-point)
+        neutral-planets (filter #(nil? (:owner-id %))
+                                (vals *planets*))
         planet-distances (for [planet (vals *planets*)
-                               :let [distance (math/distance-between planet midpoint)]]
+                               :let [distance (math/distance-between planet midpoint)
+                                     dock-spot-value (* 7 (get-in planet [:docking :spots]))
+                                     ; dock-spot-value (* 14 (get-in planet [:docking :spots]))
+                                     next-neutral-planet (nearest-entity planet neutral-planets)
+                                     distance-to-next-neutral-planet (if next-neutral-planet
+                                                                       (- (math/distance-between planet next-neutral-planet)
+                                                                          (:radius planet) (:radius next-neutral-planet))
+                                                                       0)
+                                     distance-to-next-neutral-planet (* -1 distance-to-next-neutral-planet)]]
                            {:planet planet
-                            :distance distance})
+                            :distance (if (= *num-players* 2)
+                                        (- distance dock-spot-value distance-to-next-neutral-planet)
+                                        (+ distance dock-spot-value distance-to-next-neutral-planet))})
         direction (if (= *num-players* 2)
                     utils/asc
                     utils/desc)
