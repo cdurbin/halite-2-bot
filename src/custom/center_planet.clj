@@ -86,7 +86,8 @@
         direction (if (= *num-players* 2)
                     utils/asc
                     utils/desc)
-        planets-in-order (sort (utils/compare-by :distance utils/desc) planet-distances)]
+        _ (log "PS: direction is" direction)
+        planets-in-order (sort (utils/compare-by :distance direction) planet-distances)]
     (map-indexed (fn [idx planet]
                    (assoc planet :priority (inc idx)))
                  (map :planet planets-in-order))))

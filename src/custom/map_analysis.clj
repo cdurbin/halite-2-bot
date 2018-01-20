@@ -540,6 +540,9 @@
 (defn get-custom-map-info
   "Returns additional map info that is useful to calculate at the beginning of each turn."
   [turn]
+  (set! *num-players* (count (filter (fn [[k v]]
+                                       (seq v))
+                                     *owner-ships*)))
   (let [start-ms (System/currentTimeMillis)
         all-ships-count (count (vals *ships*))
         planets (center-planet/add-priority-to-planets (vals *planets*))]
@@ -549,9 +552,6 @@
     (set! *docked-enemies* (into {} (map (fn [ship] [(:id ship) ship]) (get-docked-enemy-ships))))
     (set! *pesky-fighters* (into {} (map (fn [ship] [(:id ship) ship]) (get-pesky-fighters))))
     (set! *num-ships* (count (filter #(= *player-id* (:owner-id %)) (vals *ships*))))
-    (set! *num-players* (count (filter (fn [[k v]]
-                                         (seq v))
-                                       *owner-ships*)))
     (set! *spawn-points* (get-spawn-points))
     (log "Spawn points:" *spawn-points*)
     (if (and (> *num-players* 2) (< *num-ships* (* 0.35 all-ships-count)))

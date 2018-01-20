@@ -1034,25 +1034,43 @@
             planet-turns (center-planet/get-turns-to-planet ship planets)
             fewest-turns (:turns (first planet-turns))
             closest-planet (:planet (first planet-turns))]
+        ; (log "PS: planet-turns" planet-turns)
+        (log "PS: fewest turns" fewest-turns)
+        (log "PS: closest-planet" closest-planet)
         (when closest-planet
-          (let [potential-planet-turns (if (<= 1 fewest-turns)
-                                         [(first planet-turns)]
-                                         (filter #(<= (:turns %) (+ 15 fewest-turns))
-                                                 planet-turns))
+          (let [potential-planet-turns
+                                      ; (if (<= fewest-turns 1)
+                                         ; [(first planet-turns)]
+                                         (filter #(<= (:turns %) (+ 6 fewest-turns))
+                                                 planet-turns)
+                ;; Limit to the three closest
+                potential-planet-turns (take 3 (sort (utils/compare-by :turns utils/asc)
+                                                     potential-planet-turns))
                 potential-planets (map :planet potential-planet-turns)
-                best-planet (first (sort (utils/compare-by :priority utils/asc) potential-planets))
+                best-planet (first (sort (utils/compare-by :priority utils/asc)
+                                         potential-planets))
                 ;; if moving to the closest planet moves us towards the best planet, take it
                 ;; otherwise go to the best planet
-                current-distance-to-best-planet (math/distance-between ship best-planet)
-                closest-planet-distance-to-best-planet (math/distance-between closest-planet best-planet)
+                ;; Don't forget to add the turns it takes to get to the best planet
+                current-distance-to-best-planet (- (math/distance-between ship best-planet) (:radius best-planet))
+                _ (log "PS: current-dist-to-best" current-distance-to-best-planet)
+                dock-point (math/closest-point ship closest-planet 4)
+                _ (log "PS: dock-point" dock-point)
+                closest-planet-distance-to-best-planet (+ (* 7 (- fewest-turns 1.5))
+                                                          (- (math/distance-between dock-point best-planet)
+                                                             (:radius best-planet)))
+                _ (log "PS: closest-planet-distance-to-best-planet" closest-planet-distance-to-best-planet)
                 chosen-planet (if (<= closest-planet-distance-to-best-planet
-                                      (+ 7 current-distance-to-best-planet))
+                                      current-distance-to-best-planet)
                                 closest-planet
                                 best-planet)
                 other-planet (if (<= closest-planet-distance-to-best-planet
-                                     (+ 7 current-distance-to-best-planet))
+                                     current-distance-to-best-planet)
                                best-planet
                                closest-planet)]
+            (log "PS: potential-planets" potential-planets)
+            (log "PS: chosen-planet" chosen-planet)
+            (log "PS: other-planet" other-planet)
         ; (let [nearest-planet
         ;       (:nearest-planet
         ;        (reduce (fn [{:keys [min-distance nearest-planet]} planet]
@@ -1070,15 +1088,15 @@
                                 (map/good-surrounding-planet-helper-extra ship 25 0)
                                 (map/good-surrounding-planet-helper-extra ship 15 0)
                                 (map/safe-to-dock? ship))))
-                (move-ship-to-planet! ship chosen-planet)
-                (if (and
-                         (some #{(:id other-planet)} (keys *safe-planets*))
-                         (or (not (e/within-docking-range? ship other-planet))
-                             (and (map/good-surrounding-planet-helper-extra ship 35 0)
-                                  (map/good-surrounding-planet-helper-extra ship 25 0)
-                                  (map/good-surrounding-planet-helper-extra ship 15 0)
-                                  (map/safe-to-dock? ship))))
-                  (move-ship-to-planet! ship other-planet))))))))))
+                (move-ship-to-planet! ship chosen-planet)))))))))
+                ; (if (and
+                ;          (some #{(:id other-planet)} (keys *safe-planets*))
+                ;          (or (not (e/within-docking-range? ship other-planet))
+                ;              (and (map/good-surrounding-planet-helper-extra ship 35 0)
+                ;                   (map/good-surrounding-planet-helper-extra ship 25 0)
+                ;                   (map/good-surrounding-planet-helper-extra ship 15 0)
+                ;                   (map/safe-to-dock? ship))))
+                ;   (move-ship-to-planet! ship other-planet))))))))))
 
 ; (defn compute-planet-only-move*
 ;   "Picks the move for the ship based on proximity to planets and fighters near planets."
