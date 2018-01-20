@@ -220,6 +220,32 @@
              (zero? (count closeby-docked)))
         (>= my-count max-other-count))))
 
+(defn good-surrounding-planet-helper-extra
+  "Checks whether we have the advantage for the docking spot at the given distance"
+  [planet distance extra]
+  (let [filter-fn (fn [ship]
+                    (and (= :undocked (-> ship :docking :status))
+                         (< (math/distance-between ship planet) (+ distance (:radius planet)))))
+        docked-filter-fn (fn [ship]
+                           (and (not= *player-id* (:owner-id ship))
+                                (not= :undocked (-> ship :docking :status))
+                                (< (math/distance-between ship planet) (+ distance (:radius planet)))))
+        ships (for [[k v] *ships*
+                    :when (integer? k)]
+                v)
+        closeby-docked (filter docked-filter-fn ships)
+        nearby-fighters (filter filter-fn ships)
+        fighters-by-owner (group-by :owner-id nearby-fighters)
+        my-count (dec (count (get fighters-by-owner *player-id*)))
+        max-other-count (apply max 0 (map count (vals (dissoc fighters-by-owner *player-id*))))
+        ;; Special case to make sure I have one extra defender early
+        my-count (if (and (< *num-ships* 5) (pos? max-other-count))
+                   (dec my-count)
+                   my-count)]
+    (or (and (zero? max-other-count)
+             (zero? (count closeby-docked)))
+        (>= (- my-count extra) max-other-count))))
+
 (defn have-most-ships-surrounding-planet?
   "Have the most fighters (non docking) surrounding the planet."
   [planet]
@@ -804,5 +830,9 @@
                              (vals *ships*))
         closest-fighter (nearest-entity ship all-fighters)]
     (or (nil? closest-fighter)
-        (= *player-id* (:owner-id closest-fighter))
+        (and (= *player-id* (:owner-id closest-fighter))
+             (not (first (filter #(and (= :undocked (-> % :docking :status))
+                                       (not= *player-id* (:owner-id %))
+                                       (<= (math/distance-between ship %) 7))
+                                 all-fighters))))
         (> (math/distance-between ship closest-fighter) close-fighter-distance))))
