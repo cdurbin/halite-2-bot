@@ -381,7 +381,6 @@
 (defn attack-unprotected-enemy-ships-old
   "Returns moves to attack the unprotected enemy ships"
   [moving-ships {:keys [start-ms]}]
-  (log "Planets" (pretty-log (vals *planets*)))
   (if (< *num-ships* 200)
     (let [ship-attacks (unprotected-enemy-ships-old moving-ships)]
       ; (log "unprotected enemy ships are:" ship-attacks)
@@ -1150,11 +1149,16 @@
   (if (and (= *num-ships* 3)
            (seq (filter #(= :undocked (-> % :docking :status)) ships)))
     (let [ships (filter #(= :undocked (-> % :docking :status)) ships)]
-      (when-let [planet (map/best-initial-planet ships)]
+      (if-let [planet (map/best-initial-planet ships)]
         (let [ships-in-order (map/sort-ships-by-distance ships
                                                          [planet])]
           (doall
            (keep #(compute-initial-move custom-map-info % planet)
+                 ships-in-order)))
+        (let [ships-in-order (map/sort-ships-by-distance ships
+                                                         (vals *safe-planets*))]
+          (doall
+           (keep #(compute-planet-only-move custom-map-info %)
                  ships-in-order)))))
     (let [ships-in-order (map/sort-ships-by-distance ships
                                                      (vals *safe-planets*))]

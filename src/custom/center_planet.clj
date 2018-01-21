@@ -5,7 +5,7 @@
    [custom.utils :as utils]
    [custom.math :refer [infinity]]
    [hlt.entity :as e]
-   [hlt.game-map :refer [*map-size* *planets*]]
+   [hlt.game-map :refer [*map-size* *planets* *player-id* *ships*]]
    [hlt.math :as math]
    [hlt.navigation :as hlt-navigation]
    [hlt.utils :refer [log]]))
@@ -89,6 +89,23 @@
            {:min-distance infinity}
            other-entities)))
 
+(defn planets-closest-to-players
+  "Returns the closest planet to the players."
+  []
+  (let [planets (vals *planets*)
+        ships-by-owner (group-by :owner-id (remove #(= *player-id* (:owner-id %)) (vals *ships*)))]
+    (for [[owner-id ships] ships-by-owner
+          :let [
+                ;; Could do any average position here instead?
+                ship (first ships)]]
+      (nearest-entity ship planets))))
+
+(defn closest-distance-to-planets
+  "Returns the closest distance from the planet to any of the passed in planets."
+  [planet planets]
+  (let [closest-planet (nearest-entity planet planets)]
+    (- (math/distance-between planet closest-planet) (:radius planet) (:radius closest-planet))))
+
 (defn add-priority-to-planets
   "Planets get priority based on their distance from the center. In four player games the
   priority is the outside and 2 player games the priority is the center."
@@ -123,19 +140,6 @@
                             (- distance dock-spot-value distance-to-next-neutral-planet bonus)
                             (+ distance dock-spot-value distance-to-next-neutral-planet bonus))]]
       (assoc planet :priority priority))))
-    ;   {:planet planet
-    ;    :distance (if (= *num-players* 2)
-    ;                (- distance dock-spot-value distance-to-next-neutral-planet)
-    ;                (+ distance dock-spot-value distance-to-next-neutral-planet))
-    ;     ; direction (if (= *num-players* 2)
-    ;     ;             utils/asc
-    ;     ;             utils/desc)
-    ;     _ (log "PS: direction is" direction)})
-    ; (map #(assoc (:planet %) :priority (:distance %)))))
-    ;     planets-in-order (sort (utils/compare-by :distance direction) planet-distances))
-    ; (map-indexed (fn [idx planet]
-    ;                (assoc planet :priority (inc idx)))
-    ;              (map :planet planets-in-order))))
 
 (defn get-turns-to-planet
   "Returns a collection of maps with keys of :planet and :turns. Takes into account the radius
@@ -155,3 +159,11 @@
                    (+ (:priority planet) (* 2 distance))
                    (- (:priority planet) distance))]
     (assoc planet :priority priority)))
+
+(defn rescore-planets-for-early-rounds
+  "Rescores the planets for the early rounds"
+  [planets]
+  (let [most-likely-enemy-planets (planets-closest-to-players)]
+    (for [planet planets
+          :let [added-distance (closest-distance-to-planets planet most-likely-enemy-planets)]]
+      (assoc planet :priority (+ (:priority planet) added-distance)))))

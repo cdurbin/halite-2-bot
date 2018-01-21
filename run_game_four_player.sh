@@ -7,5 +7,8 @@
 #./halite -d "384 256" "java -jar target/MyBot.jar log-stuff" "java -jar jars/V147.jar" "java -jar jars/V144.jar" "java -jar jars/V33.jar"
 #./halite -d "240 160" "java -jar target/MyBot.jar log-stuff" "java -jar jars/V147.jar" "java -jar jars/V144.jar" "java -jar jars/V156.jar"
 
-./halite -s 2468810355 -d "240 160" "java -jar target/MyBot.jar log-stuff" "java -jar jars/V147.jar" "java -jar jars/V144.jar" "java -jar jars/V156.jar"
+#./halite -s 2468810355 -d "240 160" "java -jar target/MyBot.jar log-stuff" "java -jar jars/V147.jar" "java -jar jars/V144.jar" "java -jar jars/V156.jar"
+./halite -s 4036469928 -d "240 160" "java -jar target/MyBot.jar log-stuff" "java -jar jars/V147.jar" "java -jar jars/V144.jar" "java -jar jars/V156.jar"
+
+#./halite -d "240 160" "java -jar target/MyBot.jar log-stuff" "java -jar jars/V147.jar" "java -jar jars/V144.jar" "java -jar jars/V156.jar"
 mv *.hlt hlts/

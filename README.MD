@@ -169,6 +169,9 @@ TODO
 * [ ] Don't send a ship to a planet if it can spawn enough ships to fill the planet before the ship makes it.
 * [ ] Don't send a ship to a planet I already own if there's another planet at a similar distance in the opposite direction.
 * [ ] Change away from ordering planets to a value for each planet (I can then calculate distance into the formula.)
+* [ ] I want to pick the first planets for each player. Add a weighting for distance from closest player (higher is better for four player). Might be useful to calculate this throughout the game.
+* [ ] Send after docked ships for any enemy that has a planet within 25? of my planet + my nemesis if no one is that close
 
 V165:  Games Win % Loss %
  reCurs3	30	30	70
+  reCurs3	12	42	58

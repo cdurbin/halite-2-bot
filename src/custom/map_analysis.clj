@@ -485,13 +485,23 @@
     (log "The closest players to me are: " sorted-owner-distances)
     (map :owner-id sorted-owner-distances)))
 
+; (defn docked-enemies-to-care-about-remove-third-player
+;   "Returns the docked enemies I should try to go after."
+;   []
+;   (if (= 3 (count @players-in-order))
+;     (let [player-id (nth @players-in-order 2)]
+;       (log "Players order was" @players-in-order "and the player I'm going to attack is" player-id)
+;       (remove #(= player-id (:owner-id %)) (vals *docked-enemies*)))
+;     (vals *docked-enemies*)))
+
+;; Only the first player
 (defn docked-enemies-to-care-about
   "Returns the docked enemies I should try to go after."
   []
   (if (= 3 (count @players-in-order))
-    (let [player-id (nth @players-in-order 2)]
+    (let [player-id (first @players-in-order)]
       (log "Players order was" @players-in-order "and the player I'm going to attack is" player-id)
-      (remove #(= player-id (:owner-id %)) (vals *docked-enemies*)))
+      (filter #(= player-id (:owner-id %)) (vals *docked-enemies*)))
     (vals *docked-enemies*)))
 
 (def top-player-docked-ships
@@ -547,7 +557,12 @@
   (set! *num-ships* (count (filter #(= *player-id* (:owner-id %)) (vals *ships*))))
   (let [start-ms (System/currentTimeMillis)
         all-ships-count (count (vals *ships*))
-        planets (center-planet/add-priority-to-planets (vals *planets*))]
+        planets (center-planet/add-priority-to-planets (vals *planets*))
+        planets (if (and (> *num-players* 2) (<= *num-ships* 3))
+                  (center-planet/rescore-planets-for-early-rounds planets)
+                  planets)]
+
+    (log "Planets" (pretty-log planets))
     (decorate-planets-with-values-four-players!)
     (set! *planets* (into {} (map (fn [planet] [(:id planet) planet]) planets)))
     (set! *safe-planets* (into {} (map (fn [planet] [(:id planet) planet]) (get-safe-planets planets))))
@@ -862,6 +877,8 @@
                         utils/desc)
             best-planet (first (sort (utils/compare-by :priority direction)
                                      potential-planets))]
+        (log "BIP: potential planets" potential-planets)
+        (log "BIP: best planet")
         (when (and best-planet
                    (>= (get-in best-planet [:docking :spots]) 3)
                    (some #{(:id best-planet)} (keys *safe-planets*))
