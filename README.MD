@@ -175,3 +175,5 @@ TODO
 V165:  Games Win % Loss %
  reCurs3	30	30	70
   reCurs3	12	42	58
+  psyho  19 32 68
+  shummie	71	52	48

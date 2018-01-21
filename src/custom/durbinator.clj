@@ -500,7 +500,7 @@
           ;(log "Now my final attack groups are" attack-group)
           ;; Attack with no more than 5 extra than they have defenders
           (update-in attack-group [:attack-ships] (fn [old-attacks]
-                                                    (take (+ 5 (:num-defenders attack-group)) old-attacks)))))))
+                                                    (take (+ 1 (:num-defenders attack-group)) old-attacks)))))))
 
 (defn create-moves-for-attack-groups
   "This assumes the attack group has already been processed down. Creates the moves based on the
