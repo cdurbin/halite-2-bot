@@ -1026,9 +1026,9 @@
     (if (or times-up?
             (not= :undocked (-> ship :docking :status)))
       nil
-      (let [planets (filter #(or (nil? (:owner-id %))
-                                 (and (= *player-id* (:owner-id %))
-                                      (e/any-remaining-docking-spots? %)))
+      (let [planets (filter #(and (e/any-remaining-docking-spots? %)
+                                  (or (nil? (:owner-id %))
+                                      (and (= *player-id* (:owner-id %)))))
                              (vals *planets*))
             planet-turns (center-planet/get-turns-to-planet ship planets)
             fewest-turns (:turns (first planet-turns))

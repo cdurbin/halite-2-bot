@@ -394,9 +394,9 @@
   "Returns a list of planets that are safe to dock at."
   [planets]
   (let [filter-fn (fn [planet]
-                    (and (or (and (nil? (:owner-id planet)))
-                             (and (= *player-id* (:owner-id planet))
-                                  (e/any-remaining-docking-spots? planet)))
+                    (and (e/any-remaining-docking-spots? planet)
+                         (or (nil? (:owner-id planet))
+                             (= *player-id* (:owner-id planet)))
                          (have-most-ships-surrounding-planet? planet)
                          (not (avoid-planet? planet))))]
     (filter filter-fn planets)))
@@ -612,9 +612,9 @@
 (defn get-unowned-or-docked-good-planets
   "Returns unowned (and good) planets."
   []
-  (filter #(and (or (nil? (:owner-id %))
-                    (and (= *player-id* (:owner-id %))
-                         (e/any-remaining-docking-spots? %)))
+  (filter #(and (e/any-remaining-docking-spots? %)
+                (or (nil? (:owner-id %))
+                    (= *player-id* (:owner-id %)))
                 (not (avoid-planet? %)))
           (vals *planets*)))
 
