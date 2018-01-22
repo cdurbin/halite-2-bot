@@ -154,7 +154,7 @@
                      angular-step)}))
 
 (def fast-navigation-iterations
-  (for [iterations (range 0 5.1)
+  (for [iterations (range 0 3.1)
         thrust [7 3 1]
         angle-slice (range 30)
         opposite (range 2)
@@ -530,7 +530,7 @@
          thrust (if (not good-spot)
                   7
                   thrust)
-         avoid-attack (if (> (count my-ships) 35)
+         avoid-attack (if (> (count my-ships) 100)
                         false
                         guaranteed-safe)
          first-angle (if (and (not good-spot) (not guaranteed-safe))
@@ -574,7 +574,7 @@
                       angular-step max-thrust buffer subtype avoid-attack]
                :as opts}]
    ; (if (> *num-ships* 1)
-   (if (> *num-ships* 50)
+   (if (> *num-ships* 60)
      (navigate-to-fast ship goal opts)
      (let [move (navigate-to-precise ship goal opts)]
        (if (= "Precise - ran out of moves." (:reason move))
