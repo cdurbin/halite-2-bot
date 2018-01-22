@@ -1031,8 +1031,10 @@
                                       (and (= *player-id* (:owner-id %)))))
                              (vals *planets*))
             planet-turns (center-planet/get-turns-to-planet ship planets)
-            fewest-turns (:turns (first planet-turns))
-            closest-planet (:planet (first planet-turns))]
+            potential-planet-turns (remove #(map/full-before-roundtrip? (:planet %) (:turns %))
+                                           planet-turns)
+            fewest-turns (:turns (first potential-planet-turns))
+            closest-planet (:planet (first potential-planet-turns))]
         ; (log "PS: planet-turns" planet-turns)
         (log "PS: fewest turns" fewest-turns)
         (log "PS: closest-planet" closest-planet)
@@ -1041,7 +1043,7 @@
                                       ; (if (<= fewest-turns 1)
                                          ; [(first planet-turns)]
                                          (filter #(<= (:turns %) (+ 6 fewest-turns))
-                                                 planet-turns)
+                                                 potential-planet-turns)
                 ;; Limit to the three closest
                 ; potential-planet-turns (take 3 (sort (utils/compare-by :turns utils/asc)
                 ;                                      potential-planet-turns))
@@ -1067,14 +1069,14 @@
                 chosen-planet (if (<= closest-planet-distance-to-best-planet
                                       current-distance-to-best-planet)
                                 closest-planet
-                                best-planet)
-                other-planet (if (<= closest-planet-distance-to-best-planet
-                                     current-distance-to-best-planet)
-                               best-planet
-                               closest-planet)]
+                                best-planet)]
+                ; other-planet (if (<= closest-planet-distance-to-best-planet
+                ;                      current-distance-to-best-planet)
+                ;                best-planet
+                ;                closest-planet)]
             (log "PS: potential-planets" potential-planets)
             (log "PS: chosen-planet" chosen-planet)
-            (log "PS: other-planet" other-planet)
+            ; (log "PS: other-planet" other-planet)
         ; (let [nearest-planet
         ;       (:nearest-planet
         ;        (reduce (fn [{:keys [min-distance nearest-planet]} planet]

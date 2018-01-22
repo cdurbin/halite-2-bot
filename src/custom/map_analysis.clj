@@ -888,3 +888,24 @@
                             (good-surrounding-planet-helper-extra ship 15 0)
                             (safe-to-dock? ship))))
           best-planet)))))
+
+(defn turns-until-full
+  "Returns the number of turns before a planet will be full."
+  [planet]
+  (let [open-dock-slots (e/remaining-docking-spots planet)
+        num-docked (count (get-in planet [:docking :ships]))
+        current-production (get-in planet [:docking :current-production])
+        required-total-production (* open-dock-slots 72)
+        remaining-production (- required-total-production current-production)]
+    (if (= 0 open-dock-slots)
+      0
+      (if (= 0 num-docked)
+        infinity
+        (let [dock-rate (* num-docked 6)]
+          (/ remaining-production dock-rate))))))
+
+(defn full-before-roundtrip?
+  "Returns true if the planet would be full from spawned ships before I reach it."
+  [planet turns]
+  (let [full-turns (turns-until-full planet)]
+    (<= full-turns (* 2 turns))))
