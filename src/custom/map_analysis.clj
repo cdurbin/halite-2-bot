@@ -896,16 +896,20 @@
         num-docked (count (get-in planet [:docking :ships]))
         current-production (get-in planet [:docking :current-production])
         required-total-production (* open-dock-slots 72)
-        remaining-production (- required-total-production current-production)]
+        remaining-production (- required-total-production current-production)
+        extra (if (nil? (:owner-id planet))
+                6
+                0)]
+
     (if (= 0 open-dock-slots)
       0
       (if (= 0 num-docked)
         infinity
         (let [dock-rate (* num-docked 6)]
-          (/ remaining-production dock-rate))))))
+          (+ extra (/ remaining-production dock-rate)))))))
 
 (defn full-before-roundtrip?
   "Returns true if the planet would be full from spawned ships before I reach it."
   [planet turns]
   (let [full-turns (turns-until-full planet)]
-    (<= full-turns (* 2 turns))))
+    (<= full-turns turns)))
