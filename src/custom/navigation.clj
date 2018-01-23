@@ -543,7 +543,7 @@
          thrust (if (not good-spot)
                   7
                   thrust)
-         avoid-attack (if (> (count my-ships) 100)
+         avoid-attack (if (> (count my-ships) 35)
                         false
                         guaranteed-safe)
          first-angle (if (and (not good-spot) (not guaranteed-safe))
