@@ -167,7 +167,7 @@
                      angular-step)}))
 
 (def fast-navigation-iterations
-  (for [iterations (range 0 3.1)
+  (for [iterations (range 0 5.1)
         thrust [7 3 1]
         angle-slice (range 30)
         opposite (range 2)
