@@ -154,9 +154,9 @@
                      angular-step)}))
 
 (def superfast-navigation-iterations
-  (for [iterations (range 0 1.1)
-        thrust [7 3 1]
-        angle-slice (range 15)
+  (for [iterations (range 0 3.1)
+        thrust [7 2]
+        angle-slice (range 30)
         opposite (range 2)
         ; :let [angular-step (* 2 (/ Math/PI 180.0) angular-step)]
         :let [angular-step (* (/ Math/PI 180.0)
