@@ -153,6 +153,19 @@
                      (* -1 angular-step)
                      angular-step)}))
 
+(def superfast-navigation-iterations
+  (for [iterations (range 0 1.1)
+        thrust [7 3 1]
+        angle-slice (range 15)
+        opposite (range 2)
+        ; :let [angular-step (* 2 (/ Math/PI 180.0) angular-step)]
+        :let [angular-step (* (/ Math/PI 180.0)
+                              (+ angle-slice (* iterations 30)))]]
+    {:max-thrust thrust
+     :angular-step (if (zero? opposite)
+                     (* -1 angular-step)
+                     angular-step)}))
+
 (def fast-navigation-iterations
   (for [iterations (range 0 3.1)
         thrust [7 3 1]
@@ -536,9 +549,11 @@
          first-angle (if (and (not good-spot) (not guaranteed-safe))
                        (or (get-angle-to-run ship other-ships) first-angle)
                        first-angle)
-         navigation-iterations (if (> *num-ships* 150)
-                                 fast-navigation-iterations
-                                 all-navigation-iterations)
+         navigation-iterations (if (> *num-ships* 250)
+                                 superfast-navigation-iterations
+                                 (if (> *num-ships* 150)
+                                   fast-navigation-iterations
+                                   all-navigation-iterations))
          navigation-iterations (if (< thrust 7)
                                  (filter #(<= (:max-thrust %) thrust)
                                          navigation-iterations)

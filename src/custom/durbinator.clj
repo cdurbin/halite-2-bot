@@ -1286,8 +1286,9 @@
           attack-moves (attack-unprotected-enemy-ships moving-ships custom-map-info)
           moving-ships (map #(get-in % [:ship :id]) (concat runaway-moves attack-moves defend-moves best-planet-moves))
 
-          attack-moves-old (attack-unprotected-enemy-ships-old moving-ships custom-map-info)
-          moving-ships (map #(get-in % [:ship :id]) (concat attack-moves-old runaway-moves attack-moves defend-moves best-planet-moves))
+          attack-moves-old []
+          ; attack-moves-old (attack-unprotected-enemy-ships-old moving-ships custom-map-info)
+          ; moving-ships (map #(get-in % [:ship :id]) (concat attack-moves-old runaway-moves attack-moves defend-moves best-planet-moves))
 
           ; potential-ships (filter #(and (= :undocked (-> % :docking :status))
           ;                               (not (some (set [(:id %)]) moving-ships)))
